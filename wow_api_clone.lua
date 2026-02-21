@@ -78,10 +78,10 @@ UnitAuras = function(unit) end
 ---@field RAGE integer
 ---@field FOCUS integer
 ---@field ENERGY integer
----@field COMBO_POINTS integer
+---@field COMBOPOINTS integer
 ---@field RUNES integer
----@field RUNIC_POWER integer
----@field SOUL_SHARDS integer
+---@field RUNICPOWER integer
+---@field SOULSHARDS integer
 ---@field LUNAR_POWER integer
 
 ---@type POWER_enum

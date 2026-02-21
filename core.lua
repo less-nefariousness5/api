@@ -566,6 +566,12 @@ function core.read_dir(directory)
     return nil
 end
 
+---@param id number
+---@r
+function core.play_sound_by_id(id)
+    return nil
+end
+
 ---@class inventory
 core.inventory = {}
 
@@ -670,6 +676,31 @@ end
 --- Returns true if the world map is currently open.
 function core.game_ui.is_map_open()
     return false
+end
+
+--- Returns the top-left corner of the world map frame in UI coordinates.
+---@return vec2 The top-left position of the map in UI coordinates.
+function core.game_ui.get_map_top_left()
+    return {}
+end
+
+--- Returns the bottom-right corner of the world map frame in UI coordinates.
+---@return vec2 The bottom-right position of the map in UI coordinates.
+function core.game_ui.get_map_bottom_right()
+    return {}
+end
+
+--- Converts a UI-space position to screen-space pixel coordinates.
+---@param ui_pos vec2 The position in UI coordinates.
+---@return vec2 The corresponding screen-space position in pixels.
+function core.game_ui.ui_pos_to_screen_pos(ui_pos)
+    return {}
+end
+
+---@param world_pos vec3
+---@return vec2
+function core.game_ui.world_pos_to_map_pos_normalized(world_pos)
+    return {}
 end
 
 ---@class input
@@ -1469,27 +1500,79 @@ function core.spell_book.get_assisted_spell_id(target)
     return 0
 end
 
+---@return boolean
+---@param spell_id number
+function core.spell_book.is_current_spell(spell_id)
+    return false
+end
+
 ---@class graphics
 core.graphics = {}
 
 --- Adds a notification to the display.
+--- NOTE: Must be called from a registered callback (on_update, on_render, on_pre_tick).
+--- Calling from event handlers like izi.on_key_release will display visually but
+--- is_notification_active and is_notification_clicked won't work correctly.
+--- Calling with the same unique_id while one is already active will stack, not replace.
 --- @param unique_id string UNIQUE identifier for the notification.
 --- @param label string The title or heading for the notification.
 --- @param message string The main content of the notification.
---- @param duration_ms integer The duration in seconds that the notification should be displayed.
---- @param color color The color of the notification text.
---- @param x_pos_offset number Optional horizontal position offset, defaults to 0.0.
---- @param y_pos_offset number Optional vertical position offset, defaults to 0.0.
---- @param max_background_alpha number Optional maximum background alpha (opacity), defaults to 0.95.
---- @param length number Optional length of the notification box, defaults to 0.0.
---- @param height number Optional height of the notification box, defaults to 0.0.
+--- @param duration_s number The duration in seconds that the notification should be displayed.
+--- @param color color The color of the notification.
+--- @param x_pos_offset number|nil Optional horizontal position offset (screen-relative), defaults to 0.0.
+--- @param y_pos_offset number|nil Optional vertical position offset (screen-relative), defaults to 0.0.
+--- @param max_background_alpha number|nil Optional maximum background alpha (opacity), defaults to 0.95.
+--- @param length number|nil Optional extra length added to notification box, defaults to 0.0.
+--- @param height number|nil Optional extra height added to notification box, defaults to 0.0.
+--- @return boolean success Whether the notification was created.
 --- @overload fun(unique_id:string, label: string, message: string, duration_s: number, color: color):boolean
 --- @overload fun(unique_id:string, label: string, message: string, duration_s: number, color: color, x_pos_offset: number):boolean
 --- @overload fun(unique_id:string, label: string, message: string, duration_s: number, color: color, x_pos_offset: number, y_pos_offset: number):boolean
 --- @overload fun(unique_id:string, label: string, message: string, duration_s: number, color: color, x_pos_offset: number, y_pos_offset: number, max_background_alpha: number):boolean
 --- @overload fun(unique_id:string, label: string, message: string, duration_s: number, color: color, x_pos_offset: number, y_pos_offset: number, max_background_alpha: number, length: number):boolean
-function core.graphics.add_notification(unique_id, label, message, duration_ms, color, x_pos_offset, y_pos_offset, max_background_alpha, length, height)
+function core.graphics.add_notification(unique_id, label, message, duration_s, color, x_pos_offset, y_pos_offset, max_background_alpha, length, height)
     return false
+end
+
+--- Returns true if the notification was clicked within the last `delay` seconds.
+--- With delay = 0.0, returns true only on the exact click frame.
+--- @param unique_id string UNIQUE identifier of the notification.
+--- @param delay number|nil Lookback window in seconds. Returns true if clicked within the last N seconds. Defaults to 0.0 (click frame only).
+--- @return boolean clicked
+function core.graphics.is_notification_clicked(unique_id, delay)
+    return false
+end
+
+--- Returns true if the notification is currently being shown on screen.
+--- @param unique_id string UNIQUE identifier of the notification.
+--- @return boolean active
+function core.graphics.is_notification_active(unique_id)
+    return false
+end
+
+--- Retrieves the notification position offset (normalized 0.0-1.0 range, screen-relative).
+--- Multiply by screen size to get pixel coordinates. This is the raw slider value.
+--- For pixel-space positions ready to use, prefer get_notifications_layout().
+--- @return vec2 notifications_position Normalized (x, y) offset.
+function core.graphics.get_notifications_menu_position()
+    return {}
+end
+
+--- Retrieves the base notification size in pixels (before text content expansion).
+--- Scaled from 275x80 at 1920x1080. Actual rendered notification may be larger
+--- depending on text length and line count.
+--- @return vec2 notifications_default_size The base width and height in pixels.
+function core.graphics.get_notifications_default_size()
+    return {}
+end
+
+--- Returns pixel-space layout info for notification positioning and hit-testing.
+--- Accounts for screen resolution, slider offsets, and animation offsets.
+--- Slot N position: vec2(layout.base_pos.x, layout.base_pos.y + layout.separation * N)
+--- Note: actual notification width/height may exceed default_size depending on text content.
+--- @return table layout { base_pos: vec2, default_size: vec2, separation: number }
+function core.graphics.get_notifications_layout()
+    return {}
 end
 
 ---@return vec2 main_menu_screen_position
@@ -1505,30 +1588,6 @@ end
 
 ---@return vec2 main_menu_screen_size
 function core.graphics.get_main_menu_screen_size()
-    return {}
-end
-
---- @param unique_id string UNIQUE identifier of the notification.
---- @param delay number|nil Optional delay to trigger (eg. delay = 5.0, this function will return true if the notification was clicked 5 seconds ago), defaults to 0.0
-function core.graphics.is_notification_clicked(unique_id, delay)
-    return false
-end
-
--- Returns true if the notification is being shown on screen
---- @param unique_id string UNIQUE identifier of the notification.
-function core.graphics.is_notification_active(unique_id)
-    return false
-end
-
---- Retrieves the current screen position of notifications.
----@return vec2 notifications_position The screen coordinates (x, y) where notifications are displayed.
-function core.graphics.get_notifications_menu_position()
-    return {}
-end
-
---- Retrieves the default size of notifications.
----@return vec2 notifications_default_size The default width and height of notifications.
-function core.graphics.get_notifications_default_size()
     return {}
 end
 
@@ -1788,6 +1847,10 @@ function core.graphics.draw_image(image, position) end
 
 --- Renders System Menu from C++
 function core.graphics.render_system_menu() end
+
+function core.graphics.capture_next_mouse_input() end
+
+function core.graphics.capture_next_keyboard_input() end
 
 ---@class menu
 core.menu = {}

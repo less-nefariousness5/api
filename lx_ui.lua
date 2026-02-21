@@ -1,0 +1,562 @@
+
+-- =============================================================================
+-- LX_UI - Custom UI Library API Reference
+-- =============================================================================
+--
+-- Usage (two ways to access):
+--
+--   -- Method 1: Use the require return value directly
+--   local lx_ui = require("common/lx_ui")
+--   local menu = lx_ui.Menu:new("My Menu", 300, 100, "my_save_key")
+--
+--   -- Method 2: Use the global table (set automatically on require)
+--   require("common/lx_ui")
+--   local LX_UI = _G.LX_UI
+--   local menu = LX_UI.Menu:new("My Menu", 300, 100, "my_save_key")
+--
+-- Both return/expose the same LX_UI table. Requiring the module once
+-- populates _G.LX_UI so any other file can reference it globally.
+--
+-- Warning: All component/menu methods use ":" (colon) syntax, not "."
+-- =============================================================================
+
+-- =============================================================================
+-- COLOR TABLE (used throughout the API for color parameters)
+-- =============================================================================
+
+---@class lx_color_table
+---@field r number Red channel (0-255)
+---@field g number Green channel (0-255)
+---@field b number Blue channel (0-255)
+---@field a number Alpha channel (0-255)
+
+-- =============================================================================
+-- CONSTANTS
+-- =============================================================================
+
+---@class lx_ui_vk_codes
+---Virtual key code constants for keybinds and input detection.
+---@field LBUTTON number 0x01 - Left mouse button
+---@field RBUTTON number 0x02 - Right mouse button
+---@field MBUTTON number 0x04 - Middle mouse button
+---@field BACK number 0x08 - Backspace
+---@field TAB number 0x09 - Tab
+---@field RETURN number 0x0D - Enter/Return
+---@field SHIFT number 0x10 - Shift
+---@field CONTROL number 0x11 - Ctrl
+---@field ALT number 0x12 - Alt
+---@field ESCAPE number 0x1B - Escape
+---@field SPACE number 0x20 - Spacebar
+---@field END_KEY number 0x23 - End
+---@field HOME number 0x24 - Home
+---@field LEFT number 0x25 - Left arrow
+---@field UP number 0x26 - Up arrow
+---@field RIGHT number 0x27 - Right arrow
+---@field DOWN number 0x28 - Down arrow
+---@field DELETE number 0x2E - Delete
+
+---@class lx_ui_settings
+---Global layout/sizing settings used by the library.
+---@field debug_mode boolean Whether debug mode is active (default: false)
+---@field auto_save_enabled boolean Whether auto-save is enabled (default: true)
+---@field default_font_size number Default font size in pixels (default: 12)
+---@field default_spacing number Spacing between components in pixels (default: 5)
+---@field default_padding number Inner padding of the menu window in pixels (default: 10)
+---@field title_bar_height number Height of the menu title bar in pixels (default: 25)
+---@field component_height number Default component height in pixels (default: 20)
+---@field slider_handle_width number Width of the slider handle in pixels (default: 10)
+
+---@class lx_ui_colors
+---Theme color table. Each field is a color object (r, g, b, a).
+---@field window_bg color Window background
+---@field title_bar color Title bar background
+---@field component_bg color Component/input background
+---@field border color Default border
+---@field border_hover color Border on hover
+---@field border_focus color Border when focused
+---@field text color Normal text
+---@field text_dim color Dimmed/secondary text
+---@field text_disabled color Disabled text
+---@field text_title color Title/header text (white)
+---@field accent color Accent color (blue)
+---@field accent_hover color Accent on hover
+---@field accent_pressed color Accent when pressed
+---@field hover color Hover background
+---@field pressed color Pressed background
+---@field selected color Selected item background
+---@field success color Success/green
+---@field warning color Warning/yellow
+---@field error color Error/red
+---@field checkbox_bg color Checkbox background
+---@field checkbox_check color Checkbox check mark color
+---@field slider_track color Slider track background
+---@field slider_fill color Slider filled portion
+---@field slider_handle color Slider handle
+---@field separator color Separator line
+---@field progress_bg color Progress bar background
+---@field progress_fill color Progress bar fill
+
+-- =============================================================================
+-- BASE COMPONENT (inherited by all components)
+-- =============================================================================
+
+---@class lx_base_component
+---Base class for all LX_UI components. All components inherit these fields and methods.
+---@field type string Component type identifier (e.g. "checkbox", "slider")
+---@field id string Unique component ID
+---@field name string Component name
+---@field x number X position relative to parent menu
+---@field y number Y position relative to parent menu
+---@field width number Component width in pixels
+---@field height number Component height in pixels
+---@field text string Display text/label
+---@field visible boolean Whether component is rendered
+---@field enabled boolean Whether component accepts input
+---@field is_hovered boolean Whether mouse is over the component (read-only)
+---@field is_focused boolean Whether component has keyboard focus (read-only)
+---@field is_pressed boolean Whether component is being pressed (read-only)
+---@field auto_save boolean Whether value is auto-saved to file
+---@field parent_menu lx_menu Reference to the parent menu (set automatically)
+---@field data table Custom user data table
+---Checks if the component is both visible and enabled.
+---@field is_active fun(self: lx_base_component): boolean
+---Checks if the parent menu currently has input focus.
+---@field menu_has_focus fun(self: lx_base_component): boolean
+---Sets the component position.
+---@field set_position fun(self: lx_base_component, x: number, y: number)
+---Sets the component size.
+---@field set_size fun(self: lx_base_component, width: number, height: number)
+---Sets the display text.
+---@field set_text fun(self: lx_base_component, text: string)
+---Sets component visibility.
+---@field set_visible fun(self: lx_base_component, visible: boolean)
+---Sets the enabled state.
+---@field set_enabled fun(self: lx_base_component, enabled: boolean)
+---Returns the absolute X position (includes parent menu offset).
+---@field get_abs_x fun(self: lx_base_component): number
+---Returns the absolute Y position (includes parent menu offset).
+---@field get_abs_y fun(self: lx_base_component): number
+---Returns component bounds as a table {x, y, width, height} in absolute coordinates.
+---@field get_bounds fun(self: lx_base_component): table
+---Checks if a point (px, py) is inside the component bounds.
+---@field contains_point fun(self: lx_base_component, px: number, py: number): boolean
+---Updates hover state from current mouse position. Returns true if hovered.
+---@field update_hover fun(self: lx_base_component): boolean
+---Triggers the on_click callback if set.
+---@field handle_click fun(self: lx_base_component)
+---Returns the component's current value. Override per component type.
+---@field get_value fun(self: lx_base_component): any
+---Sets the component's value. Override per component type.
+---@field set_value fun(self: lx_base_component, value: any)
+---Saves the current value via the parent menu's auto-save system.
+---@field save_value fun(self: lx_base_component)
+---Loads a saved value from the parent menu. Returns true if a value was loaded.
+---@field load_value fun(self: lx_base_component, default?: any): boolean
+---Returns true if this component has an active overlay (e.g. open dropdown).
+---@field has_overlay fun(self: lx_base_component): boolean
+
+-- =============================================================================
+-- MENU
+-- =============================================================================
+
+---@class lx_menu
+---The main menu window. Created via LX_UI.Menu:new().
+---Automatically registers with the global menu manager for z-ordering and focus.
+---Position and component values are auto-saved/loaded to a JSON file.
+---@field title string Window title displayed in the title bar
+---@field save_key string Unique key used for saving/loading state
+---@field width number Window width in pixels
+---@field height number Window height in pixels (auto-adjusts to content)
+---@field min_height number Minimum window height
+---@field auto_height boolean Whether height auto-adjusts to fit components (default: true)
+---@field x number Window X position on screen
+---@field y number Window Y position on screen
+---@field is_open boolean Whether the menu is visible
+---@field is_collapsed boolean Whether the menu is collapsed (title bar only)
+---@field is_dragging boolean Whether the menu is being dragged (read-only)
+---@field components table<string, lx_base_component> All components indexed by ID
+---@field component_order string[] Ordered list of component IDs
+---@field next_y number Next auto-layout Y position (internal)
+---@field saved_data table Cached saved component values
+---Creates a new menu window. Height auto-adjusts to content.
+---@field new fun(self: lx_menu, title: string, width?: number, height?: number, save_key?: string): lx_menu
+---Shows the menu (sets is_open = true).
+---@field show fun(self: lx_menu)
+---Hides the menu (sets is_open = false).
+---@field hide fun(self: lx_menu)
+---Toggles menu visibility.
+---@field toggle fun(self: lx_menu)
+---Collapses the menu to show only the title bar.
+---@field collapse fun(self: lx_menu)
+---Expands the menu to show all components.
+---@field expand fun(self: lx_menu)
+---Toggles collapsed/expanded state. Saves state automatically.
+---@field toggle_collapse fun(self: lx_menu)
+---Returns the current display height (title bar only if collapsed, full otherwise).
+---@field get_display_height fun(self: lx_menu): number
+---Returns the next Y position for auto-layout placement.
+---@field get_next_y fun(self: lx_menu, spacing?: number): number
+---Advances the internal Y cursor after adding a component.
+---@field advance_y fun(self: lx_menu, height: number, spacing?: number)
+---Recalculates menu height to fit all components.
+---@field update_height fun(self: lx_menu)
+---Adds a component instance to the menu and loads its saved value.
+---@field add_component fun(self: lx_menu, component: lx_base_component): lx_base_component
+---Returns a component by its ID.
+---@field get_component fun(self: lx_menu, id: string): lx_base_component|nil
+---Removes a component by its ID.
+---@field remove_component fun(self: lx_menu, id: string)
+---Removes all components and resets layout.
+---@field clear_components fun(self: lx_menu)
+---Saves a single component's value to the cache and triggers file save.
+---@field save_component fun(self: lx_menu, id: string, value: any)
+---Loads a single component's cached value by ID.
+---@field load_component fun(self: lx_menu, id: string): any
+---Saves all menu state (position, collapsed, component values) to file.
+---@field save_all fun(self: lx_menu)
+---Loads all menu state from file.
+---@field load_all fun(self: lx_menu)
+---Checks if the mouse is currently over the menu.
+---@field is_mouse_over fun(self: lx_menu): boolean
+---Blocks game input when the mouse is over this menu (if topmost). Returns is_over, has_focus.
+---@field block_input fun(self: lx_menu): boolean, boolean
+---Updates the menu: handles dragging, focus, z-order, and updates all components. Call in on_update.
+---@field update fun(self: lx_menu)
+---Renders the menu window and all components. Call in on_render.
+---@field render fun(self: lx_menu)
+-- =============================================
+-- MENU ADD METHODS (convenience shortcuts)
+-- =============================================
+-- These methods create, add, and auto-layout a component in one call.
+-- The x and y parameters are optional; pass nil to use auto-layout.
+---Adds a text label.
+---@field add_label fun(self: lx_menu, text: string, x?: number, y?: number, options?: table): lx_label
+---Adds a horizontal separator line.
+---@field add_separator fun(self: lx_menu, x?: number, y?: number, options?: table): lx_separator
+---Adds a section header with text and underline.
+---@field add_header fun(self: lx_menu, text: string, x?: number, y?: number, options?: table): lx_header
+---Adds a checkbox with label.
+---@field add_checkbox fun(self: lx_menu, text: string, x?: number, y?: number, default?: boolean, callback?: fun(comp: lx_checkbox, value: boolean), options?: table): lx_checkbox
+---Adds a slider with label. Default slider_type is "int".
+---@field add_slider fun(self: lx_menu, text: string, x?: number, y?: number, min: number, max: number, default?: number, callback?: fun(comp: lx_slider, value: number), options?: table): lx_slider
+---Adds a clickable button.
+---@field add_button fun(self: lx_menu, text: string, x?: number, y?: number, width?: number, height?: number, callback?: fun(comp: lx_button), options?: table): lx_button
+---Adds a progress bar.
+---@field add_progressbar fun(self: lx_menu, text: string, x?: number, y?: number, value?: number, max_value?: number, options?: table): lx_progressbar
+---Adds a text input field.
+---@field add_textinput fun(self: lx_menu, text: string, x?: number, y?: number, default?: string, callback?: fun(comp: lx_textinput, value: string), options?: table): lx_textinput
+---Adds a dropdown combobox. Items is a string array. Default is the 1-based selected index.
+---@field add_combobox fun(self: lx_menu, text: string, x?: number, y?: number, items: string[], default?: number, callback?: fun(comp: lx_combobox, index: number, text: string), options?: table): lx_combobox
+---Adds a keybind button. Default is a virtual key code (number).
+---@field add_keybind fun(self: lx_menu, text: string, x?: number, y?: number, default?: number, callback?: fun(comp: lx_keybind, key: number), options?: table): lx_keybind
+---Adds a color picker. Default is a table {r, g, b, a}.
+---@field add_colorpicker fun(self: lx_menu, text: string, x?: number, y?: number, default?: lx_color_table, callback?: fun(comp: lx_colorpicker, color: color), options?: table): lx_colorpicker
+---Adds a collapsible tree node. Can contain child components via tree:add_child().
+---@field add_treenode fun(self: lx_menu, text: string, x?: number, y?: number, default?: boolean, callback?: fun(comp: lx_treenode, expanded: boolean), options?: table): lx_treenode
+---Adds a scrollable list box. Items is a string array. Default is the 1-based selected index.
+---@field add_listbox fun(self: lx_menu, text: string, x?: number, y?: number, items: string[], default?: number, callback?: fun(comp: lx_listbox, value: number|number[], text: string|string[]), options?: table): lx_listbox
+
+-- =============================================================================
+-- LABEL
+-- =============================================================================
+
+---@class lx_label : lx_base_component
+---A static text label. Does not accept input.
+---@field font_size number Font size in pixels (default: 12)
+---@field centered boolean Whether text is horizontally centered (default: false)
+---@field text_color color Text color
+---Returns the label text.
+---@field get_value fun(self: lx_label): string
+---Sets the label text.
+---@field set_value fun(self: lx_label, value: string)
+
+-- =============================================================================
+-- SEPARATOR
+-- =============================================================================
+
+---@class lx_separator : lx_base_component
+---A horizontal separator line. No interactive behavior.
+---Always returns nil.
+---@field get_value fun(self: lx_separator): nil
+---No-op.
+---@field set_value fun(self: lx_separator, value: any)
+
+-- =============================================================================
+-- HEADER
+-- =============================================================================
+
+---@class lx_header : lx_base_component
+---A section header with bold text and optional underline.
+---@field font_size number Font size in pixels (default: 14)
+---@field text_color color Header text color (default: white)
+---@field show_line boolean Whether to show an underline below the text (default: true)
+---Returns the header text.
+---@field get_value fun(self: lx_header): string
+---Sets the header text.
+---@field set_value fun(self: lx_header, value: string)
+
+-- =============================================================================
+-- CHECKBOX
+-- =============================================================================
+
+---@class lx_checkbox : lx_base_component
+---A toggle checkbox with label text.
+---@field checked boolean Current checked state
+---@field box_size number Size of the checkbox square in pixels (default: 16)
+---@field on_change fun(comp: lx_checkbox, value: boolean)|nil Change callback
+---Toggles the checked state and fires on_change.
+---@field toggle fun(self: lx_checkbox)
+---Returns the current checked state (boolean).
+---@field get_value fun(self: lx_checkbox): boolean
+---Sets the checked state.
+---@field set_value fun(self: lx_checkbox, value: boolean)
+---Alias for get_value(). Returns true if checked.
+---@field is_checked fun(self: lx_checkbox): boolean
+
+-- =============================================================================
+-- SLIDER
+-- =============================================================================
+
+---@class lx_slider : lx_base_component
+---A draggable slider with label and value display.
+---@field min_value number Minimum slider value
+---@field max_value number Maximum slider value
+---@field value number Current slider value
+---@field slider_type string "int" (default) for whole numbers, "float" for decimals
+---@field decimals number Decimal places for float display (default: 2)
+---@field track_height number Height of the slider track in pixels (default: 8)
+---@field show_value boolean Whether to show the numeric value next to the label (default: true)
+---@field is_dragging boolean Whether the slider is being dragged (read-only)
+---@field on_change fun(comp: lx_slider, value: number)|nil Change callback
+---Returns the normalized percentage (0.0 to 1.0) of the current value.
+---@field get_percentage fun(self: lx_slider): number
+---Sets the value from a normalized percentage (0.0 to 1.0).
+---@field set_percentage fun(self: lx_slider, percent: number)
+---Returns the formatted display string of the current value.
+---@field get_display_value fun(self: lx_slider): string
+---Returns the current numeric value.
+---@field get_value fun(self: lx_slider): number
+---Sets the slider value (clamped to min/max, rounded if int).
+---@field set_value fun(self: lx_slider, value: number)
+---Changes the min and max range. Clamps the current value.
+---@field set_range fun(self: lx_slider, min: number, max: number)
+
+-- =============================================================================
+-- BUTTON
+-- =============================================================================
+
+---@class lx_button : lx_base_component
+---A clickable button with label text.
+---@field is_pressed boolean Whether the button is currently being held down (read-only)
+---@field style string Button style: "default" or "primary"
+---@field on_click fun(comp: lx_button)|nil Click callback
+---Programmatically triggers the on_click callback.
+---@field click fun(self: lx_button)
+---Always returns nil (buttons have no persistent value).
+---@field get_value fun(self: lx_button): nil
+---No-op.
+---@field set_value fun(self: lx_button, value: any)
+
+-- =============================================================================
+-- PROGRESS BAR
+-- =============================================================================
+
+---@class lx_progressbar : lx_base_component
+---A non-interactive progress bar with text overlay.
+---@field value number Current progress value
+---@field max_value number Maximum progress value (default: 100)
+---@field show_text boolean Whether to show percentage text (default: true)
+---@field fill_color color Fill bar color
+---Returns the normalized percentage (0.0 to 1.0).
+---@field get_percentage fun(self: lx_progressbar): number
+---Returns the current progress value.
+---@field get_value fun(self: lx_progressbar): number
+---Sets the progress value (clamped to 0..max_value).
+---@field set_value fun(self: lx_progressbar, value: number)
+---Sets the maximum value.
+---@field set_max fun(self: lx_progressbar, max: number)
+
+-- =============================================================================
+-- TEXT INPUT
+-- =============================================================================
+
+---@class lx_textinput : lx_base_component
+---A single-line text input field with label.
+---Supports cursor movement, selection (Ctrl+A), double-click select all.
+---@field value string Current text value
+---@field placeholder string Placeholder text shown when empty and unfocused
+---@field max_length number Maximum character count (default: 256)
+---@field cursor_pos number Current cursor position (0-based)
+---@field is_focused boolean Whether the input has keyboard focus (read-only)
+---@field on_change fun(comp: lx_textinput, value: string)|nil Change callback
+---Appends text to the end of the current value (respects max_length).
+---@field append fun(self: lx_textinput, text: string)
+---Clears the text value to an empty string and fires on_change.
+---@field clear fun(self: lx_textinput)
+---Returns the current text value.
+---@field get_value fun(self: lx_textinput): string
+---Sets the text value (truncated to max_length). Moves cursor to end.
+---@field set_value fun(self: lx_textinput, value: string)
+
+-- =============================================================================
+-- COMBOBOX (Dropdown)
+-- =============================================================================
+
+---@class lx_combobox : lx_base_component
+---A dropdown selector. Click to open, click an item to select.
+---@field items string[] Array of option strings
+---@field selected_index number 1-based index of the selected item
+---@field max_visible number Maximum visible items in the dropdown (default: 5)
+---@field item_height number Height of each dropdown item in pixels (default: 22)
+---@field is_open boolean Whether the dropdown is currently expanded (read-only)
+---@field on_change fun(comp: lx_combobox, index: number, text: string)|nil Change callback
+---Returns the display text of the currently selected item.
+---@field get_selected_text fun(self: lx_combobox): string
+---Sets the selected index (1-based) and fires on_change if it changed.
+---@field set_selected fun(self: lx_combobox, index: number)
+---Appends a new item string to the items list.
+---@field add_item fun(self: lx_combobox, item: string)
+---Removes the item at the given index. Adjusts selected_index if needed.
+---@field remove_item fun(self: lx_combobox, index: number)
+---Replaces the entire items list. Clamps selected_index.
+---@field set_items fun(self: lx_combobox, items: string[])
+---Returns the 1-based selected index.
+---@field get_value fun(self: lx_combobox): number
+---Sets the selected index (clamped to valid range).
+---@field set_value fun(self: lx_combobox, value: number)
+
+-- =============================================================================
+-- KEYBIND
+-- =============================================================================
+
+---@class lx_keybind : lx_base_component
+---A keybind capture button. Click to start listening, press a key to bind.
+---@field key number Currently bound virtual key code (0 = None)
+---@field is_toggle boolean Whether the keybind acts as a toggle (default: false)
+---@field toggle_state boolean Current toggle state if is_toggle is true (read-only)
+---@field is_capturing boolean Whether the component is waiting for a key press (read-only)
+---@field on_change fun(comp: lx_keybind, key: number)|nil Change callback
+---Returns the display name of the currently bound key (e.g. "T", "None").
+---@field get_key_name fun(self: lx_keybind): string
+---Returns true if the bound key is currently pressed this frame.
+---@field is_pressed fun(self: lx_keybind): boolean
+---Checks the keybind. If is_toggle, returns the toggle state. Otherwise returns is_pressed().
+---@field check fun(self: lx_keybind): boolean
+---Returns the bound key code (number).
+---@field get_value fun(self: lx_keybind): number
+---Sets the bound key code.
+---@field set_value fun(self: lx_keybind, value: number)
+
+-- =============================================================================
+-- COLOR PICKER
+-- =============================================================================
+
+---@class lx_colorpicker : lx_base_component
+---A color preview box that expands into RGBA sliders when clicked.
+---@field r number Red channel (0-255)
+---@field g number Green channel (0-255)
+---@field b number Blue channel (0-255)
+---@field a number Alpha channel (0-255)
+---@field preview_size number Size of the color preview square in pixels (default: 24)
+---@field is_open boolean Whether the picker panel is expanded (read-only)
+---@field on_change fun(comp: lx_colorpicker, color: color)|nil Change callback
+---Returns the current color as a color object.
+---@field get_color fun(self: lx_colorpicker): color
+---Sets the color channels directly.
+---@field set_color fun(self: lx_colorpicker, r: number, g: number, b: number, a?: number)
+---Returns the color as a table {r, g, b, a}.
+---@field get_value fun(self: lx_colorpicker): lx_color_table
+---Sets the color from a table {r, g, b, a} or {[1], [2], [3], [4]}.
+---@field set_value fun(self: lx_colorpicker, value: lx_color_table)
+
+-- =============================================================================
+-- TREE NODE
+-- =============================================================================
+
+---@class lx_treenode : lx_base_component
+---A collapsible tree node. Can contain child components added via add_child().
+---@field is_expanded boolean Whether the node is expanded (shows children)
+---@field children lx_base_component[] Array of child components
+---@field indent number Current indentation level (set automatically for children)
+---@field indent_size number Pixels per indent level (default: 20)
+---@field on_change fun(comp: lx_treenode, expanded: boolean)|nil Change callback
+---Toggles expanded/collapsed state and fires on_change.
+---@field toggle fun(self: lx_treenode)
+---Expands the tree node (shows children).
+---@field expand fun(self: lx_treenode)
+---Collapses the tree node (hides children).
+---@field collapse fun(self: lx_treenode)
+---Adds a child component. Sets the child's indent, position, and parent_menu automatically.
+---@field add_child fun(self: lx_treenode, child: lx_base_component): lx_base_component
+---Removes the child at the given index.
+---@field remove_child fun(self: lx_treenode, index: number)
+---Returns the total height including all visible children (recursive).
+---@field get_total_height fun(self: lx_treenode): number
+---Returns the expanded state (boolean).
+---@field get_value fun(self: lx_treenode): boolean
+---Sets the expanded state.
+---@field set_value fun(self: lx_treenode, value: boolean)
+
+-- =============================================================================
+-- LISTBOX
+-- =============================================================================
+
+---@class lx_listbox : lx_base_component
+---A scrollable list with single or multi-select support.
+---@field items string[] Array of item strings
+---@field selected_index number 1-based selected index (single-select mode)
+---@field selected_indices number[] Array of selected indices (multi-select mode)
+---@field multi_select boolean Whether multiple items can be selected (default: false)
+---@field item_height number Height of each list item in pixels (default: 16)
+---@field scroll_offset number Current scroll position (0-based item offset)
+---@field on_change fun(comp: lx_listbox, value: number|number[], text: string|string[])|nil Change callback
+---Returns true if the item at the given index is selected.
+---@field is_item_selected fun(self: lx_listbox, index: number): boolean
+---Selects (or toggles in multi-select) the item at the given index. Fires on_change.
+---@field select_item fun(self: lx_listbox, index: number)
+---Returns the selected text. String in single-select, string array in multi-select.
+---@field get_selected_text fun(self: lx_listbox): string|string[]
+---Scrolls up by one item.
+---@field scroll_up fun(self: lx_listbox)
+---Scrolls down by one item.
+---@field scroll_down fun(self: lx_listbox)
+---Appends a new item string to the list.
+---@field add_item fun(self: lx_listbox, item: string)
+---Removes the item at the given index.
+---@field remove_item fun(self: lx_listbox, index: number)
+---Replaces the entire items list. Resets scroll and selection.
+---@field set_items fun(self: lx_listbox, items: string[])
+---Returns selected_index (single) or selected_indices table (multi).
+---@field get_value fun(self: lx_listbox): number|number[]
+---Sets selected_index (single) or selected_indices (multi).
+---@field set_value fun(self: lx_listbox, value: number|number[])
+
+-- =============================================================================
+-- TOP-LEVEL LX_UI TABLE
+-- =============================================================================
+
+---@class lx_ui
+---The main LX_UI library table. Returned by require("common/lx_ui") and also set as _G.LX_UI.
+---@field VERSION string Library version string (e.g. "1.0.0")
+---@field constants table Constants module (VK codes, settings, component types)
+---@field helpers table Utility helper functions
+---@field Input table Input handling module
+---@field Rendering table Rendering/drawing module
+---@field BaseComponent lx_base_component Base component class
+---@field Menu lx_menu Menu window class
+---@field Label lx_label Label component class
+---@field Separator lx_separator Separator component class
+---@field Header lx_header Header component class
+---@field Checkbox lx_checkbox Checkbox component class
+---@field Slider lx_slider Slider component class
+---@field Button lx_button Button component class
+---@field ProgressBar lx_progressbar Progress bar component class
+---@field TextInput lx_textinput Text input component class
+---@field Combobox lx_combobox Combobox/dropdown component class
+---@field Keybind lx_keybind Keybind component class
+---@field ColorPicker lx_colorpicker Color picker component class
+---@field TreeNode lx_treenode Tree node component class
+---@field Listbox lx_listbox Listbox component class
+---@field Colors lx_ui_colors Shortcut to constants.Colors
+---@field Settings lx_ui_settings Shortcut to constants.Settings
+

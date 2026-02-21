@@ -1330,11 +1330,9 @@
 -- Izi Sequences / Spell Sequences
 --------------------------------------------------------------------------------
 
---- All sequence logic (including confirmed_sequence) lives in spell_sequence_helper.
---- izi forwards calls via izi_sequences. More info about datatypes like
---- cast_policy, cast_policy_enum, advanced_spell_entry, advanced_fill_entry,
---- advanced_sequence_opts, confirmed_step, confirmed_sequence_opts:
---- see utility/spell_sequence_helper
+--- All sequence logic lives in spell_sequence_helper.
+--- izi forwards calls via izi_sequences for convenience.
+--- See utility/spell_sequence_helper for full type definitions.
 
 ---@class izi_api
 ---@field sequence spell_sequence_helper                                   Direct access to the underlying spell_sequence_helper module
@@ -1344,17 +1342,18 @@
 ---@field advanced_sequence fun(entries: advanced_spell_entry[], opts?: advanced_sequence_opts): boolean
 ---@field confirmed_sequence fun(steps: confirmed_step[], opts?: confirmed_sequence_opts): boolean  Server-confirmed step-by-step sequence
 ---@field on_spell_cast fun(data: table): nil                              Feed spell cast callback data (filters by local player)
----@field is_sequence_active fun(): boolean                                True if ANY sequence is active (native or confirmed)
+---@field is_sequence_active fun(): boolean                                True if ANY sequence is active (native, simple, advanced, confirmed)
 ---@field is_confirmed_active fun(): boolean                               True if a confirmed sequence is running
----@field cancel_sequence fun(): nil                                       Cancel the active native sequence
----@field cancel_confirmed fun(): nil                                      Cancel the active confirmed sequence
----@field get_sequence_progress fun(): integer|nil, integer|nil            Progress of active sequence (confirmed takes priority)
+---@field cancel_sequence fun(): nil                                       Cancel native + simple + advanced sequences
+---@field cancel_confirmed fun(): nil                                      Cancel confirmed sequence only
+---@field cancel_all fun(): nil                                            Cancel ALL sequences (native + simple + advanced + confirmed)
+---@field get_sequence_progress fun(): integer|nil, integer|nil            Progress of active sequence (confirmed > simple > advanced > native)
 ---@field get_confirmed_progress fun(): integer|nil, integer|nil           Progress of confirmed sequence only
----@field get_sequence_type fun(): string|nil                              "confirmed" | "a_into_b" | "simple" | "advanced" | nil
----@field is_sequence_on_cooldown fun(): boolean                           True if any cooldown active (native or confirmed)
+---@field get_sequence_type fun(): string|nil                              "confirmed" | "advanced" | "simple" | "a_into_b" | nil
+---@field is_sequence_on_cooldown fun(): boolean                           True if any cooldown active
 ---@field get_sequence_cooldown_remaining fun(): number                    Max remaining cooldown
----@field set_sequence_debug fun(enabled: boolean): nil                    Debug logging for native sequences
----@field get_sequence_debug fun(): boolean                                Get native debug state
+---@field set_sequence_debug fun(enabled: boolean): nil                    Debug logging for native + simple + advanced sequences
+---@field get_sequence_debug fun(): boolean                                Get debug state
 ---@field set_confirmed_debug fun(enabled: boolean): nil                   Debug logging for confirmed sequences
 ---@field get_confirmed_debug fun(): boolean                               Get confirmed debug state
 
