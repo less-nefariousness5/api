@@ -190,7 +190,7 @@ function core.is_main_menu_open()
 end
 
 ---@return string
----Returns "Retail", "Classic", "Classic Era", "Classic Pandaria", "Classic Tbc", "Titan"
+---Returns "Midnight", "Tbc", "Vanilla", "Mop", "Titan"
 function core.get_game_version()
     return ""
 end
