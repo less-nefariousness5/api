@@ -1112,6 +1112,12 @@ function core.input.clear_dungeon_selections(index)
     return nil
 end
 
+--- Use a container item by container (bag) and slot index.
+---@param container_id integer The container (bag) index.
+---@param slot_id integer The slot index within the container.
+function core.input.use_container_item(container_id, slot_id)
+end
+
 ---@class object_manager
 core.object_manager = {}
 
@@ -1503,6 +1509,24 @@ end
 ---@return boolean
 ---@param spell_id number
 function core.spell_book.is_current_spell(spell_id)
+    return false
+end
+
+---@class pet_happiness_data
+---@field happiness integer The pet happiness level.
+---@field damage_percentage number The pet damage percentage modifier.
+---@field loyalty_rate number The pet loyalty rate.
+
+--- Retrieves the current pet happiness information.
+---@return pet_happiness_data A table containing happiness, damage_percentage, and loyalty_rate.
+function core.spell_book.get_pet_happiness()
+    return {}
+end
+
+--- Checks if a spell is flagged as important.
+---@param spell_id integer The ID of the spell to check.
+---@return boolean True if the spell is important, false otherwise.
+function core.spell_book.is_important_spell(spell_id)
     return false
 end
 
