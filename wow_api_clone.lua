@@ -82,7 +82,7 @@ UnitAuras = function(unit) end
 ---@field RUNES integer
 ---@field RUNICPOWER integer
 ---@field SOULSHARDS integer
----@field LUNAR_POWER integer
+---@field LUNARPOWER integer
 
 ---@type POWER_enum
 POWER = {}  -- stub table for IntelliSense

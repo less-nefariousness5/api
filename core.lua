@@ -585,6 +585,25 @@ function core.inventory.get_items_in_bag(bag_id)
     return {}
 end
 
+--- Returns the total number of slots a bag has.
+--- @param bag_id integer Bag ID (1 to 4 for character bags)
+--- @return integer num_slots Number of slots in the bag (0 if no bag equipped)
+function core.inventory.get_num_bag_slots(bag_id)
+    return 0
+end
+
+--- Returns the total cost in copper to repair all equipped items.
+--- @return integer cost Repair cost in copper (0 if nothing to repair)
+function core.inventory.get_total_repair_cost()
+    return 0
+end
+
+--- Returns the local player's current gold in copper.
+--- @return integer copper Total money in copper
+function core.inventory.get_gold()
+    return 0
+end
+
 ---@class game_ui
 core.game_ui = {}
 
@@ -703,6 +722,85 @@ function core.game_ui.world_pos_to_map_pos_normalized(world_pos)
     return {}
 end
 
+--- Returns the delay in seconds until the player can resurrect at their corpse.
+---@return number delay The remaining delay in seconds (0 if ready).
+function core.game_ui.get_resurrect_corpse_delay()
+    return 0
+end
+
+--- Returns the position of the player's corpse in the world.
+---@return vec3 The corpse position.
+function core.game_ui.get_corpse_position()
+    return {}
+end
+
+--- Returns the effective UI scale factor.
+---@return number The effective scale.
+function core.game_ui.get_effective_scale()
+    return 0
+end
+
+---@class vendor_item_info
+---@field public cost integer The cost of the item in copper.
+---@field public is_usable boolean Whether the item is usable by the player.
+---@field public item_id integer The item ID.
+---@field public item_name string The name of the item.
+---@field public quantity integer The quantity available.
+---@field public vendor_item_index integer The vendor slot index.
+
+--- Returns information about a specific vendor item.
+--- Note: vendor_item_id is 1-indexed (internally adjusted to 0-indexed).
+---@param vendor_item_id integer The 1-based index of the vendor item.
+---@return vendor_item_info A table containing the vendor item information.
+function core.game_ui.get_vendor_item_info(vendor_item_id)
+    return {}
+end
+
+--- Returns the total number of items the current vendor has for sale.
+---@return integer The number of vendor items.
+function core.game_ui.get_vendor_item_count()
+    return 0
+end
+
+---@class quest_log_info
+---@field public title string The title of the quest.
+---@field public level integer The level of the quest.
+---@field public suggested_group string The suggested group size for the quest.
+---@field public is_header boolean Whether this entry is a header (zone name) rather than a quest.
+---@field public is_collapsed boolean Whether this header is collapsed.
+---@field public is_complete integer Whether the quest is complete (1 = complete, -1 = failed, 0 = in progress).
+---@field public frequency integer The quest frequency (0 = normal, 1 = daily, 2 = weekly).
+---@field public quest_id integer The unique quest ID.
+---@field public start_event boolean Whether the quest has a start event.
+---@field public display_quest_id boolean Whether the quest ID should be displayed.
+---@field public is_on_map boolean Whether the quest is shown on the map.
+---@field public has_local_poi boolean Whether the quest has a local point of interest.
+---@field public is_task boolean Whether the quest is a bonus objective / world quest task.
+---@field public is_bounty boolean Whether the quest is a bounty (emissary) quest.
+---@field public is_story boolean Whether the quest is part of the zone story line.
+---@field public is_hidden boolean Whether the quest is hidden.
+---@field public is_scaling boolean Whether the quest scales with the player's level.
+
+--- Returns information about a quest in the quest log.
+--- Note: quest_log_id is 1-indexed (internally adjusted to 0-indexed).
+---@param quest_log_id integer The 1-based index of the quest log entry.
+---@return quest_log_info A table containing the quest log entry information.
+function core.game_ui.get_quest_log_info(quest_log_id)
+    return {}
+end
+
+--- Returns the total number of entries in the quest log (including headers).
+---@return integer The number of quest log entries.
+function core.game_ui.get_quest_log_count()
+    return 0
+end
+
+--- Returns a list of all completed quest IDs for the player.
+---@return integer[] An array of completed quest IDs.
+function core.game_ui.get_all_completed_quest_ids()
+    return {}
+end
+
 ---@class input
 core.input = {}
 
@@ -741,6 +839,23 @@ end
 ---@return boolean Indicates whether the spell was successfully usage of the item
 function core.input.use_item_position(item_id, position)
     return false
+end
+
+--- Use a container item by container (bag) and slot index.
+---@param container_id integer The container (bag) index.
+---@param slot_id integer The slot index within the container.
+function core.input.use_container_item(container_id, slot_id)
+end
+
+--- Buy an item from a vendor.
+---@param index integer The vendor item slot index.
+---@param quantity integer The quantity to buy.
+function core.input.buy_item(index, quantity)
+end
+
+--- Repair all equipped items at a vendor.
+---@param use_guild_bank boolean Whether to use guild bank funds for the repair.
+function core.input.repair_all_items(use_guild_bank)
 end
 
 --- Set the local player target
@@ -868,6 +983,20 @@ end
 --- Faces to vec3
 --- @param point vec3
 function core.input.look_at(point)
+    return nil
+end
+
+--- Faces the local player towards a 3D world position (including vertical pitch).
+--- @return nil
+--- @param point vec3
+function core.input.look_at_3d(point)
+    return nil
+end
+
+--- Sets the local player's pitch (vertical look angle) in radians.
+--- @return nil
+--- @param radians number The pitch angle in radians.
+function core.input.set_pitch(radians)
     return nil
 end
 
@@ -1110,12 +1239,6 @@ end
 ---@param index integer
 function core.input.clear_dungeon_selections(index)
     return nil
-end
-
---- Use a container item by container (bag) and slot index.
----@param container_id integer The container (bag) index.
----@param slot_id integer The slot index within the container.
-function core.input.use_container_item(container_id, slot_id)
 end
 
 ---@class object_manager
@@ -1528,6 +1651,18 @@ end
 ---@return boolean True if the spell is important, false otherwise.
 function core.spell_book.is_important_spell(spell_id)
     return false
+end
+
+---@class spell_cooldown_info
+---@field public start_time number The game time when the cooldown started.
+---@field public duration number The total duration of the cooldown in seconds.
+---@field public enabled boolean Whether the cooldown is currently active/enabled.
+
+--- Returns detailed cooldown information for a spell.
+---@param spell_id integer The ID of the spell.
+---@return spell_cooldown_info A table containing start_time, duration, and enabled.
+function core.spell_book.get_spell_cooldown_information(spell_id)
+    return {}
 end
 
 ---@class graphics
