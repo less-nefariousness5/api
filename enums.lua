@@ -6,304 +6,305 @@
 -- Warning: Access with ":", not "."
 
 ---@class class_id
----@field public ANY number
----@field public WARRIOR number
----@field public PALADIN number
----@field public HUNTER number
----@field public ROGUE number
----@field public PRIEST number
----@field public DEATHKNIGHT number
----@field public SHAMAN number
----@field public MAGE number
----@field public WARLOCK number
----@field public MONK number
----@field public DRUID number
----@field public DEMONHUNTER number
----@field public EVOKER number
+---@field ANY number
+---@field WARRIOR number
+---@field PALADIN number
+---@field HUNTER number
+---@field ROGUE number
+---@field PRIEST number
+---@field DEATHKNIGHT number
+---@field SHAMAN number
+---@field MAGE number
+---@field WARLOCK number
+---@field MONK number
+---@field DRUID number
+---@field DEMONHUNTER number
+---@field EVOKER number
 
 ---@class class_id_to_name
----@field public [number] string
+---@field [number] string
 
 ---@class power_type
----@field public HEALTH number
----@field public NONE number
----@field public MANA number
----@field public RAGE number
----@field public FOCUS number
----@field public ENERGY number
----@field public COMBOPOINTS number
----@field public RUNES number
----@field public RUNICPOWER number
----@field public SOULSHARDS number
----@field public LUNARPOWER number
----@field public HOLYPOWER number
----@field public ALTERNATE number
----@field public MAELSTROM number
----@field public CHI number
----@field public INSANITY number
----@field public OBSOLETE number
----@field public OBSOLETE2 number
----@field public ARCANECHARGES number
----@field public FURY number
----@field public PAIN number
----@field public ESSENCE number
----@field public RUNEFORGEPOWER number
----@field public COMBOPOINTS_TBC number
+---@field HEALTH number
+---@field NONE number
+---@field MANA number
+---@field RAGE number
+---@field FOCUS number
+---@field ENERGY number
+---@field COMBOPOINTS number
+---@field RUNES number
+---@field RUNICPOWER number
+---@field SOULSHARDS number
+---@field LUNARPOWER number
+---@field HOLYPOWER number
+---@field ALTERNATE number
+---@field MAELSTROM number
+---@field CHI number
+---@field INSANITY number
+---@field OBSOLETE number
+---@field OBSOLETE2 number
+---@field ARCANECHARGES number
+---@field FURY number
+---@field PAIN number
+---@field ESSENCE number
+---@field RUNEFORGEPOWER number
+---@field COMBOPOINTS_TBC number
 
 ---@class group_role
----@field public NONE number
----@field public TANK number
----@field public HEALER number
----@field public DAMAGER number
+---@field NONE number
+---@field TANK number
+---@field HEALER number
+---@field DAMAGER number
 
 ---@class classification
----@field public UNKNOWN number
----@field public NORMAL number
----@field public ELITE number
----@field public RARE_ELITE number
----@field public WORLD_BOSS number
----@field public RARE number
----@field public TRIVIAL number
----@field public MINUS number
+---@field UNKNOWN number
+---@field NORMAL number
+---@field ELITE number
+---@field RARE_ELITE number
+---@field WORLD_BOSS number
+---@field RARE number
+---@field TRIVIAL number
+---@field MINUS number
 
 ---@class mark_index
----@field public NO_MARK number
----@field public NO_ICON number
----@field public STAR number
----@field public CIRCLE number
----@field public DIAMOND number
----@field public TRIANGLE number
----@field public MOON number
----@field public SQUARE number
----@field public CROSS number
----@field public SKULL number
----@field public NO_MARK_2 number
+---@field NO_MARK number
+---@field NO_ICON number
+---@field STAR number
+---@field CIRCLE number
+---@field DIAMOND number
+---@field TRIANGLE number
+---@field MOON number
+---@field SQUARE number
+---@field CROSS number
+---@field SKULL number
+---@field NO_MARK_2 number
 
 ---@class loss_of_control_type
----@field public NONE number
----@field public POSSES number
----@field public CONFUSE number
----@field public CHARM number
----@field public FEAR number
----@field public STUN number
----@field public PACIFY number
----@field public ROOT number
----@field public SILENCE number
----@field public PACIFY_SILENCE number
----@field public DISARM number
----@field public SCHOOL_INTERRUPT number
----@field public STUN_MECHANIC number
----@field public FEAR_MECHANIC number
----@field public NONE_2 number
----@field public NONE_3 number
+---@field NONE number
+---@field POSSES number
+---@field CONFUSE number
+---@field CHARM number
+---@field FEAR number
+---@field STUN number
+---@field PACIFY number
+---@field ROOT number
+---@field SILENCE number
+---@field PACIFY_SILENCE number
+---@field DISARM number
+---@field SCHOOL_INTERRUPT number
+---@field STUN_MECHANIC number
+---@field FEAR_MECHANIC number
+---@field NONE_2 number
+---@field NONE_3 number
 
 ---@class collision_flags
----@field public None number
----@field public DoodadCollision number
----@field public DoodadRender number
----@field public WmoCollision number
----@field public WmoRender number
----@field public WmoNoCamCollision number
----@field public Terrain number
----@field public IgnoreWmoDoodad number
----@field public LiquidWaterWalkable number
----@field public LiquidAll number
----@field public Cull number
----@field public EntityCollision number
----@field public EntityRender number
----@field public Collision number
----@field public LineOfSight number
----@field public combine fun(...: string): number
+---@field None number
+---@field DoodadCollision number
+---@field DoodadRender number
+---@field WmoCollision number
+---@field WmoRender number
+---@field WmoNoCamCollision number
+---@field Terrain number
+---@field IgnoreWmoDoodad number
+---@field LiquidWaterWalkable number
+---@field LiquidAll number
+---@field Cull number
+---@field EntityCollision number
+---@field EntityRender number
+---@field Collision number
+---@field LineOfSight number
+---@field combine fun(...: string): number
 
 ---@class schools_flag : integer
 
 ---@class spell_schools_flags
----@field public Physical schools_flag
----@field public Holy schools_flag
----@field public Fire schools_flag
----@field public Nature schools_flag
----@field public Frost schools_flag
----@field public Shadow schools_flag
----@field public Arcane schools_flag
----@field public Spellstrike schools_flag
----@field public Flamestrike schools_flag
----@field public Froststrike schools_flag
----@field public Holystrike schools_flag
----@field public Stormstrike schools_flag
----@field public Shadowstrike schools_flag
----@field public Spellfire schools_flag
----@field public Spellfrost schools_flag
----@field public Spellshadow schools_flag
----@field public Frostfire schools_flag
----@field public Radiant schools_flag
----@field public Holyfrost schools_flag
----@field public Holystorm schools_flag
----@field public Twilight schools_flag
----@field public Froststorm schools_flag
----@field public Volcanic schools_flag
----@field public Astral schools_flag
----@field public Plague schools_flag
----@field public Shadowflame schools_flag
----@field public Shadowfrost schools_flag
----@field public Divine schools_flag
----@field public combine fun(...: string): schools_flag
----@field public contains fun(value: schools_flag, flag: schools_flag): boolean
+---@field Physical schools_flag
+---@field Holy schools_flag
+---@field Fire schools_flag
+---@field Nature schools_flag
+---@field Frost schools_flag
+---@field Shadow schools_flag
+---@field Arcane schools_flag
+---@field Spellstrike schools_flag
+---@field Flamestrike schools_flag
+---@field Froststrike schools_flag
+---@field Holystrike schools_flag
+---@field Stormstrike schools_flag
+---@field Shadowstrike schools_flag
+---@field Spellfire schools_flag
+---@field Spellfrost schools_flag
+---@field Spellshadow schools_flag
+---@field Frostfire schools_flag
+---@field Radiant schools_flag
+---@field Holyfrost schools_flag
+---@field Holystorm schools_flag
+---@field Twilight schools_flag
+---@field Froststorm schools_flag
+---@field Volcanic schools_flag
+---@field Astral schools_flag
+---@field Plague schools_flag
+---@field Shadowflame schools_flag
+---@field Shadowfrost schools_flag
+---@field Divine schools_flag
+---@field combine fun(...: string): schools_flag
+---@field contains fun(value: schools_flag, flag: schools_flag): boolean
 
 ---@class spell_type
----@field public TARGET number
----@field public POSITION number
+---@field TARGET number
+---@field POSITION number
 
 ---@class trigger_mode
----@field public BASIC number
----@field public PREDICTION number
+---@field BASIC number
+---@field PREDICTION number
 
 ---@class buff_type
----@field public EXCEPTION number
----@field public UNDEFINIED number
----@field public UNKNOWN number
----@field public MAGIC number
----@field public CURSE number
----@field public DISEASE number
----@field public POISON number
----@field public STEALTH number
----@field public TO_BE_DETERMINED number
----@field public MAGIC_CURSE_DISEASE_POISON number
----@field public SPECIAL number
----@field public ENRAGE number
+---@field EXCEPTION number
+---@field UNDEFINIED number
+---@field UNKNOWN number
+---@field MAGIC number
+---@field CURSE number
+---@field DISEASE number
+---@field POISON number
+---@field STEALTH number
+---@field TO_BE_DETERMINED number
+---@field MAGIC_CURSE_DISEASE_POISON number
+---@field SPECIAL number
+---@field ENRAGE number
 
 ---@class buff_type_to_string
----@field public [number] string
+---@field [number] string
 
 ---@class menu_element_type
----@field public BUTTON number
----@field public CHECKBOX number
----@field public COLOR_PICKER number
----@field public COMBOBOX number
----@field public COMBOBOX_REORDERABLE number
----@field public KEY_CHECKBOX number
----@field public KEYBIND number
----@field public SLIDER_FLOAT number
----@field public SLIDER_INT number
----@field public TEXT_INPUT number
----@field public TREE_NODE number
----@field public HEADER number
----@field public WINDOW number
+---@field BUTTON number
+---@field CHECKBOX number
+---@field COLOR_PICKER number
+---@field COMBOBOX number
+---@field COMBOBOX_REORDERABLE number
+---@field KEY_CHECKBOX number
+---@field KEYBIND number
+---@field SLIDER_FLOAT number
+---@field SLIDER_INT number
+---@field TEXT_INPUT number
+---@field TREE_NODE number
+---@field HEADER number
+---@field WINDOW number
 
 ---@class window_enums
----@field public window_behaviour_flags table<string, number>
----@field public font_id table<string, number>
----@field public rect_borders_rounding_flags number[]
----@field public window_resizing_flags table<string, number>
----@field public window_cross_visuals table<string, number>
+---@field window_behaviour_flags table<string, number>
+---@field font_id table<string, number>
+---@field rect_borders_rounding_flags number[]
+---@field window_resizing_flags table<string, number>
+---@field window_cross_visuals table<string, number>
 
 ---@class spec_enum
----@field public ARMS_WARRIOR number
----@field public FURY_WARRIOR number
----@field public PROTECTION_WARRIOR number
----@field public HOLY_PALADIN number
----@field public PROTECTION_PALADIN number
----@field public RETRIBUTION_PALADIN number
----@field public BEAST_MASTERY_HUNTER number
----@field public MARKSMANSHIP_HUNTER number
----@field public SURVIVAL_HUNTER number
----@field public ASSASSINATION_ROGUE number
----@field public OUTLAW_ROGUE number
----@field public SUBTLETY_ROGUE number
----@field public DISCIPLINE_PRIEST number
----@field public HOLY_PRIEST number
----@field public SHADOW_PRIEST number
----@field public BLOOD_DEATHKNIGHT number
----@field public FROST_DEATHKNIGHT number
----@field public UNHOLY_DEATHKNIGHT number
----@field public ELEMENTAL_SHAMAN number
----@field public ENHANCEMENT_SHAMAN number
----@field public RESTORATION_SHAMAN number
----@field public ARCANE_MAGE number
----@field public FIRE_MAGE number
----@field public FROST_MAGE number
----@field public AFFLICTION_WARLOCK number
----@field public DEMONOLOGY_WARLOCK number
----@field public DESTRUCTION_WARLOCK number
----@field public BREWMASTER_MONK number
----@field public MISTWEAVER_MONK number
----@field public WINDWALKER_MONK number
----@field public BALANCE_DRUID number
----@field public FERAL_DRUID number
----@field public GUARDIAN_DRUID number
----@field public RESTORATION_DRUID number
----@field public HAVOC_DEMON_HUNTER number
----@field public VENGEANCE_DEMON_HUNTER number
----@field public EVOKER_DEVASTATION number
----@field public EVOKER_PRESERVATION number
----@field public EVOKER_AUGMENTATION number
+---@field ARMS_WARRIOR number
+---@field FURY_WARRIOR number
+---@field PROTECTION_WARRIOR number
+---@field HOLY_PALADIN number
+---@field PROTECTION_PALADIN number
+---@field RETRIBUTION_PALADIN number
+---@field BEAST_MASTERY_HUNTER number
+---@field MARKSMANSHIP_HUNTER number
+---@field SURVIVAL_HUNTER number
+---@field ASSASSINATION_ROGUE number
+---@field OUTLAW_ROGUE number
+---@field SUBTLETY_ROGUE number
+---@field DISCIPLINE_PRIEST number
+---@field HOLY_PRIEST number
+---@field SHADOW_PRIEST number
+---@field BLOOD_DEATHKNIGHT number
+---@field FROST_DEATHKNIGHT number
+---@field UNHOLY_DEATHKNIGHT number
+---@field ELEMENTAL_SHAMAN number
+---@field ENHANCEMENT_SHAMAN number
+---@field RESTORATION_SHAMAN number
+---@field ARCANE_MAGE number
+---@field FIRE_MAGE number
+---@field FROST_MAGE number
+---@field AFFLICTION_WARLOCK number
+---@field DEMONOLOGY_WARLOCK number
+---@field DESTRUCTION_WARLOCK number
+---@field BREWMASTER_MONK number
+---@field MISTWEAVER_MONK number
+---@field WINDWALKER_MONK number
+---@field BALANCE_DRUID number
+---@field FERAL_DRUID number
+---@field GUARDIAN_DRUID number
+---@field RESTORATION_DRUID number
+---@field HAVOC_DEMON_HUNTER number
+---@field VENGEANCE_DEMON_HUNTER number
+---@field EVOKER_DEVASTATION number
+---@field EVOKER_PRESERVATION number
+---@field EVOKER_AUGMENTATION number
+---@field DEVOURER_DEMON_HUNTER number
 
 ---@class class_spec_id
----@field public to_string table<number, table<number, string>>
----@field public spec_enum spec_enum
----@field public to_int table<number, table<number, number>>
----@field public get_specialization_name fun(char_class_id: number, char_spec_id: number): string
----@field public get_specialization_enum fun(char_class_id: number, char_spec_id: number): number
----@field public get_spec_id_from_enum fun(spec_enum: number): number
+---@field to_string table<number, table<number, string>>
+---@field spec_enum spec_enum
+---@field to_int table<number, table<number, number>>
+---@field get_specialization_name fun(char_class_id: number, char_spec_id: number): string
+---@field get_specialization_enum fun(char_class_id: number, char_spec_id: number): number
+---@field get_spec_id_from_enum fun(spec_enum: number): number
 
 ---@class class_spec_to_role
----@field public class_role table<string, table<number, number>>
----@field public get_group_role_backup fun(char_class_id: number, char_spec: number): number
+---@field class_role table<string, table<number, number>>
+---@field get_group_role_backup fun(char_class_id: number, char_spec: number): number
 
 ---@class creature_type
----@field public BEAST number
----@field public DRAGONKIN number
----@field public DEMON number
----@field public ELEMENTAL number
----@field public GIANT number
----@field public UNDEAD number
----@field public HUMANOID number
----@field public CRITTER number
----@field public MECHANICAL number
----@field public NOT_SPECIFIED number
----@field public TOTEM number
----@field public NON_COMBAT_PET number
----@field public GAS_CLOUD number
----@field public WILD_PET number
----@field public ABERRATION number
+---@field BEAST number
+---@field DRAGONKIN number
+---@field DEMON number
+---@field ELEMENTAL number
+---@field GIANT number
+---@field UNDEAD number
+---@field HUMANOID number
+---@field CRITTER number
+---@field MECHANICAL number
+---@field NOT_SPECIFIED number
+---@field TOTEM number
+---@field NON_COMBAT_PET number
+---@field GAS_CLOUD number
+---@field WILD_PET number
+---@field ABERRATION number
 
 ---@class cc_source
----@field public ANY number
----@field public PHYSICAL number
----@field public MAGICAL number
+---@field ANY number
+---@field PHYSICAL number
+---@field MAGICAL number
 
 ---@class cc_flags
----@field public ROOT number
----@field public INCAPACITATE number
----@field public DISORIENT number
----@field public STUN number
----@field public SILENCE number
----@field public KNOCKBACK number
----@field public DISARM number
----@field public SAP number
----@field public FEAR number
----@field public CYCLONE number
----@field public MORTAL_COIL number
----@field public HORROR number
----@field public MAGICAL number
----@field public PHYSICAL number
----@field public MIND_CONTROL number
----@field public RANDOM_STUN number
----@field public RANDOM_ROOT number
----@field public BLINDING_LIGHT number
----@field public KIDNEY_SHOT number
----@field public SCATTER number
----@field public BANISH number
----@field public ANY number
----@field public ANY_BUT_ROOT number
----@field public combine fun(...: number): number
----@field public has fun(value: number, flag: number): boolean
+---@field ROOT number
+---@field INCAPACITATE number
+---@field DISORIENT number
+---@field STUN number
+---@field SILENCE number
+---@field KNOCKBACK number
+---@field DISARM number
+---@field SAP number
+---@field FEAR number
+---@field CYCLONE number
+---@field MORTAL_COIL number
+---@field HORROR number
+---@field MAGICAL number
+---@field PHYSICAL number
+---@field MIND_CONTROL number
+---@field RANDOM_STUN number
+---@field RANDOM_ROOT number
+---@field BLINDING_LIGHT number
+---@field KIDNEY_SHOT number
+---@field SCATTER number
+---@field BANISH number
+---@field ANY number
+---@field ANY_BUT_ROOT number
+---@field combine fun(...: number): number
+---@field has fun(value: number, flag: number): boolean
 
 ---@class damage_type_flags
----@field public PHYSICAL number
----@field public MAGICAL number
----@field public ANY number
----@field public combine fun(...: number): number
----@field public has fun(value: number, flag: number): boolean
+---@field PHYSICAL number
+---@field MAGICAL number
+---@field ANY number
+---@field combine fun(...: number): number
+---@field has fun(value: number, flag: number): boolean
 
 ---@class graphics_fonts
 ---@field FONT_VERY_SMALL number
@@ -319,29 +320,29 @@
 ---@field FONT_KR number
 
 ---@class enums
----@field public font_id graphics_fonts
----@field public class_id class_id
----@field public class_id_to_name class_id_to_name
----@field public power_type power_type
----@field public group_role group_role
----@field public classification classification
----@field public mark_index mark_index
----@field public loss_of_control_type loss_of_control_type
----@field public collision_flags collision_flags
----@field public spell_schools_flags spell_schools_flags
----@field public spell_type spell_type
----@field public trigger_mode trigger_mode
----@field public buff_db buff_db
----@field public buff_type buff_type
----@field public buff_type_to_string buff_type_to_string
----@field public menu_element_type menu_element_type
----@field public window_enums window_enums
----@field public class_spec_id class_spec_id
----@field public class_spec_to_role class_spec_to_role
----@field public creature_type creature_type
----@field public cc_source cc_source
----@field public cc_flags cc_flags
----@field public damage_type_flags damage_type_flags
+---@field font_id graphics_fonts
+---@field class_id class_id
+---@field class_id_to_name class_id_to_name
+---@field power_type power_type
+---@field group_role group_role
+---@field classification classification
+---@field mark_index mark_index
+---@field loss_of_control_type loss_of_control_type
+---@field collision_flags collision_flags
+---@field spell_schools_flags spell_schools_flags
+---@field spell_type spell_type
+---@field trigger_mode trigger_mode
+---@field buff_db buff_db
+---@field buff_type buff_type
+---@field buff_type_to_string buff_type_to_string
+---@field menu_element_type menu_element_type
+---@field window_enums window_enums
+---@field class_spec_id class_spec_id
+---@field class_spec_to_role class_spec_to_role
+---@field creature_type creature_type
+---@field cc_source cc_source
+---@field cc_flags cc_flags
+---@field damage_type_flags damage_type_flags
 
 ---@type enums
 local tbl

@@ -7,9 +7,9 @@
 
 ---@class profiler
 --- Starts the profiler for a specific key.
----@field public start fun(key: string): nil
+---@field start fun(key: string): nil
 --- Stops the profiler for a specific key and processes the recorded time.
----@field public stop fun(key: string, is_failed: boolean): nil
+---@field stop fun(key: string, is_failed: boolean): nil
 
 -- Example usage:
 -- local spell_name = "icebound_fortitude"

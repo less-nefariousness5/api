@@ -26,12 +26,12 @@
 ---  • Use `only_drag_drop=true` if you want an element to appear ONLY when the user drags it in.
 ---  • For “momentary hold” visuals, use `insert_key_checkbox_` and pass `is_hold=true`.
 ---@class control_panel_helper
----@field public on_update fun(self: control_panel_helper, menu: table): nil
----@field public insert_toggle fun(self: control_panel_helper, control_panel_table: table, toggle_table: control_panel_toggle, only_drag_drop?: boolean): boolean
----@field public insert_toggle_ fun(self: control_panel_helper, control_panel_table: table, display_name: string, keybind_element: keybind|userdata, only_drag_drop?: boolean, no_drag_and_drop?: boolean): boolean
----@field public insert_key_checkbox_ fun(self: control_panel_helper, control_panel_table: table, display_name: string, keybind_state: boolean, keybind_key_code: integer, is_hold: boolean, unique_id: string): boolean
----@field public insert_combo fun(self: control_panel_helper, control_panel_table: table, combo_table: control_panel_combo, increase_index_key: keybind|userdata, only_drag_drop?: boolean): boolean
----@field public insert_combo_ fun(self: control_panel_helper, control_panel_table: table, display_name: string, combobox_element: combobox|userdata, preview_value: any, max_items: integer, increase_index_key: keybind|userdata, only_drag_drop?: boolean): boolean
+---@field on_update fun(self: control_panel_helper, menu: table): nil
+---@field insert_toggle fun(self: control_panel_helper, control_panel_table: table, toggle_table: control_panel_toggle, only_drag_drop?: boolean): boolean
+---@field insert_toggle_ fun(self: control_panel_helper, control_panel_table: table, display_name: string, keybind_element: keybind|userdata, only_drag_drop?: boolean, no_drag_and_drop?: boolean): boolean
+---@field insert_key_checkbox_ fun(self: control_panel_helper, control_panel_table: table, display_name: string, keybind_state: boolean, keybind_key_code: integer, is_hold: boolean, unique_id: string): boolean
+---@field insert_combo fun(self: control_panel_helper, control_panel_table: table, combo_table: control_panel_combo, increase_index_key: keybind|userdata, only_drag_drop?: boolean): boolean
+---@field insert_combo_ fun(self: control_panel_helper, control_panel_table: table, display_name: string, combobox_element: combobox|userdata, preview_value: any, max_items: integer, increase_index_key: keybind|userdata, only_drag_drop?: boolean): boolean
 
 -- on_update(menu)
 --   Call once per frame from your UI update path to process drag-and-drop labels.

@@ -741,12 +741,12 @@ function core.game_ui.get_effective_scale()
 end
 
 ---@class vendor_item_info
----@field public cost integer The cost of the item in copper.
----@field public is_usable boolean Whether the item is usable by the player.
----@field public item_id integer The item ID.
----@field public item_name string The name of the item.
----@field public quantity integer The quantity available.
----@field public vendor_item_index integer The vendor slot index.
+---@field cost integer The cost of the item in copper.
+---@field is_usable boolean Whether the item is usable by the player.
+---@field item_id integer The item ID.
+---@field item_name string The name of the item.
+---@field quantity integer The quantity available.
+---@field vendor_item_index integer The vendor slot index.
 
 --- Returns information about a specific vendor item.
 --- Note: vendor_item_id is 1-indexed (internally adjusted to 0-indexed).
@@ -763,23 +763,23 @@ function core.game_ui.get_vendor_item_count()
 end
 
 ---@class quest_log_info
----@field public title string The title of the quest.
----@field public level integer The level of the quest.
----@field public suggested_group string The suggested group size for the quest.
----@field public is_header boolean Whether this entry is a header (zone name) rather than a quest.
----@field public is_collapsed boolean Whether this header is collapsed.
----@field public is_complete integer Whether the quest is complete (1 = complete, -1 = failed, 0 = in progress).
----@field public frequency integer The quest frequency (0 = normal, 1 = daily, 2 = weekly).
----@field public quest_id integer The unique quest ID.
----@field public start_event boolean Whether the quest has a start event.
----@field public display_quest_id boolean Whether the quest ID should be displayed.
----@field public is_on_map boolean Whether the quest is shown on the map.
----@field public has_local_poi boolean Whether the quest has a local point of interest.
----@field public is_task boolean Whether the quest is a bonus objective / world quest task.
----@field public is_bounty boolean Whether the quest is a bounty (emissary) quest.
----@field public is_story boolean Whether the quest is part of the zone story line.
----@field public is_hidden boolean Whether the quest is hidden.
----@field public is_scaling boolean Whether the quest scales with the player's level.
+---@field title string The title of the quest.
+---@field level integer The level of the quest.
+---@field suggested_group string The suggested group size for the quest.
+---@field is_header boolean Whether this entry is a header (zone name) rather than a quest.
+---@field is_collapsed boolean Whether this header is collapsed.
+---@field is_complete integer Whether the quest is complete (1 = complete, -1 = failed, 0 = in progress).
+---@field frequency integer The quest frequency (0 = normal, 1 = daily, 2 = weekly).
+---@field quest_id integer The unique quest ID.
+---@field start_event boolean Whether the quest has a start event.
+---@field display_quest_id boolean Whether the quest ID should be displayed.
+---@field is_on_map boolean Whether the quest is shown on the map.
+---@field has_local_poi boolean Whether the quest has a local point of interest.
+---@field is_task boolean Whether the quest is a bonus objective / world quest task.
+---@field is_bounty boolean Whether the quest is a bounty (emissary) quest.
+---@field is_story boolean Whether the quest is part of the zone story line.
+---@field is_hidden boolean Whether the quest is hidden.
+---@field is_scaling boolean Whether the quest scales with the player's level.
 
 --- Returns information about a quest in the quest log.
 --- Note: quest_log_id is 1-indexed (internally adjusted to 0-indexed).
@@ -1423,11 +1423,11 @@ function core.spell_book.cursor_has_spell()
 end
 
 ---@class spell_costs
----@field public min_cost number
----@field public cost number
----@field public cost_per_sec number
----@field public cost_type number
----@field public required_buff_id number
+---@field min_cost number
+---@field cost number
+---@field cost_per_sec number
+---@field cost_type number
+---@field required_buff_id number
 
 --- Returns spell_costs structure
 ---@param spell_id integer The ID of the spell.
@@ -1437,8 +1437,8 @@ function core.spell_book.get_spell_costs(spell_id)
 end
 
 ---@class range_data
----@field public min number
----@field public max number
+---@field min number
+---@field max number
 
 --- Retrieves the range data of the specified spell identified by its ID.
 ---@param spell_id integer The ID of the spell.
@@ -1499,12 +1499,12 @@ function core.spell_book.get_pet_spells()
 end
 
 ---@class mount_info
----@field public mount_name string The name of the mount.
----@field public spell_id integer The spell ID associated with the mount.
----@field public mount_id integer The unique ID of the mount.
----@field public is_active boolean Whether the mount is currently active.
----@field public is_usable boolean Whether the mount is usable.
----@field public mount_type integer The type/category of the mount.
+---@field mount_name string The name of the mount.
+---@field spell_id integer The spell ID associated with the mount.
+---@field mount_id integer The unique ID of the mount.
+---@field is_active boolean Whether the mount is currently active.
+---@field is_usable boolean Whether the mount is usable.
+---@field mount_type integer The type/category of the mount.
 
 --- Retrieves the number of mounts available to the player.
 ---@return integer The total number of mounts.
@@ -1526,10 +1526,10 @@ function core.spell_book.get_base_spell_id(spell_id)
 end
 
 ---@class totem_info
----@field public have_totem boolean         -- Whether the totem exists
----@field public totem_name string          -- Name of the totem
----@field public start_time number          -- Start time of the totem
----@field public duration number            -- Duration of the totem
+---@field have_totem boolean         -- Whether the totem exists
+---@field totem_name string          -- Name of the totem
+---@field start_time number          -- Start time of the totem
+---@field duration number            -- Duration of the totem
 
 ---@return totem_info
 ---@param index integer
@@ -1573,9 +1573,9 @@ function core.spell_book.get_casting_power_regen()
 end
 
 ---@class rune_info
----@field public start number     -- cooldown start time (seconds)
----@field public duration number  -- cooldown duration (seconds)
----@field public ready boolean    -- true if the rune is ready now
+---@field start number     -- cooldown start time (seconds)
+---@field duration number  -- cooldown duration (seconds)
+---@field ready boolean    -- true if the rune is ready now
 
 --- Retrieves cooldown info for the rune in the given slot (1..6).
 ---@param slot integer  -- 1..6
@@ -1654,9 +1654,9 @@ function core.spell_book.is_important_spell(spell_id)
 end
 
 ---@class spell_cooldown_info
----@field public start_time number The game time when the cooldown started.
----@field public duration number The total duration of the cooldown in seconds.
----@field public enabled boolean Whether the cooldown is currently active/enabled.
+---@field start_time number The game time when the cooldown started.
+---@field duration number The total duration of the cooldown in seconds.
+---@field enabled boolean Whether the cooldown is currently active/enabled.
 
 --- Returns detailed cooldown information for a spell.
 ---@param spell_id integer The ID of the spell.

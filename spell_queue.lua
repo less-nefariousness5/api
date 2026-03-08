@@ -7,25 +7,25 @@
 
 ---@class spell_queue
 ---Queues an item for self-cast.
----@field public queue_item_self fun(self: spell_queue, item_id: number, priority: number, message?: string): nil
+---@field queue_item_self fun(self: spell_queue, item_id: number, priority: number, message?: string): nil
 ---Queues an item for self-cast that skips global cooldown.
----@field public queue_item_self_fast fun(self: spell_queue, item_id: number, priority: number, message?: string): nil
+---@field queue_item_self_fast fun(self: spell_queue, item_id: number, priority: number, message?: string): nil
 ---Queues an item for a target.
----@field public queue_item_target fun(self: spell_queue, item_id: number, target: game_object, priority: number, message?: string): nil
+---@field queue_item_target fun(self: spell_queue, item_id: number, target: game_object, priority: number, message?: string): nil
 ---Queues an item for a target that skips global cooldown.
----@field public queue_item_target_fast fun(self: spell_queue, item_id: number, target: game_object, priority: number, message?: string): nil
+---@field queue_item_target_fast fun(self: spell_queue, item_id: number, target: game_object, priority: number, message?: string): nil
 ---Queues an item for a position.
----@field public queue_item_position fun(self: spell_queue, item_id: number, position: vec3, priority: number, message?: string): nil
+---@field queue_item_position fun(self: spell_queue, item_id: number, position: vec3, priority: number, message?: string): nil
 ---Queues an item for a position that skips global cooldown.
----@field public queue_item_position_fast fun(self: spell_queue, item_id: number, position: vec3, priority: number, message?: string): nil
+---@field queue_item_position_fast fun(self: spell_queue, item_id: number, position: vec3, priority: number, message?: string): nil
 ---Queues a spell with a target.
----@field public queue_spell_target fun(self: spell_queue, spell_id: number, target: any, priority: number, message?: string, allow_movement?: boolean): nil
+---@field queue_spell_target fun(self: spell_queue, spell_id: number, target: game_object, priority: number, message?: string, allow_movement?: boolean): nil
 ---Queues a spell that skips global cooldown with a target.
----@field public queue_spell_target_fast fun(self: spell_queue, spell_id: number, target: any, priority: number, message?: string, allow_movement?: boolean): nil
+---@field queue_spell_target_fast fun(self: spell_queue, spell_id: number, target: game_object, priority: number, message?: string, allow_movement?: boolean): nil
 ---Queues a spell with a position.
----@field public queue_spell_position fun(self: spell_queue, spell_id: number, position: any, priority: number, message?: string, allow_movement?: boolean): nil
+---@field queue_spell_position fun(self: spell_queue, spell_id: number, position: game_object, priority: number, message?: string, allow_movement?: boolean): nil
 ---Queues a spell that skips global cooldown with a position.
----@field public queue_spell_position_fast fun(self: spell_queue, spell_id: number, position: any, priority: number, message?: string, allow_movement?: boolean): nil
+---@field queue_spell_position_fast fun(self: spell_queue, spell_id: number, position: game_object, priority: number, message?: string, allow_movement?: boolean): nil
 
 -- Example Usage:
 -- local sq = require("common/modules/spell_queue")
@@ -42,9 +42,9 @@
 
 ---@class spell_queue
 ---Returns a shallow snapshot of the **normal** queue for debugging/telemetry.
----@field public get_queue_snapshot fun(self: spell_queue): { [number]: { spell_id: number, spell_type: integer, target: game_object|nil, position: vec3|nil, priority: number, timestamp: number, skips_global: boolean, is_item_exception: boolean, allow_movement: boolean } }
+---@field get_queue_snapshot fun(self: spell_queue): { [number]: { spell_id: number, spell_type: integer, target: game_object|nil, position: vec3|nil, priority: number, timestamp: number, skips_global: boolean, is_item_exception: boolean, allow_movement: boolean } }
 ---Removes all entries from the **normal** queue that match `spell_id`. If `target` is provided, only entries for that exact target are removed. Returns the number removed.
----@field public purge_by_spell fun(self: spell_queue, spell_id: number, target?: game_object): integer
+---@field purge_by_spell fun(self: spell_queue, spell_id: number, target?: game_object): integer
 
 -- local sq = require("common/modules/spell_queue")
 -- local snap = sq:get_queue_snapshot()

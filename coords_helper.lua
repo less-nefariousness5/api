@@ -12,14 +12,14 @@
 
 ---Coords Helper - Converts 2D map coordinates to 3D world positions.
 ---@class coords_helper
----@field public get_cursor_world_pos fun(self: coords_helper, extra_height?: number): vec3|nil, string|nil Gets 3D world pos from current cursor on minimap
----@field public map_to_world fun(self: coords_helper, map_id: number, map_pos: vec2, extra_height?: number): vec3|nil, string|nil Converts map pos to world pos
----@field public is_valid_map_coords fun(self: coords_helper, cursor: vec2): boolean Checks if coords are within valid map bounds (rejects > 0.99)
----@field public get_current_map_id fun(self: coords_helper): number|nil Gets current minimap map ID
----@field public get_cursor_normalized fun(self: coords_helper): vec2|nil Gets normalized cursor position
----@field public is_cursor_on_minimap fun(self: coords_helper): boolean Checks if cursor is on minimap
----@field public get_terrain_height fun(self: coords_helper, x: number, y: number): number Gets terrain height at position
----@field public to_3d fun(self: coords_helper, map_pos: vec2, extra_height?: number): vec3 Legacy: converts map pos to world pos
+---@field get_cursor_world_pos fun(self: coords_helper, extra_height?: number): vec3|nil, string|nil Gets 3D world pos from current cursor on minimap
+---@field map_to_world fun(self: coords_helper, map_id: number, map_pos: vec2, extra_height?: number): vec3|nil, string|nil Converts map pos to world pos
+---@field is_valid_map_coords fun(self: coords_helper, cursor: vec2): boolean Checks if coords are within valid map bounds (rejects > 0.99)
+---@field get_current_map_id fun(self: coords_helper): number|nil Gets current minimap map ID
+---@field get_cursor_normalized fun(self: coords_helper): vec2|nil Gets normalized cursor position
+---@field is_cursor_on_minimap fun(self: coords_helper): boolean Checks if cursor is on minimap
+---@field get_terrain_height fun(self: coords_helper, x: number, y: number): number Gets terrain height at position
+---@field to_3d fun(self: coords_helper, map_pos: vec2, extra_height?: number): vec3 Legacy: converts map pos to world pos
 
 --========================
 -- extra_height Parameter

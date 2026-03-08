@@ -7,7 +7,7 @@
 
 ---@class key_helper
 --- Function to get the name of a key based on its key code.
----@field public get_key_name fun(self: key_helper, key_code: number): string
+---@field get_key_name fun(self: key_helper, key_code: number): string
 
 ---@type key_helper
 local tbl

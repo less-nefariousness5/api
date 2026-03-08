@@ -8,10 +8,10 @@
 -- Warning: Access with ":", not "."
 
 ---@class pet_handler
----@field public pet_state table   -- Enum of pet states
----@field public set_pet_state fun(self: pet_handler, new_state: number, delay?: number): nil
----@field public move_pet_to_position fun(self: pet_handler, position: vec3, delay?: number, duration?: number): nil
----@field public on_render fun(self: pet_handler): nil
+---@field pet_state table   -- Enum of pet states
+---@field set_pet_state fun(self: pet_handler, new_state: number, delay?: number): nil
+---@field move_pet_to_position fun(self: pet_handler, position: vec3, delay?: number, duration?: number): nil
+---@field on_render fun(self: pet_handler): nil
 
 ---@type pet_handler
 local tbl

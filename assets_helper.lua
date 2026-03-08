@@ -7,55 +7,55 @@
 -- Note: Static members (cache) are accessed with "."
 
 ---@class assets_helper
----@field public cache table<string,any>
+---@field cache table<string,any>
 
 ---@class assets_helper_cache
----@field public local_textures table<string, assets_helper_local_texture_entry>
----@field public remote_textures table<string, assets_helper_remote_texture_entry>
----@field public remote_data table<string, any>
----@field public zip_packs table<string, assets_helper_zip_pack>
----@field public zip_pack_states table<string, assets_helper_zip_pack_state>
----@field public _default_white color
+---@field local_textures table<string, assets_helper_local_texture_entry>
+---@field remote_textures table<string, assets_helper_remote_texture_entry>
+---@field remote_data table<string, any>
+---@field zip_packs table<string, assets_helper_zip_pack>
+---@field zip_pack_states table<string, assets_helper_zip_pack_state>
+---@field _default_white color
 
 ---@class assets_helper_local_texture_entry
----@field public path string
----@field public tex_id integer|nil
----@field public w integer|nil
----@field public h integer|nil
----@field public dead boolean
----@field public dead_error string|nil
----@field public dead_logged boolean
----@field public next_try_time number
----@field public zip_redownloaded_once boolean
+---@field path string
+---@field tex_id integer|nil
+---@field w integer|nil
+---@field h integer|nil
+---@field dead boolean
+---@field dead_error string|nil
+---@field dead_logged boolean
+---@field next_try_time number
+---@field zip_redownloaded_once boolean
 
 ---@class assets_helper_remote_texture_entry
----@field public url string
----@field public cache_path string|nil
----@field public tex_id integer|nil
----@field public w integer|nil
----@field public h integer|nil
----@field public requested boolean
----@field public error string|nil
----@field public _logged boolean|nil
----@field public _alt_url_tried boolean|nil
+---@field url string
+---@field cache_path string|nil
+---@field tex_id integer|nil
+---@field w integer|nil
+---@field h integer|nil
+---@field requested boolean
+---@field error string|nil
+---@field _logged boolean|nil
+---@field _alt_url_tried boolean|nil
 
 ---@class assets_helper_zip_pack
----@field public url string
----@field public zip_file string
+---@field url string
+---@field zip_file string
 
 ---@class assets_helper_zip_pack_state
----@field public requested boolean
----@field public done boolean
----@field public error string|nil
----@field public next_probe_time number
----@field public next_download_time number
+---@field requested boolean
+---@field done boolean
+---@field error string|nil
+---@field next_probe_time number
+---@field next_download_time number
 
 ---@class assets_helper
----@field public register_zip_pack fun(self: assets_helper, folder_name: string, zip_url: string, zip_file_name?: string): nil
----@field public draw_local_texture fun(self: assets_helper, data_path: string, top_left: vec2|vec3, width: number, height: number, tint?: color, is_for_window?: boolean): boolean
----@field public draw_http_texture fun(self: assets_helper, url: string, top_left: vec2|vec3, width: number, height: number, cache_path?: string, headers?: table<string, string>, tint?: color, is_for_window?: boolean): boolean
----@field public load_local_data fun(self: assets_helper, data_path: string, default_value?: string): string
----@field public load_http_data fun(self: assets_helper, url: string, callback: fun(ok: boolean, data: string, http_code: integer, content_type: string, response_headers: string), headers?: table<string, string>): nil
+---@field register_zip_pack fun(self: assets_helper, folder_name: string, zip_url: string, zip_file_name?: string): nil
+---@field draw_local_texture fun(self: assets_helper, data_path: string, top_left: vec2|vec3, width: number, height: number, tint?: color, is_for_window?: boolean): boolean
+---@field draw_http_texture fun(self: assets_helper, url: string, top_left: vec2|vec3, width: number, height: number, cache_path?: string, headers?: table<string, string>, tint?: color, is_for_window?: boolean): boolean
+---@field load_local_data fun(self: assets_helper, data_path: string, default_value?: string): string
+---@field load_http_data fun(self: assets_helper, url: string, callback: fun(ok: boolean, data: string, http_code: integer, content_type: string, response_headers: string), headers?: table<string, string>): nil
 
 --------------------------------------------------------------------------------
 -- EXAMPLES (copy into your plugin)

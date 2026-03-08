@@ -7,48 +7,48 @@
 -- Note: Static members (cache/constants) are accessed with "."
 
 ---@class icons_helper
----@field public cache table<string, any>
----@field public ZAMIMG_BASE string
----@field public DEFAULT_SIZE string
----@field public DEFAULT_DISK_CACHE_FOLDER string
----@field public DEFAULT_HTTP_THROTTLE_SECONDS number
----@field public DEFAULT_PROBE_THROTTLE_SECONDS number
----@field public WOWHEAD_SPELL_BASE string
----@field public DEFAULT_SPELL_CACHE_FILE string
----@field public MAX_REDIRECTS number
+---@field cache table<string, any>
+---@field ZAMIMG_BASE string
+---@field DEFAULT_SIZE string
+---@field DEFAULT_DISK_CACHE_FOLDER string
+---@field DEFAULT_HTTP_THROTTLE_SECONDS number
+---@field DEFAULT_PROBE_THROTTLE_SECONDS number
+---@field WOWHEAD_SPELL_BASE string
+---@field DEFAULT_SPELL_CACHE_FILE string
+---@field MAX_REDIRECTS number
 
 ---@class icons_helper_icon_entry
----@field public key string
----@field public name string
----@field public size string
----@field public file_stem string
----@field public url_jpg string
----@field public url_png string
----@field public cache_path_jpg string|nil
----@field public cache_path_png string|nil
----@field public tex_id integer|nil
----@field public w integer|nil
----@field public h integer|nil
----@field public requested boolean
----@field public error string|nil
----@field public dead boolean
----@field public dead_logged boolean
----@field public next_probe_time number
----@field public next_download_time number
----@field public prefer_ext string
----@field public tried_png boolean
----@field public tried_jpg boolean
+---@field key string
+---@field name string
+---@field size string
+---@field file_stem string
+---@field url_jpg string
+---@field url_png string
+---@field cache_path_jpg string|nil
+---@field cache_path_png string|nil
+---@field tex_id integer|nil
+---@field w integer|nil
+---@field h integer|nil
+---@field requested boolean
+---@field error string|nil
+---@field dead boolean
+---@field dead_logged boolean
+---@field next_probe_time number
+---@field next_download_time number
+---@field prefer_ext string
+---@field tried_png boolean
+---@field tried_jpg boolean
 
 ---@class icons_helper_draw_opts
----@field public size string|nil                -- "large" | "medium" | "small"
----@field public persist_to_disk boolean|nil    -- default true
----@field public disk_cache_folder string|nil   -- default "cache\\wowhead_icons"
+---@field size string|nil                -- "large" | "medium" | "small"
+---@field persist_to_disk boolean|nil    -- default true
+---@field disk_cache_folder string|nil   -- default "cache\\wowhead_icons"
 
 ---@class icons_helper
----@field public draw_icon fun(self: icons_helper, icon_name_or_url: string, position: vec2|vec3, width: number, height: number, tint?: color, is_for_window?: boolean, opts?: icons_helper_draw_opts): boolean
----@field public draw_spell_icon fun(self: icons_helper, spell_id: number, position: vec2|vec3, width: number, height: number, tint?: color, is_for_window?: boolean, opts?: icons_helper_draw_opts): boolean
----@field public get_spell_icon_name fun(self: icons_helper, spell_id: number): string|nil
----@field public clear_cache fun(self: icons_helper): nil
+---@field draw_icon fun(self: icons_helper, icon_name_or_url: string, position: vec2|vec3, width: number, height: number, tint?: color, is_for_window?: boolean, opts?: icons_helper_draw_opts): boolean
+---@field draw_spell_icon fun(self: icons_helper, spell_id: number, position: vec2|vec3, width: number, height: number, tint?: color, is_for_window?: boolean, opts?: icons_helper_draw_opts): boolean
+---@field get_spell_icon_name fun(self: icons_helper, spell_id: number): string|nil
+---@field clear_cache fun(self: icons_helper): nil
 
 --------------------------------------------------------------------------------
 -- EXAMPLES (copy into your plugin)

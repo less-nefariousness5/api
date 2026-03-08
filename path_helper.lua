@@ -18,35 +18,35 @@
 ---------------------------------------------------------------------------
 
 ---@class path_helper_opts
----@field public passes?   integer  Number of Chaikin subdivision passes (default 4). More = smoother but heavier.
----@field public decimate? number   Min distance (yards) between points before smoothing (default 5.0). Lower = more detail.
----@field public spacing?  number   Circle spacing (yards) for 3D dot drawing (default 3.5).
----@field public circle_r? number   Circle radius for 3D dot drawing (default 0.75).
+---@field passes?   integer  Number of Chaikin subdivision passes (default 4). More = smoother but heavier.
+---@field decimate? number   Min distance (yards) between points before smoothing (default 5.0). Lower = more detail.
+---@field spacing?  number   Circle spacing (yards) for 3D dot drawing (default 3.5).
+---@field circle_r? number   Circle radius for 3D dot drawing (default 0.75).
 
 ---------------------------------------------------------------------------
 -- Map bounds table expected by render_map()
 ---------------------------------------------------------------------------
 
 ---@class path_helper_map_bounds
----@field public x1 number  Left edge in screen pixels
----@field public y1 number  Top edge in screen pixels
----@field public x2 number  Right edge in screen pixels
----@field public y2 number  Bottom edge in screen pixels
+---@field x1 number  Left edge in screen pixels
+---@field y1 number  Top edge in screen pixels
+---@field x2 number  Right edge in screen pixels
+---@field y2 number  Bottom edge in screen pixels
 
 ---------------------------------------------------------------------------
 -- Instance: independent bake context returned by path_helper.new()
 ---------------------------------------------------------------------------
 
 ---@class path_helper_instance
----@field public ensure     fun(self: path_helper_instance, raw: vec3[], key?: any): nil             Rebuild baked geometry if key changed. Key defaults to #raw. Cheap no-op when key matches previous call.
----@field public clear      fun(self: path_helper_instance): nil                                     Clear all baked data and reset change-detection key.
----@field public has_data   fun(self: path_helper_instance): boolean                                 True if baked geometry exists and is ready to render.
----@field public render_3d  fun(self: path_helper_instance, dest?: vec3): nil                        Draw 3D path lines + circles + optional destination marker. Call from on_render callback.
----@field public render_map fun(self: path_helper_instance, bounds: path_helper_map_bounds, dest?: vec3): nil  Draw 2D path on map overlay + optional destination dot. Call from on_render_window callback.
+---@field ensure     fun(self: path_helper_instance, raw: vec3[], key?: any): nil             Rebuild baked geometry if key changed. Key defaults to #raw. Cheap no-op when key matches previous call.
+---@field clear      fun(self: path_helper_instance): nil                                     Clear all baked data and reset change-detection key.
+---@field has_data   fun(self: path_helper_instance): boolean                                 True if baked geometry exists and is ready to render.
+---@field render_3d  fun(self: path_helper_instance, dest?: vec3): nil                        Draw 3D path lines + circles + optional destination marker. Call from on_render callback.
+---@field render_map fun(self: path_helper_instance, bounds: path_helper_map_bounds, dest?: vec3): nil  Draw 2D path on map overlay + optional destination dot. Call from on_render_window callback.
 
 ---------------------------------------------------------------------------
 -- Factory module: require("common/utility/path_helper")
 ---------------------------------------------------------------------------
 
 ---@class path_helper
----@field public new fun(opts?: path_helper_opts): path_helper_instance  Create an independent path bake context with custom smoothing settings. Each instance has its own state so multiple plugins can use path_helper simultaneously without interference.
+---@field new fun(opts?: path_helper_opts): path_helper_instance  Create an independent path bake context with custom smoothing settings. Each instance has its own state so multiple plugins can use path_helper simultaneously without interference.

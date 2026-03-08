@@ -7,7 +7,7 @@
 ---@diagnostic disable: undefined-global, missing-fields, lowercase-global
 
 ---@alias sort_mode '"max"'|'"min"'
----@alias aura_spec number|number[]|any
+---@alias aura_spec number|number[]
 ---@alias target_filter fun(u: game_object): number|nil
 ---@alias adv_condition boolean|fun(u: game_object): boolean
 
@@ -26,7 +26,7 @@
 -- - Always blocks if target is immune to ALL damage (divine shield, ice block)
 -- - Auto-detects damage type from spell school for obvious cases:
 --   * Pure Physical school -> checks physical immunity
---   * Pure magical (Fire/Nature/Frost/Shadow/Arcane) -> checks magic immunity  
+--   * Pure magical (Fire/Nature/Frost/Shadow/Arcane) -> checks magic immunity
 --   * Holy or mixed schools -> no auto-detection (ambiguous)
 -- - Developer can override with damage_type field
 -- - Use skip_immune_check = true to bypass entirely
@@ -77,7 +77,7 @@
 ---@field has_burst_active            fun(self: game_object, min_remaining_ms?: number): boolean -- PvP burst window
 
 ---@class game_object
----@field get_buff_data               fun(self: game_object, spec: aura_spec): any|nil         -- Resolved buff data (cached)
+---@field get_buff_data               fun(self: game_object, spec: aura_spec): buff_manager_data|nil         -- Resolved buff data (cached)
 ---@field has_buff                    fun(self: game_object, spec: aura_spec): boolean         -- Buff present?
 ---@field buff_up                     fun(self: game_object, spec: aura_spec): boolean         -- Alias of has_buff
 ---@field buff_down                   fun(self: game_object, spec: aura_spec): boolean         -- not has_buff
@@ -88,7 +88,7 @@
 ---@field get_all_buffs               fun(self: game_object): buff_manager_cache_data[]                            -- Buff cache snapshot
 
 ---@class game_object
----@field get_debuff_data             fun(self: game_object, spec: aura_spec): any|nil         -- Resolved debuff data (cached; includes fake window)
+---@field get_debuff_data             fun(self: game_object, spec: aura_spec): buff_manager_data|nil         -- Resolved debuff data (cached; includes fake window)
 ---@field has_debuff                  fun(self: game_object, spec: aura_spec): boolean         -- Debuff present?
 ---@field debuff_up                   fun(self: game_object, spec: aura_spec): boolean         -- Alias of has_debuff
 ---@field debuff_down                 fun(self: game_object, spec: aura_spec): boolean         -- not has_debuff
@@ -96,10 +96,10 @@
 ---@field debuff_remains              fun(self: game_object, spec: aura_spec): number          -- Remaining secs (>=0; fake window => ~10)
 ---@field debuff_remains_ms           fun(self: game_object, spec: aura_spec): number          -- Remaining ms (>=0; fake window => ~10000)
 ---@field debuff_remains_sec          fun(self: game_object, spec: aura_spec): number          -- Alias of debuff_remains
----@field get_all_debuffs             fun(self: game_object): any[]                            -- Debuff cache snapshot
+---@field get_all_debuffs             fun(self: game_object): buff_manager_cache_data[]                            -- Debuff cache snapshot
 
 ---@class game_object
----@field get_aura_data               fun(self: game_object, spec: aura_spec): any|nil         -- Any aura via aura cache
+---@field get_aura_data               fun(self: game_object, spec: aura_spec): buff_manager_data|nil         -- Any aura via aura cache
 ---@field has_aura                    fun(self: game_object, spec: aura_spec): boolean         -- Any aura present?
 ---@field aura_up                     fun(self: game_object, spec: aura_spec): boolean         -- Alias of has_aura
 ---@field aura_down                   fun(self: game_object, spec: aura_spec): boolean         -- not has_aura
@@ -107,7 +107,7 @@
 ---@field aura_remains                fun(self: game_object, spec: aura_spec): number          -- Remaining secs (>=0)
 ---@field aura_remains_ms             fun(self: game_object, spec: aura_spec): number          -- Remaining ms (>=0)
 ---@field aura_remains_sec            fun(self: game_object, spec: aura_spec): number          -- Alias of aura_remains
----@field get_all_auras               fun(self: game_object): any[]                            -- Aura cache snapshot
+---@field get_all_auras               fun(self: game_object): buff_manager_cache_data[]                            -- Aura cache snapshot
 
 ---@class game_object
 ---@field is_tank                     fun(self: game_object): boolean                           -- Role heuristic
@@ -115,14 +115,14 @@
 ---@field is_healer                   fun(self: game_object): boolean                           -- Role heuristic
 ---@field affecting_combat            fun(self: game_object): boolean                           -- In combat?
 ---@field time_to_die                 fun(self: game_object): number                            -- Forecasted TTD (seconds)
----@field get_time_to_death           fun(self: game_object): number                            -- Forecasted TTD (seconds)
+---@field get_time_to_death           fun(self: game_object, include_pvp?: boolean): number     -- Forecasted TTD (seconds), optionally include pvp
 ---@field is_spell_in_range           fun(self: game_object, spell: integer|izi_spell|{id:fun(self):integer}): boolean -- Range vs local player
 ---@field is_in_range                 fun(self: game_object, meters: number): boolean           -- Distance <= meters
 ---@field is_in_melee_range           fun(self: game_object, meters: number): boolean           -- Distance <= (meters + target_radius)
 ---@field distance                    fun(self: game_object): number                            -- Distance to local player
 
 ---@class game_object
----@field get_enemies_in_splash_range       fun(self: game_object, meters: number): game_objects_table -- Enemies within meters (+radius), PvP-aware
+---@field get_enemies_in_splash_range       fun(self: game_object, meters: number): game_object[] -- Enemies within meters (+radius), PvP-aware
 ---@field get_enemies_in_splash_range_count fun(self: game_object, meters: number): number        -- Count enemies within meters (+radius)
 ---@field level                       fun(self: game_object): number                             -- Unit level
 ---@field get_guid                    fun(self: game_object): game_object                        -- Underlying game_object reference
@@ -246,6 +246,7 @@
 ---@class game_object
 ---@field holy_power_max              fun(self: game_object): number
 ---@field holy_power_current          fun(self: game_object): number
+---@field holy_power_deficit          fun(self: game_object): number
 
 ---@class game_object
 ---@field haste_pct                   fun(self: game_object): number
@@ -273,16 +274,16 @@
 ---@field get_totem_info              fun(self: game_object, i: integer): (boolean, string, number, number)
 
 ---@class game_object
----@field get_enemies_in_range        fun(self: game_object, meters: number, players_only?: boolean): game_objects_table -- includes combat filter for non-player controlled units
----@field get_enemies_in_melee_range  fun(self: game_object, meters: number, players_only?: boolean): game_objects_table -- includes combat filter for non-player controlled units
----@field get_friends_in_range        fun(self: game_object, meters: number, players_only?: boolean): game_objects_table
----@field get_party_members_in_range  fun(self: game_object, meters: number, players_only?: boolean): game_objects_table
----@field get_all_minions             fun(self: game_object, meters?: number): game_objects_table
+---@field get_enemies_in_range        fun(self: game_object, meters: number, players_only?: boolean): game_object[] -- includes combat filter for non-player controlled units
+---@field get_enemies_in_melee_range  fun(self: game_object, meters: number, players_only?: boolean): game_object[] -- includes combat filter for non-player controlled units
+---@field get_friends_in_range        fun(self: game_object, meters: number, players_only?: boolean): game_object[]
+---@field get_party_members_in_range  fun(self: game_object, meters: number, players_only?: boolean): game_object[]
+---@field get_all_minions             fun(self: game_object, meters?: number): game_object[]
 
 ---@class game_object
----@field get_enemies_in_range_if fun(self: game_object, meters: number, players_only?: boolean, filter?: unit_predicate|unit_predicate_list): game_objects_table -- includes units in combat, blacklisted and dead, you must perform all the filters yourself
----@field get_enemies_in_melee_range_if fun(self: game_object, meters: number, players_only?: boolean, filter?: unit_predicate|unit_predicate_list): game_objects_table -- includes units in combat, blacklisted and dead, you must perform all the filters yourself
----@field get_friends_in_range_if fun(self: game_object, meters: number, players_only?: boolean, filter?: unit_predicate|unit_predicate_list): game_objects_table
+---@field get_enemies_in_range_if fun(self: game_object, meters: number, players_only?: boolean, filter?: unit_predicate|unit_predicate_list): game_object[] -- includes units in combat, blacklisted and dead, you must perform all the filters yourself
+---@field get_enemies_in_melee_range_if fun(self: game_object, meters: number, players_only?: boolean, filter?: unit_predicate|unit_predicate_list): game_object[] -- includes units in combat, blacklisted and dead, you must perform all the filters yourself
+---@field get_friends_in_range_if fun(self: game_object, meters: number, players_only?: boolean, filter?: unit_predicate|unit_predicate_list): game_object[]
 
 ---@class game_object
 ---@field stealth_remains             fun(self: game_object, check_combat?: boolean, check_special?: boolean): number
@@ -359,20 +360,20 @@
 ---@field get_tracked_buff_spec   fun(self: izi_spell): (number|number[])
 
 ---@class izi_spell
----@field is_castable fun(self: izi_spell, opts?: cast_opts): boolean
+---@field is_castable fun(self: izi_spell, opts?: cast_opts): (boolean, string|nil)
 
 ---@class izi_spell
 ---@field is_castable_to_unit fun(
 ---   self: izi_spell,
 ---   target?: game_object,
----   opts?: unit_cast_opts ): boolean
+---   opts?: unit_cast_opts ): (boolean, string|nil)
 
 ---@class izi_spell
 ---@field is_castable_to_position fun(
 ---   self: izi_spell,
 ---   target?: game_object,         -- context (defaults to target/self)
 ---   cast_pos?: vec3,              -- if nil -> target:get_position()
----   opts?: pos_cast_opts ): boolean
+---   opts?: pos_cast_opts ): (boolean, string|nil)
 
 ---@class izi_cast_meta
 ---@field cast_position? vec3                    -- set if a skillshot was queued
@@ -404,7 +405,7 @@
 ---@class izi_spell
 ---@field cast_target_if fun(
 ---   self: izi_spell,
----   units: game_objects_table,
+---   units: game_object[],
 ---   mode: "max"|"min",
 ---   filter: fun(u: game_object): (number|nil),
 ---   adv_condition?: (boolean|fun(u: game_object): boolean|nil),
@@ -415,7 +416,7 @@
 ---@class izi_spell
 ---@field cast_target_if_safe fun(
 ---   self: izi_spell,
----   units: game_objects_table,
+---   units: game_object[],
 ---   mode: "max"|"min",
 ---   filter: fun(u: game_object): (number|nil),
 ---   adv_condition?: (boolean|fun(u: game_object): boolean|nil),
@@ -441,7 +442,7 @@
 ---@class izi_api
 ---@field cast_target_if fun(
 ---   spell: izi_spell,
----   units: game_objects_table,
+---   units: game_object[],
 ---   mode: "max"|"min",
 ---   filter: fun(u: game_object): (number|nil),
 ---   adv_condition?: (boolean|fun(u: game_object): boolean|nil),
@@ -452,7 +453,7 @@
 ---@class izi_api
 ---@field cast_target_if_safe fun(
 ---   spell: izi_spell,
----   units: game_objects_table,
+---   units: game_object[],
 ---   mode: "max"|"min",
 ---   filter: fun(u: game_object): (number|nil),
 ---   adv_condition?: (boolean|fun(u: game_object): boolean|nil),
@@ -516,10 +517,10 @@
 --------------------------------------------------------------------------------
 
 ---@class izi_api
----@field print fun(...: any): nil
----@field printf fun(fmt: string, ...: any): nil
----@field log fun(filename: string, ...: any): nil
----@field logf fun(filename: string, fmt: string, ...: any): nil
+---@field print fun(...: string|number|boolean|nil): nil
+---@field printf fun(fmt: string, ...: string|number|boolean|nil): nil
+---@field log fun(filename: string, ...: string|number|boolean|nil): nil
+---@field logf fun(filename: string, fmt: string, ...: string|number|boolean|nil): nil
 
 ---@class izi_api
 ---@field on_buff_gain    fun(cb: fun(ev: { unit: game_object, buff_id: integer })) : (fun())      -- unsubscribe() return
@@ -535,10 +536,10 @@
 
 ---@class izi_api
 ---@field get_ts_target  fun(): game_object|nil                    -- First TS target or nil
----@field get_ts_targets fun(limit?: integer): game_objects_table        -- Up to `limit` TS targets (game_objects)
+---@field get_ts_targets fun(limit?: integer): game_object[]        -- Up to `limit` TS targets (game_objects)
 
 ---@class izi_api
----@field spell fun(...: any): izi_spell
+---@field spell fun(id: integer, ...: integer): izi_spell
 ---@overload fun(id: integer): izi_spell
 ---@overload fun(id1: integer, id2: integer, ...: integer): izi_spell
 ---@overload fun(ids: integer[]): izi_spell
@@ -549,21 +550,22 @@
 ---@field is_arena                  fun(): boolean                                                  -- Return if local client is inside an arena map type
 ---@field in_arena                  fun(): boolean                                                  -- Return if local client is inside an arena map type
 ---@field is_in_arena               fun(): boolean                                                  -- Return if local client is inside an arena map type
----@field get_time_to_die_global    fun(): number                                                   -- Return global time to die in seconds
+---@field get_time_to_die_global    fun(): table                                                    -- Return global forecast table (combat_forecast data)
 ---@field target                    fun(): game_object|nil                                          -- Current target or nil
 ---@field ts                        fun(i?: integer): game_object|nil                               -- Target selector i (default 1)
----@field enemies                   fun(radius?: number, players_only?: boolean): game_objects_table     -- Enemies around player
----@field friends                   fun(radius?: number, players_only?: boolean): game_objects_table     -- Allies around player
----@field party                     fun(radius?: number): game_objects_table                             -- Party members around player
+---@field enemies                   fun(radius?: number, players_only?: boolean): game_object[]     -- Enemies around player
+---@field friends                   fun(radius?: number, players_only?: boolean): game_object[]     -- Allies around player
+---@field party                     fun(radius?: number): game_object[]                             -- Party members around player
 ---@field after                     fun(seconds: number, fn: fun()): (fun())                        -- Schedule fn after N seconds; returns cancel()
 
 ---@class izi_api
----@field enemies_if fun(radius?: number, filter?: unit_predicate|unit_predicate_list): game_objects_table
----@field friends_if fun(radius?: number, filter?: unit_predicate|unit_predicate_list): game_objects_table
+---@field enemies_if fun(radius?: number, filter?: unit_predicate|unit_predicate_list): game_object[]
+---@field friends_if fun(radius?: number, filter?: unit_predicate|unit_predicate_list): game_object[]
 
 ---@class izi_api
 ---@field pick_enemy  fun(radius?: number, players_only?: boolean, filter: fun(u: game_object): (number|nil), mode: sort_mode): game_object|nil
----@field spread_dot  fun(spell: izi_spell, enemies?: game_objects_table, refresh_below_ms?: number, max_attempts?: integer, message?: string): boolean
+---@field pick_friend fun(radius?: number, players_only?: boolean, filter: fun(u: game_object): (number|nil), mode: sort_mode): game_object|nil
+---@field spread_dot  fun(spell: izi_spell, enemies?: game_object[], refresh_below_ms?: number, max_attempts?: integer, message?: string): boolean
 
 ---@class izi_api
 ---@field now               fun(): number                     -- core timer seconds (same source as core.now())
@@ -572,10 +574,12 @@
 ---@field now_game_time_ms  fun(): number                     -- game_time() in ms (if available)
 
 ---@class izi_api
----@field item fun(...: any): izi_item
+---@field item fun(id: integer, ...: integer): izi_item|nil
+---@overload fun(id: integer): izi_item|nil
+---@overload fun(ids: integer[]): izi_item|nil
 
 ---@class izi_item
----@field id                    fun(self: izi_item): integer              -- resolved, preferred item id
+---@field id                    fun(self: izi_item, force_refresh?: boolean): integer -- resolved, preferred item id
 ---@field name                  fun(self: izi_item): string
 ---@field object                fun(self: izi_item): game_object|nil
 ---@field equipped_slot         fun(self: izi_item): integer|nil
@@ -596,11 +600,6 @@
 
 ---@alias item_id integer
 ---@alias item_ids integer[]
-
---- Create or fetch an izi_item. Accepts a single id or a list of fallback ids.
---- The object methods operate on the resolved id.
----@overload fun(id: item_id): izi_item
----@overload fun(ids: item_ids): izi_item
 
 ---@class item_use_opts
 ---@field skip_usable? boolean
@@ -1030,7 +1029,7 @@
 
 ---@class queue_pvp_slot
 ---@field idx integer
----@field status any
+---@field status string
 ---@field is_call boolean|nil
 ---@field expires_at_ms integer|nil
 
@@ -1082,9 +1081,9 @@
 ---@field circle circle|fun(center: vec3, radius: number): circle
 ---@field rectangle rectangle|fun(min: vec3, max: vec3): rectangle
 ---@field cone cone|fun(origin: vec3, direction: vec3, angle: number, range: number): cone
----@field is_vec2 fun(v: any): boolean
----@field is_vec3 fun(v: any): boolean
----@field is_vector fun(v: any): boolean
+---@field is_vec2 fun(v: table): boolean
+---@field is_vec3 fun(v: table): boolean
+---@field is_vector fun(v: table): boolean
 
 --------------------------------------------------------------------------------
 -- USAGE EXAMPLES - GEOMETRY
@@ -1227,7 +1226,7 @@
 -- local VK_LBUTTON = 0x01
 -- izi.on_key_release(VK_LBUTTON, function()
 --     if not izi.is_cursor_on_minimap() then return end
---     
+--
 --     local world_pos = izi.get_cursor_world_pos()
 --     if world_pos then
 --         -- place_marker(world_pos)
@@ -1671,7 +1670,7 @@ return tbl
 -- -- Check for dungeon/BG queue popup
 -- if izi.queue_has_popup() then
 --     local has, info = izi.queue_popup_info()
---     
+--
 --     if info.kind == "pve" then
 --         izi.print("Dungeon ready! Age: ", info.age_sec, "s")
 --         izi.queue_accept()

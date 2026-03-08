@@ -6,16 +6,16 @@
 -- Warning: Access with ":", not "."
 
 ---@class ui_buttons_info
----@field public launch_checkbox checkbox
----@field public force_render checkbox
----@field public are_buttons_empty fun(self: ui_buttons_info): boolean
----@field public push_button fun(self: ui_buttons_info, button_id: string, title: string, spell_ids: table<integer, integer>, logic_function: function, index: integer | nil): nil
----@field public get_button_info fun(self: ui_buttons_info, button_id: string): table | nil
----@field public get_current_buttons_infos fun(self: ui_buttons_info): table
----@field public is_logic_attempting_only_once fun(self: ui_buttons_info): boolean
----@field public get_timeout_time fun(self: ui_buttons_info): number
----@field public set_no_render_timeout_time_slider_flag fun(self: ui_buttons_info, state: boolean): nil
----@field public is_target_dr_allowed fun(self: ui_buttons_info, target: game_object, cc_type: number, hit_time: number): nil
+---@field launch_checkbox checkbox
+---@field force_render checkbox
+---@field are_buttons_empty fun(self: ui_buttons_info): boolean
+---@field push_button fun(self: ui_buttons_info, button_id: string, title: string, spell_ids: table<integer, integer>, logic_function: function, index: integer | nil): nil
+---@field get_button_info fun(self: ui_buttons_info, button_id: string): table | nil
+---@field get_current_buttons_infos fun(self: ui_buttons_info): table
+---@field is_logic_attempting_only_once fun(self: ui_buttons_info): boolean
+---@field get_timeout_time fun(self: ui_buttons_info): number
+---@field set_no_render_timeout_time_slider_flag fun(self: ui_buttons_info, state: boolean): nil
+---@field is_target_dr_allowed fun(self: ui_buttons_info, target: game_object, cc_type: number, hit_time: number): nil
 
 -- Example Usage:
 -- local ui = require("common/utility/ui_buttons_info")

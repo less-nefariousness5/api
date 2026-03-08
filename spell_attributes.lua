@@ -1,528 +1,528 @@
 
 ---@class spell_attributes
----@field public SPELL_ATTR0 spell_attr0
----@field public SPELL_ATTR1 spell_attr1
----@field public SPELL_ATTR2 spell_attr2
----@field public SPELL_ATTR3 spell_attr3
----@field public SPELL_ATTR4 spell_attr4
----@field public SPELL_ATTR5 spell_attr5
----@field public SPELL_ATTR6 spell_attr6
----@field public SPELL_ATTR7 spell_attr7
----@field public SPELL_ATTR8 spell_attr8
----@field public SPELL_ATTR9 spell_attr9
----@field public SPELL_ATTR10 spell_attr10
----@field public SPELL_ATTR11 spell_attr11
----@field public SPELL_ATTR12 spell_attr12
----@field public SPELL_ATTR13 spell_attr13
----@field public SPELL_ATTR14 spell_attr14
+---@field SPELL_ATTR0 spell_attr0
+---@field SPELL_ATTR1 spell_attr1
+---@field SPELL_ATTR2 spell_attr2
+---@field SPELL_ATTR3 spell_attr3
+---@field SPELL_ATTR4 spell_attr4
+---@field SPELL_ATTR5 spell_attr5
+---@field SPELL_ATTR6 spell_attr6
+---@field SPELL_ATTR7 spell_attr7
+---@field SPELL_ATTR8 spell_attr8
+---@field SPELL_ATTR9 spell_attr9
+---@field SPELL_ATTR10 spell_attr10
+---@field SPELL_ATTR11 spell_attr11
+---@field SPELL_ATTR12 spell_attr12
+---@field SPELL_ATTR13 spell_attr13
+---@field SPELL_ATTR14 spell_attr14
 
 ---@class spell_attr0
----@field public PROC_FAILURE_BURNS_CHARGE number
----@field public USES_RANGED_SLOT number
----@field public ON_NEXT_SWING_NO_DAMAGE number
----@field public DO_NOT_LOG_IMMUNE_MISSES number
----@field public IS_ABILITY number
----@field public IS_TRADESKILL number
----@field public PASSIVE number
----@field public DO_NOT_DISPLAY_SPELLBOOK_AURA_ICON_COMBAT_LOG number
----@field public DO_NOT_LOG number
----@field public HELD_ITEM_ONLY number
----@field public ON_NEXT_SWING number
----@field public WEARER_CASTS_PROC_TRIGGER number
----@field public SERVER_ONLY number
----@field public ALLOW_ITEM_SPELL_IN_PVP number
----@field public INDOORS_ONLY number
----@field public OUTDOORS_ONLY number
----@field public NOT_SHAPESHIFTED number
----@field public ONLY_STEALTHED number
----@field public DO_NOT_SHEATH number
----@field public SCALES_WITH_CREATURE_LEVEL number
----@field public CANCELS_AUTO_ATTACK_COMBAT number
----@field public NO_ACTIVE_DEFENSE number
----@field public TRACK_TARGET_IN_CAST_PLAYER_ONLY number
----@field public ALLOW_CAST_WHILE_DEAD number
----@field public ALLOW_WHILE_MOUNTED number
----@field public COOLDOWN_ON_EVENT number
----@field public AURA_IS_DEBUFF number
----@field public ALLOW_WHILE_SITTING number
----@field public NOT_IN_COMBAT_ONLY_PEACEFUL number
----@field public NO_IMMUNITIES number
----@field public HEARTBEAT_RESIST number
----@field public NO_AURA_CANCEL number
+---@field PROC_FAILURE_BURNS_CHARGE number
+---@field USES_RANGED_SLOT number
+---@field ON_NEXT_SWING_NO_DAMAGE number
+---@field DO_NOT_LOG_IMMUNE_MISSES number
+---@field IS_ABILITY number
+---@field IS_TRADESKILL number
+---@field PASSIVE number
+---@field DO_NOT_DISPLAY_SPELLBOOK_AURA_ICON_COMBAT_LOG number
+---@field DO_NOT_LOG number
+---@field HELD_ITEM_ONLY number
+---@field ON_NEXT_SWING number
+---@field WEARER_CASTS_PROC_TRIGGER number
+---@field SERVER_ONLY number
+---@field ALLOW_ITEM_SPELL_IN_PVP number
+---@field INDOORS_ONLY number
+---@field OUTDOORS_ONLY number
+---@field NOT_SHAPESHIFTED number
+---@field ONLY_STEALTHED number
+---@field DO_NOT_SHEATH number
+---@field SCALES_WITH_CREATURE_LEVEL number
+---@field CANCELS_AUTO_ATTACK_COMBAT number
+---@field NO_ACTIVE_DEFENSE number
+---@field TRACK_TARGET_IN_CAST_PLAYER_ONLY number
+---@field ALLOW_CAST_WHILE_DEAD number
+---@field ALLOW_WHILE_MOUNTED number
+---@field COOLDOWN_ON_EVENT number
+---@field AURA_IS_DEBUFF number
+---@field ALLOW_WHILE_SITTING number
+---@field NOT_IN_COMBAT_ONLY_PEACEFUL number
+---@field NO_IMMUNITIES number
+---@field HEARTBEAT_RESIST number
+---@field NO_AURA_CANCEL number
 
 ---@class spell_attr1
----@field public DISMISS_PET_FIRST number
----@field public USE_ALL_MANA number
----@field public IS_CHANNELED number
----@field public NO_REDIRECTION number
----@field public NO_SKILL_INCREASE number
----@field public ALLOW_WHILE_STEALTHED number
----@field public IS_SELF_CHANNELLED number
----@field public NO_REFLECTION number
----@field public ONLY_PEACEFUL_TARGETS number
----@field public INITIATES_COMBAT_ENABLES_AUTO_ATTACK number
----@field public SPECIAL_SKILLUP number
----@field public AURA_STAYS_AFTER_COMBAT number
----@field public REQUIRE_ALL_TARGETS number
----@field public DISCOUNT_POWER_ON_MISS number
----@field public NO_AURA_ICON number
----@field public NAME_IN_CHANNEL_BAR number
----@field public DISPEL_ALL_STACKS number
----@field public CAST_WHEN_LEARNED number
----@field public TO_ATTACK number
----@field public NO_THREAT number
----@field public AURA_UNIQUE number
----@field public FAILURE_BREAKS_STEALTH number
----@field public TOGGLE_FAR_SIGHT number
----@field public TRACK_TARGET_IN_CHANNEL number
----@field public IMMUNITY_PURGES_EFFECT number
----@field public IMMUNITY_TO_HOSTILE_AND_FRIENDLY_EFFECTS number
----@field public NO_AUTOCAST_AI number
----@field public PREVENTS_ANIM number
----@field public EXCLUDE_CASTER number
----@field public FINISHING_MOVE_DAMAGE number
----@field public THREAT_ONLY_ON_MISS number
----@field public FINISHING_MOVE_DURATION number
----@field public IGNORE_OWNERS_DEATH number
+---@field DISMISS_PET_FIRST number
+---@field USE_ALL_MANA number
+---@field IS_CHANNELED number
+---@field NO_REDIRECTION number
+---@field NO_SKILL_INCREASE number
+---@field ALLOW_WHILE_STEALTHED number
+---@field IS_SELF_CHANNELLED number
+---@field NO_REFLECTION number
+---@field ONLY_PEACEFUL_TARGETS number
+---@field INITIATES_COMBAT_ENABLES_AUTO_ATTACK number
+---@field SPECIAL_SKILLUP number
+---@field AURA_STAYS_AFTER_COMBAT number
+---@field REQUIRE_ALL_TARGETS number
+---@field DISCOUNT_POWER_ON_MISS number
+---@field NO_AURA_ICON number
+---@field NAME_IN_CHANNEL_BAR number
+---@field DISPEL_ALL_STACKS number
+---@field CAST_WHEN_LEARNED number
+---@field TO_ATTACK number
+---@field NO_THREAT number
+---@field AURA_UNIQUE number
+---@field FAILURE_BREAKS_STEALTH number
+---@field TOGGLE_FAR_SIGHT number
+---@field TRACK_TARGET_IN_CHANNEL number
+---@field IMMUNITY_PURGES_EFFECT number
+---@field IMMUNITY_TO_HOSTILE_AND_FRIENDLY_EFFECTS number
+---@field NO_AUTOCAST_AI number
+---@field PREVENTS_ANIM number
+---@field EXCLUDE_CASTER number
+---@field FINISHING_MOVE_DAMAGE number
+---@field THREAT_ONLY_ON_MISS number
+---@field FINISHING_MOVE_DURATION number
+---@field IGNORE_OWNERS_DEATH number
 
 ---@class spell_attr2
----@field public ALLOW_DEAD_TARGET number
----@field public NO_SHAPESHIFT_UI number
----@field public IGNORE_LINE_OF_SIGHT number
----@field public ALLOW_LOW_LEVEL_BUFF number
----@field public USE_SHAPESHIFT_BAR number
----@field public AUTO_REPEAT number
----@field public CANNOT_CAST_ON_TAPPED number
----@field public DO_NOT_REPORT_SPELL_FAILURE number
----@field public INCLUDE_IN_ADVANCED_COMBAT_LOG number
----@field public ALWAYS_CAST_AS_UNIT number
----@field public SPECIAL_TAMING_FLAG number
----@field public NO_TARGET_PER_SECOND_COSTS number
----@field public CHAIN_FROM_CASTER number
----@field public ENCHANT_OWN_ITEM_ONLY number
----@field public ALLOW_WHILE_INVISIBLE number
----@field public DO_NOT_CONSUME_IF_GAINED_DURING_CAST number
----@field public NO_ACTIVE_PETS number
----@field public DO_NOT_RESET_COMBAT_TIMERS number
----@field public NO_JUMP_WHILE_CAST_PENDING number
----@field public ALLOW_WHILE_NOT_SHAPESHIFTED_CASTER_FORM number
----@field public INITIATE_COMBAT_POST_CAST_ENABLES_AUTO_ATTACK number
----@field public FAIL_ON_ALL_TARGETS_IMMUNE number
----@field public NO_INITIAL_THREAT number
----@field public PROC_COOLDOWN_ON_FAILURE number
----@field public ITEM_CAST_WITH_OWNER_SKILL number
----@field public DONT_BLOCK_MANA_REGEN number
----@field public NO_SCHOOL_IMMUNITIES number
----@field public IGNORE_WEAPONSKILL number
----@field public NOT_AN_ACTION number
----@field public CANT_CRIT number
----@field public ACTIVE_THREAT number
----@field public RETAIN_ITEM_CAST number
+---@field ALLOW_DEAD_TARGET number
+---@field NO_SHAPESHIFT_UI number
+---@field IGNORE_LINE_OF_SIGHT number
+---@field ALLOW_LOW_LEVEL_BUFF number
+---@field USE_SHAPESHIFT_BAR number
+---@field AUTO_REPEAT number
+---@field CANNOT_CAST_ON_TAPPED number
+---@field DO_NOT_REPORT_SPELL_FAILURE number
+---@field INCLUDE_IN_ADVANCED_COMBAT_LOG number
+---@field ALWAYS_CAST_AS_UNIT number
+---@field SPECIAL_TAMING_FLAG number
+---@field NO_TARGET_PER_SECOND_COSTS number
+---@field CHAIN_FROM_CASTER number
+---@field ENCHANT_OWN_ITEM_ONLY number
+---@field ALLOW_WHILE_INVISIBLE number
+---@field DO_NOT_CONSUME_IF_GAINED_DURING_CAST number
+---@field NO_ACTIVE_PETS number
+---@field DO_NOT_RESET_COMBAT_TIMERS number
+---@field NO_JUMP_WHILE_CAST_PENDING number
+---@field ALLOW_WHILE_NOT_SHAPESHIFTED_CASTER_FORM number
+---@field INITIATE_COMBAT_POST_CAST_ENABLES_AUTO_ATTACK number
+---@field FAIL_ON_ALL_TARGETS_IMMUNE number
+---@field NO_INITIAL_THREAT number
+---@field PROC_COOLDOWN_ON_FAILURE number
+---@field ITEM_CAST_WITH_OWNER_SKILL number
+---@field DONT_BLOCK_MANA_REGEN number
+---@field NO_SCHOOL_IMMUNITIES number
+---@field IGNORE_WEAPONSKILL number
+---@field NOT_AN_ACTION number
+---@field CANT_CRIT number
+---@field ACTIVE_THREAT number
+---@field RETAIN_ITEM_CAST number
 
 ---@class spell_attr3
----@field public PVP_ENABLING number
----@field public NO_PROC_EQUIP_REQUIREMENT number
----@field public NO_CASTING_BAR_TEXT number
----@field public COMPLETELY_BLOCKED number
----@field public NO_RES_TIMER number
----@field public NO_DURABILTIY_LOSS number
----@field public NO_AVOIDANCE number
----@field public DOT_STACKING_RULE number
----@field public ONLY_ON_PLAYER number
----@field public NOT_A_PROC number
----@field public REQUIRES_MAIN_HAND_WEAPON number
----@field public ONLY_BATTLEGROUNDS number
----@field public ONLY_ON_GHOSTS number
----@field public HIDE_CHANNEL_BAR number
----@field public HIDE_IN_RAID_FILTER number
----@field public NORMAL_RANGED_ATTACK number
----@field public SUPPRESS_CASTER_PROCS number
----@field public SUPPRESS_TARGET_PROCS number
----@field public ALWAYS_HIT number
----@field public INSTANT_TARGET_PROCS number
----@field public ALLOW_AURA_WHILE_DEAD number
----@field public ONLY_PROC_OUTDOORS number
----@field public DO_NOT_TRIGGER_TARGET_STAND number
----@field public NO_DAMAGE_HISTORY number
----@field public REQUIRES_OFF_HAND_WEAPON number
----@field public TREAT_AS_PERIODIC number
----@field public CAN_PROC_FROM_PROCS number
----@field public ONLY_PROC_ON_CASTER number
----@field public IGNORE_CASTER_AND_TARGET_RESTRICTIONS number
----@field public IGNORE_CASTER_MODIFIERS number
----@field public DO_NOT_DISPLAY_RANGE number
----@field public NOT_ON_AOE_IMMUNE number
+---@field PVP_ENABLING number
+---@field NO_PROC_EQUIP_REQUIREMENT number
+---@field NO_CASTING_BAR_TEXT number
+---@field COMPLETELY_BLOCKED number
+---@field NO_RES_TIMER number
+---@field NO_DURABILTIY_LOSS number
+---@field NO_AVOIDANCE number
+---@field DOT_STACKING_RULE number
+---@field ONLY_ON_PLAYER number
+---@field NOT_A_PROC number
+---@field REQUIRES_MAIN_HAND_WEAPON number
+---@field ONLY_BATTLEGROUNDS number
+---@field ONLY_ON_GHOSTS number
+---@field HIDE_CHANNEL_BAR number
+---@field HIDE_IN_RAID_FILTER number
+---@field NORMAL_RANGED_ATTACK number
+---@field SUPPRESS_CASTER_PROCS number
+---@field SUPPRESS_TARGET_PROCS number
+---@field ALWAYS_HIT number
+---@field INSTANT_TARGET_PROCS number
+---@field ALLOW_AURA_WHILE_DEAD number
+---@field ONLY_PROC_OUTDOORS number
+---@field DO_NOT_TRIGGER_TARGET_STAND number
+---@field NO_DAMAGE_HISTORY number
+---@field REQUIRES_OFF_HAND_WEAPON number
+---@field TREAT_AS_PERIODIC number
+---@field CAN_PROC_FROM_PROCS number
+---@field ONLY_PROC_ON_CASTER number
+---@field IGNORE_CASTER_AND_TARGET_RESTRICTIONS number
+---@field IGNORE_CASTER_MODIFIERS number
+---@field DO_NOT_DISPLAY_RANGE number
+---@field NOT_ON_AOE_IMMUNE number
 
 ---@class spell_attr4
----@field public NO_CAST_LOG number
----@field public CLASS_TRIGGER_ONLY_ON_TARGET number
----@field public AURA_EXPIRES_OFFLINE number
----@field public NO_HELPFUL_THREAT number
----@field public NO_HARMFUL_THREAT number
----@field public ALLOW_CLIENT_TARGETING number
----@field public CANNOT_BE_STOLEN number
----@field public ALLOW_CAST_WHILE_CASTING number
----@field public IGNORE_DAMAGE_TAKEN_MODIFIERS number
----@field public COMBAT_FEEDBACK_WHEN_USABLE number
----@field public WEAPON_SPEED_COST_SCALING number
----@field public NO_PARTIAL_IMMUNITY number
----@field public AURA_IS_BUFF number
----@field public DO_NOT_LOG_CASTER number
----@field public REACTIVE_DAMAGE_PROC number
----@field public NOT_IN_SPELLBOOK number
----@field public NOT_IN_ARENA_OR_RATED_BATTLEGROUND number
----@field public IGNORE_DEFAULT_ARENA_RESTRICTIONS number
----@field public BOUNCY_CHAIN_MISSILES number
----@field public ALLOW_PROC_WHILE_SITTING number
----@field public AURA_NEVER_BOUNCES number
----@field public ALLOW_ENTERING_ARENA number
----@field public PROC_SUPPRESS_SWING_ANIM number
----@field public SUPPRESS_WEAPON_PROCS number
----@field public AUTO_RANGED_COMBAT number
----@field public OWNER_POWER_SCALING number
----@field public ONLY_FLYING_AREAS number
----@field public FORCE_DISPLAY_CASTBAR number
----@field public IGNORE_COMBAT_TIMER number
----@field public AURA_BOUNCE_FAILS_SPELL number
----@field public OBSOLETE number
----@field public USE_FACING_FROM_SPELL number
+---@field NO_CAST_LOG number
+---@field CLASS_TRIGGER_ONLY_ON_TARGET number
+---@field AURA_EXPIRES_OFFLINE number
+---@field NO_HELPFUL_THREAT number
+---@field NO_HARMFUL_THREAT number
+---@field ALLOW_CLIENT_TARGETING number
+---@field CANNOT_BE_STOLEN number
+---@field ALLOW_CAST_WHILE_CASTING number
+---@field IGNORE_DAMAGE_TAKEN_MODIFIERS number
+---@field COMBAT_FEEDBACK_WHEN_USABLE number
+---@field WEAPON_SPEED_COST_SCALING number
+---@field NO_PARTIAL_IMMUNITY number
+---@field AURA_IS_BUFF number
+---@field DO_NOT_LOG_CASTER number
+---@field REACTIVE_DAMAGE_PROC number
+---@field NOT_IN_SPELLBOOK number
+---@field NOT_IN_ARENA_OR_RATED_BATTLEGROUND number
+---@field IGNORE_DEFAULT_ARENA_RESTRICTIONS number
+---@field BOUNCY_CHAIN_MISSILES number
+---@field ALLOW_PROC_WHILE_SITTING number
+---@field AURA_NEVER_BOUNCES number
+---@field ALLOW_ENTERING_ARENA number
+---@field PROC_SUPPRESS_SWING_ANIM number
+---@field SUPPRESS_WEAPON_PROCS number
+---@field AUTO_RANGED_COMBAT number
+---@field OWNER_POWER_SCALING number
+---@field ONLY_FLYING_AREAS number
+---@field FORCE_DISPLAY_CASTBAR number
+---@field IGNORE_COMBAT_TIMER number
+---@field AURA_BOUNCE_FAILS_SPELL number
+---@field OBSOLETE number
+---@field USE_FACING_FROM_SPELL number
 
 ---@class spell_attr5
----@field public ALLOW_ACTIONS_DURING_CHANNEL number
----@field public NO_REAGENT_COST_WITH_AURA number
----@field public REMOVE_ENTERING_ARENA number
----@field public ALLOW_WHILE_STUNNED number
----@field public TRIGGERS_CHANNELING number
----@field public LIMIT_N number
----@field public IGNORE_AREA_EFFECT_PVP_CHECK number
----@field public NOT_ON_PLAYER number
----@field public NOT_ON_PLAYER_CONTROLLED_NPC number
----@field public EXTRA_INITIAL_PERIOD number
----@field public DO_NOT_DISPLAY_DURATION number
----@field public IMPLIED_TARGETING number
----@field public MELEE_CHAIN_TARGETING number
----@field public SPELL_HASTE_AFFECTS_PERIODIC number
----@field public NOT_AVAILABLE_WHILE_CHARMED number
----@field public TREAT_AS_AREA_EFFECT number
----@field public AURA_AFFECTS_NOT_JUST_REQ_EQUIPPED_ITEM number
----@field public ALLOW_WHILE_FLEEING number
----@field public ALLOW_WHILE_CONFUSED number
----@field public AI_DOESNT_FACE_TARGET number
----@field public DO_NOT_ATTEMPT_A_PET_RESUMMON_WHEN_DISMOUNTING number
----@field public IGNORE_TARGET_REQUIREMENTS number
----@field public NOT_ON_TRIVIAL number
----@field public NO_PARTIAL_RESISTS number
----@field public IGNORE_CASTER_REQUIREMENTS number
----@field public ALWAYS_LINE_OF_SIGHT number
----@field public ALWAYS_AOE_LINE_OF_SIGHT number
----@field public NO_CASTER_AURA_ICON number
----@field public NO_TARGET_AURA_ICON number
----@field public AURA_UNIQUE_PER_CASTER number
----@field public ALWAYS_SHOW_GROUND_TEXTURE number
----@field public ADD_MELEE_HIT_RATING number
+---@field ALLOW_ACTIONS_DURING_CHANNEL number
+---@field NO_REAGENT_COST_WITH_AURA number
+---@field REMOVE_ENTERING_ARENA number
+---@field ALLOW_WHILE_STUNNED number
+---@field TRIGGERS_CHANNELING number
+---@field LIMIT_N number
+---@field IGNORE_AREA_EFFECT_PVP_CHECK number
+---@field NOT_ON_PLAYER number
+---@field NOT_ON_PLAYER_CONTROLLED_NPC number
+---@field EXTRA_INITIAL_PERIOD number
+---@field DO_NOT_DISPLAY_DURATION number
+---@field IMPLIED_TARGETING number
+---@field MELEE_CHAIN_TARGETING number
+---@field SPELL_HASTE_AFFECTS_PERIODIC number
+---@field NOT_AVAILABLE_WHILE_CHARMED number
+---@field TREAT_AS_AREA_EFFECT number
+---@field AURA_AFFECTS_NOT_JUST_REQ_EQUIPPED_ITEM number
+---@field ALLOW_WHILE_FLEEING number
+---@field ALLOW_WHILE_CONFUSED number
+---@field AI_DOESNT_FACE_TARGET number
+---@field DO_NOT_ATTEMPT_A_PET_RESUMMON_WHEN_DISMOUNTING number
+---@field IGNORE_TARGET_REQUIREMENTS number
+---@field NOT_ON_TRIVIAL number
+---@field NO_PARTIAL_RESISTS number
+---@field IGNORE_CASTER_REQUIREMENTS number
+---@field ALWAYS_LINE_OF_SIGHT number
+---@field ALWAYS_AOE_LINE_OF_SIGHT number
+---@field NO_CASTER_AURA_ICON number
+---@field NO_TARGET_AURA_ICON number
+---@field AURA_UNIQUE_PER_CASTER number
+---@field ALWAYS_SHOW_GROUND_TEXTURE number
+---@field ADD_MELEE_HIT_RATING number
 
 ---@class spell_attr6
----@field public NO_COOLDOWN_ON_TOOLTIP number
----@field public DO_NOT_RESET_COOLDOWN_IN_ARENA number
----@field public NOT_AN_ATTACK number
----@field public CAN_ASSIST_IMMUNE_PC number
----@field public IGNORE_FOR_MOD_TIME_RATE number
----@field public DO_NOT_CONSUME_RESOURCES number
----@field public FLOATING_COMBAT_TEXT_ON_CAST number
----@field public AURA_IS_WEAPON_PROC number
----@field public DO_NOT_CHAIN_TO_CROWD_CONTROLLED_TARGETS number
----@field public ALLOW_ON_CHARMED_TARGETS number
----@field public NO_AURA_LOG number
----@field public NOT_IN_RAID_INSTANCES number
----@field public ALLOW_WHILE_RIDING_VEHICLE number
----@field public IGNORE_PHASE_SHIFT number
----@field public AI_PRIMARY_RANGED_ATTACK number
----@field public NO_PUSHBACK number
----@field public NO_JUMP_PATHING number
----@field public ALLOW_EQUIP_WHILE_CASTING number
----@field public ORIGINATE_FROM_CONTROLLER number
----@field public DELAY_COMBAT_TIMER_DURING_CAST number
----@field public AURA_ICON_ONLY_FOR_CASTER_LIMIT_10 number
----@field public SHOW_MECHANIC_AS_COMBAT_TEXT number
----@field public ABSORB_CAP_PREVENTS_SHIELDS number
----@field public ALLOW_IN_ANCHOR_AREAS number
----@field public BYPASS_LOS_WHEN_TARGET_IS_NEAR number
----@field public DO_NOT_TRIGGER_IN_COMBAT number
----@field public IGNORE_WEAPON_RESTRICTIONS number
----@field public NO_STACKS number
----@field public IGNORE_TARGET_ENERGY number
----@field public CAN_BE_TARGETED_BY_FRIENDLY number
----@field public ALLOW_IN_ARENA number
----@field public NO_COMBAT_TRIGGER_ON_PROC number
+---@field NO_COOLDOWN_ON_TOOLTIP number
+---@field DO_NOT_RESET_COOLDOWN_IN_ARENA number
+---@field NOT_AN_ATTACK number
+---@field CAN_ASSIST_IMMUNE_PC number
+---@field IGNORE_FOR_MOD_TIME_RATE number
+---@field DO_NOT_CONSUME_RESOURCES number
+---@field FLOATING_COMBAT_TEXT_ON_CAST number
+---@field AURA_IS_WEAPON_PROC number
+---@field DO_NOT_CHAIN_TO_CROWD_CONTROLLED_TARGETS number
+---@field ALLOW_ON_CHARMED_TARGETS number
+---@field NO_AURA_LOG number
+---@field NOT_IN_RAID_INSTANCES number
+---@field ALLOW_WHILE_RIDING_VEHICLE number
+---@field IGNORE_PHASE_SHIFT number
+---@field AI_PRIMARY_RANGED_ATTACK number
+---@field NO_PUSHBACK number
+---@field NO_JUMP_PATHING number
+---@field ALLOW_EQUIP_WHILE_CASTING number
+---@field ORIGINATE_FROM_CONTROLLER number
+---@field DELAY_COMBAT_TIMER_DURING_CAST number
+---@field AURA_ICON_ONLY_FOR_CASTER_LIMIT_10 number
+---@field SHOW_MECHANIC_AS_COMBAT_TEXT number
+---@field ABSORB_CAP_PREVENTS_SHIELDS number
+---@field ALLOW_IN_ANCHOR_AREAS number
+---@field BYPASS_LOS_WHEN_TARGET_IS_NEAR number
+---@field DO_NOT_TRIGGER_IN_COMBAT number
+---@field IGNORE_WEAPON_RESTRICTIONS number
+---@field NO_STACKS number
+---@field IGNORE_TARGET_ENERGY number
+---@field CAN_BE_TARGETED_BY_FRIENDLY number
+---@field ALLOW_IN_ARENA number
+---@field NO_COMBAT_TRIGGER_ON_PROC number
 
 ---@class spell_attr7
----@field public CAN_BE_CAST_WHILE_IN_COMBAT number
----@field public ONLY_USABLE_IN_PVP number
----@field public DO_NOT_CANCEL_WHEN_RESPEC number
----@field public IGNORE_TARGET_SHAPE number
----@field public DO_NOT_TRIGGER_PROCS number
----@field public ALLOW_WHILE_DISMOUNTING number
----@field public AURA_APPLIES_THROUGH_DEATH number
----@field public ALLOW_WHILE_CHARMED number
----@field public DO_NOT_REQUIRE_PRIMARY_WEAPON number
----@field public ALLOW_WHILE_FEARED number
----@field public ALLOW_WHILE_MOUNTED number
----@field public ALLOW_WHILE_CONFUSED number
----@field public REQUIRE_ATTACKABLE_TARGET number
----@field public IGNORE_COOLDOWN_REDUCTION number
----@field public ALLOW_WHILE_ROOTED number
----@field public CAN_BE_TARGETED_WHILE_DEAD number
----@field public IGNORE_DEAD_TARGET number
----@field public ALLOW_WHILE_POLYMORPHED number
----@field public ALLOW_WHILE_STUNNED number
----@field public IGNORE_SHAPESHIFT_CONDITIONS number
----@field public ALLOW_WHILE_ENRAGED number
----@field public ALLOW_WHILE_DISARMED number
----@field public IGNORE_AURA_SCHOOL_IMMUNITY number
----@field public REQUIRE_PRIMARY_WEAPON number
----@field public IGNORE_MOVEMENT_IMPAIRING_EFFECTS number
----@field public ALLOW_WHILE_AFK number
----@field public ALLOW_WHILE_SHEATHED number
----@field public ALLOW_WHILE_IN_WATER number
----@field public ALLOW_WHILE_PACIFIED number
----@field public ALLOW_WHILE_POSSESSED number
----@field public ALLOW_WHILE_IN_BATTLE_STANCE number
----@field public ALLOW_WHILE_IN_DEFENSIVE_STANCE number
+---@field CAN_BE_CAST_WHILE_IN_COMBAT number
+---@field ONLY_USABLE_IN_PVP number
+---@field DO_NOT_CANCEL_WHEN_RESPEC number
+---@field IGNORE_TARGET_SHAPE number
+---@field DO_NOT_TRIGGER_PROCS number
+---@field ALLOW_WHILE_DISMOUNTING number
+---@field AURA_APPLIES_THROUGH_DEATH number
+---@field ALLOW_WHILE_CHARMED number
+---@field DO_NOT_REQUIRE_PRIMARY_WEAPON number
+---@field ALLOW_WHILE_FEARED number
+---@field ALLOW_WHILE_MOUNTED number
+---@field ALLOW_WHILE_CONFUSED number
+---@field REQUIRE_ATTACKABLE_TARGET number
+---@field IGNORE_COOLDOWN_REDUCTION number
+---@field ALLOW_WHILE_ROOTED number
+---@field CAN_BE_TARGETED_WHILE_DEAD number
+---@field IGNORE_DEAD_TARGET number
+---@field ALLOW_WHILE_POLYMORPHED number
+---@field ALLOW_WHILE_STUNNED number
+---@field IGNORE_SHAPESHIFT_CONDITIONS number
+---@field ALLOW_WHILE_ENRAGED number
+---@field ALLOW_WHILE_DISARMED number
+---@field IGNORE_AURA_SCHOOL_IMMUNITY number
+---@field REQUIRE_PRIMARY_WEAPON number
+---@field IGNORE_MOVEMENT_IMPAIRING_EFFECTS number
+---@field ALLOW_WHILE_AFK number
+---@field ALLOW_WHILE_SHEATHED number
+---@field ALLOW_WHILE_IN_WATER number
+---@field ALLOW_WHILE_PACIFIED number
+---@field ALLOW_WHILE_POSSESSED number
+---@field ALLOW_WHILE_IN_BATTLE_STANCE number
+---@field ALLOW_WHILE_IN_DEFENSIVE_STANCE number
 
 ---@class spell_attr8
----@field public ALLOW_WHILE_CROUCHED number
----@field public CAN_BE_CAST_WHILE_MOVING number
----@field public IGNORE_DAMAGE_TAKEN number
----@field public DO_NOT_CANCEL_WHEN_MOVING number
----@field public ALLOW_WHILE_IN_ARENA number
----@field public REQUIRE_VALID_GROUND_TARGET number
----@field public IGNORE_INTERRUPT_FLAGS number
----@field public DO_NOT_BREAK_INVISIBILITY number
----@field public ALLOW_WHILE_IN_DISGUISE number
----@field public REQUIRE_GROUND_LOCATION number
----@field public DO_NOT_INTERRUPT_OTHER_CASTS number
----@field public ALLOW_WHILE_TRANSFORMED number
----@field public ALLOW_WHILE_IN_AIR number
----@field public IGNORE_ENERGY_COST number
----@field public ALLOW_WHILE_ON_RAFT number
----@field public CAN_BE_CAST_WHILE_SPRINTING number
----@field public REQUIRE_UNIQUE_TARGET number
----@field public IGNORE_AREA_EFFECT_RADIUS number
----@field public IGNORE_SHAPESHIFT_REQUIREMENTS number
----@field public ALLOW_WHILE_IN_UNDERWATER_MODE number
----@field public ALLOW_WHILE_IN_EVASIVE_MODE number
----@field public ALLOW_WHILE_IN_CAMO_MODE number
----@field public ALLOW_WHILE_IN_HOVER_MODE number
----@field public IGNORE_AURA_EFFECTS number
----@field public REQUIRE_CONCENTRATION number
----@field public ALLOW_WHILE_DAZED number
----@field public ALLOW_WHILE_PARALYZED number
----@field public ALLOW_WHILE_ON_SNOW number
----@field public REQUIRE_VISIBLE_TARGET number
----@field public ALLOW_WHILE_ON_ICE number
----@field public IGNORE_PASSIVE_STATE number
----@field public ALLOW_WHILE_IN_FREE_FALL number
+---@field ALLOW_WHILE_CROUCHED number
+---@field CAN_BE_CAST_WHILE_MOVING number
+---@field IGNORE_DAMAGE_TAKEN number
+---@field DO_NOT_CANCEL_WHEN_MOVING number
+---@field ALLOW_WHILE_IN_ARENA number
+---@field REQUIRE_VALID_GROUND_TARGET number
+---@field IGNORE_INTERRUPT_FLAGS number
+---@field DO_NOT_BREAK_INVISIBILITY number
+---@field ALLOW_WHILE_IN_DISGUISE number
+---@field REQUIRE_GROUND_LOCATION number
+---@field DO_NOT_INTERRUPT_OTHER_CASTS number
+---@field ALLOW_WHILE_TRANSFORMED number
+---@field ALLOW_WHILE_IN_AIR number
+---@field IGNORE_ENERGY_COST number
+---@field ALLOW_WHILE_ON_RAFT number
+---@field CAN_BE_CAST_WHILE_SPRINTING number
+---@field REQUIRE_UNIQUE_TARGET number
+---@field IGNORE_AREA_EFFECT_RADIUS number
+---@field IGNORE_SHAPESHIFT_REQUIREMENTS number
+---@field ALLOW_WHILE_IN_UNDERWATER_MODE number
+---@field ALLOW_WHILE_IN_EVASIVE_MODE number
+---@field ALLOW_WHILE_IN_CAMO_MODE number
+---@field ALLOW_WHILE_IN_HOVER_MODE number
+---@field IGNORE_AURA_EFFECTS number
+---@field REQUIRE_CONCENTRATION number
+---@field ALLOW_WHILE_DAZED number
+---@field ALLOW_WHILE_PARALYZED number
+---@field ALLOW_WHILE_ON_SNOW number
+---@field REQUIRE_VISIBLE_TARGET number
+---@field ALLOW_WHILE_ON_ICE number
+---@field IGNORE_PASSIVE_STATE number
+---@field ALLOW_WHILE_IN_FREE_FALL number
 
 ---@class spell_attr9
----@field public ALLOW_WHILE_IN_CROUCH_MODE number
----@field public IGNORE_TARGET_POSITION number
----@field public ALLOW_WHILE_IN_COVER_MODE number
----@field public ALLOW_WHILE_IN_COVER_STATE number
----@field public ALLOW_WHILE_IN_HIDE_MODE number
----@field public ALLOW_WHILE_IN_CLOAK_MODE number
----@field public ALLOW_WHILE_IN_STEALTH_MODE number
----@field public ALLOW_WHILE_IN_SMOKE_COVER number
----@field public IGNORE_MOVEMENT_SPEED number
----@field public ALLOW_WHILE_IN_SANDSTORM number
----@field public ALLOW_WHILE_IN_DEEP_WATER number
----@field public ALLOW_WHILE_ON_FIRE number
----@field public ALLOW_WHILE_IN_VORTEX number
----@field public ALLOW_WHILE_IN_MAGNETIC_FIELD number
----@field public IGNORE_ENEMY_DETECTION number
----@field public IGNORE_ALL_CONDITIONS number
----@field public ALLOW_WHILE_UNDERGROUND number
----@field public ALLOW_WHILE_IN_DESERT number
----@field public ALLOW_WHILE_IN_SWAMP number
----@field public IGNORE_HEIGHT_RESTRICTIONS number
----@field public ALLOW_WHILE_ON_WATER_SURFACE number
----@field public IGNORE_GRAVITY number
----@field public ALLOW_WHILE_UNDER_GRAVITY number
----@field public ALLOW_WHILE_IN_HIGH_ALTITUDE number
----@field public ALLOW_WHILE_IN_LOW_ALTITUDE number
----@field public IGNORE_TERRAIN number
----@field public ALLOW_WHILE_IN_FOG number
----@field public ALLOW_WHILE_IN_RAIN number
----@field public ALLOW_WHILE_IN_LIGHTNING_STORM number
----@field public IGNORE_WEATHER_CONDITIONS number
----@field public ALLOW_WHILE_IN_DARKNESS number
----@field public ALLOW_WHILE_IN_LIGHT number
+---@field ALLOW_WHILE_IN_CROUCH_MODE number
+---@field IGNORE_TARGET_POSITION number
+---@field ALLOW_WHILE_IN_COVER_MODE number
+---@field ALLOW_WHILE_IN_COVER_STATE number
+---@field ALLOW_WHILE_IN_HIDE_MODE number
+---@field ALLOW_WHILE_IN_CLOAK_MODE number
+---@field ALLOW_WHILE_IN_STEALTH_MODE number
+---@field ALLOW_WHILE_IN_SMOKE_COVER number
+---@field IGNORE_MOVEMENT_SPEED number
+---@field ALLOW_WHILE_IN_SANDSTORM number
+---@field ALLOW_WHILE_IN_DEEP_WATER number
+---@field ALLOW_WHILE_ON_FIRE number
+---@field ALLOW_WHILE_IN_VORTEX number
+---@field ALLOW_WHILE_IN_MAGNETIC_FIELD number
+---@field IGNORE_ENEMY_DETECTION number
+---@field IGNORE_ALL_CONDITIONS number
+---@field ALLOW_WHILE_UNDERGROUND number
+---@field ALLOW_WHILE_IN_DESERT number
+---@field ALLOW_WHILE_IN_SWAMP number
+---@field IGNORE_HEIGHT_RESTRICTIONS number
+---@field ALLOW_WHILE_ON_WATER_SURFACE number
+---@field IGNORE_GRAVITY number
+---@field ALLOW_WHILE_UNDER_GRAVITY number
+---@field ALLOW_WHILE_IN_HIGH_ALTITUDE number
+---@field ALLOW_WHILE_IN_LOW_ALTITUDE number
+---@field IGNORE_TERRAIN number
+---@field ALLOW_WHILE_IN_FOG number
+---@field ALLOW_WHILE_IN_RAIN number
+---@field ALLOW_WHILE_IN_LIGHTNING_STORM number
+---@field IGNORE_WEATHER_CONDITIONS number
+---@field ALLOW_WHILE_IN_DARKNESS number
+---@field ALLOW_WHILE_IN_LIGHT number
 
 ---@class spell_attr10
----@field public ALLOW_WHILE_IN_SHADOW_FORM number
----@field public ALLOW_WHILE_IN_LIGHT_FORM number
----@field public ALLOW_WHILE_IN_ETHEREAL_STATE number
----@field public ALLOW_WHILE_IN_BATTLE number
----@field public ALLOW_WHILE_IN_PEACE number
----@field public ALLOW_WHILE_IN_CROUCH number
----@field public ALLOW_WHILE_ON_SNOW_TERRAIN number
----@field public ALLOW_WHILE_ON_ROCKY_TERRAIN number
----@field public ALLOW_WHILE_IN_DUNES number
----@field public ALLOW_WHILE_IN_LAVA number
----@field public ALLOW_WHILE_IN_QUICKSAND number
----@field public ALLOW_WHILE_IN_TRENCH number
----@field public ALLOW_WHILE_IN_JUNGLE number
----@field public ALLOW_WHILE_ON_MUD number
----@field public ALLOW_WHILE_IN_BLIZZARD number
----@field public ALLOW_WHILE_IN_SANDSTORM number
----@field public ALLOW_WHILE_IN_HURRICANE number
----@field public ALLOW_WHILE_IN_SLEET number
----@field public ALLOW_WHILE_IN_HAILSTORM number
----@field public IGNORE_ENVIRONMENTAL_DAMAGE number
----@field public IGNORE_WIND_CONDITIONS number
----@field public IGNORE_WATER_CONDITIONS number
----@field public IGNORE_TEMPERATURE_CONDITIONS number
----@field public ALLOW_WHILE_IN_TROPICAL_STORM number
----@field public ALLOW_WHILE_IN_CYCLONE number
----@field public ALLOW_WHILE_IN_TEMPEST number
----@field public IGNORE_VISIBILITY_CONDITIONS number
----@field public ALLOW_WHILE_IN_OVERCAST number
----@field public ALLOW_WHILE_IN_CLEAR_WEATHER number
----@field public ALLOW_WHILE_IN_MIST number
----@field public ALLOW_WHILE_IN_SUNLIGHT number
----@field public ALLOW_WHILE_IN_SHADOWS number
+---@field ALLOW_WHILE_IN_SHADOW_FORM number
+---@field ALLOW_WHILE_IN_LIGHT_FORM number
+---@field ALLOW_WHILE_IN_ETHEREAL_STATE number
+---@field ALLOW_WHILE_IN_BATTLE number
+---@field ALLOW_WHILE_IN_PEACE number
+---@field ALLOW_WHILE_IN_CROUCH number
+---@field ALLOW_WHILE_ON_SNOW_TERRAIN number
+---@field ALLOW_WHILE_ON_ROCKY_TERRAIN number
+---@field ALLOW_WHILE_IN_DUNES number
+---@field ALLOW_WHILE_IN_LAVA number
+---@field ALLOW_WHILE_IN_QUICKSAND number
+---@field ALLOW_WHILE_IN_TRENCH number
+---@field ALLOW_WHILE_IN_JUNGLE number
+---@field ALLOW_WHILE_ON_MUD number
+---@field ALLOW_WHILE_IN_BLIZZARD number
+---@field ALLOW_WHILE_IN_SANDSTORM number
+---@field ALLOW_WHILE_IN_HURRICANE number
+---@field ALLOW_WHILE_IN_SLEET number
+---@field ALLOW_WHILE_IN_HAILSTORM number
+---@field IGNORE_ENVIRONMENTAL_DAMAGE number
+---@field IGNORE_WIND_CONDITIONS number
+---@field IGNORE_WATER_CONDITIONS number
+---@field IGNORE_TEMPERATURE_CONDITIONS number
+---@field ALLOW_WHILE_IN_TROPICAL_STORM number
+---@field ALLOW_WHILE_IN_CYCLONE number
+---@field ALLOW_WHILE_IN_TEMPEST number
+---@field IGNORE_VISIBILITY_CONDITIONS number
+---@field ALLOW_WHILE_IN_OVERCAST number
+---@field ALLOW_WHILE_IN_CLEAR_WEATHER number
+---@field ALLOW_WHILE_IN_MIST number
+---@field ALLOW_WHILE_IN_SUNLIGHT number
+---@field ALLOW_WHILE_IN_SHADOWS number
 
 ---@class spell_attr11
----@field public ALLOW_WHILE_IN_CORRUPTED_STATE number
----@field public ALLOW_WHILE_IN_PURITY_STATE number
----@field public IGNORE_TARGET_ALIGNMENT number
----@field public IGNORE_CASTER_ALIGNMENT number
----@field public ALLOW_WHILE_IN_ENERGY_FIELD number
----@field public ALLOW_WHILE_ON_MOUNTAIN number
----@field public ALLOW_WHILE_IN_VALLEY number
----@field public ALLOW_WHILE_IN_RUINS number
----@field public ALLOW_WHILE_ON_PLATFORM number
----@field public ALLOW_WHILE_ON_BALCONY number
----@field public ALLOW_WHILE_ON_RAMP number
----@field public ALLOW_WHILE_IN_CAVE number
----@field public ALLOW_WHILE_IN_CASTLE number
----@field public ALLOW_WHILE_IN_FOREST number
----@field public ALLOW_WHILE_IN_FIELD number
----@field public ALLOW_WHILE_IN_GLACIER number
----@field public ALLOW_WHILE_IN_VOLCANO number
----@field public ALLOW_WHILE_ON_BRIDGE number
----@field public ALLOW_WHILE_ON_STAIRCASE number
----@field public ALLOW_WHILE_ON_ROOF number
----@field public ALLOW_WHILE_IN_VILLAGE number
----@field public ALLOW_WHILE_IN_CITY number
----@field public ALLOW_WHILE_IN_TOWN number
----@field public ALLOW_WHILE_IN_HAMLET number
----@field public ALLOW_WHILE_IN_SANCTUARY number
----@field public ALLOW_WHILE_IN_MONASTERY number
----@field public ALLOW_WHILE_IN_TEMPLE number
----@field public ALLOW_WHILE_IN_SHRINE number
----@field public ALLOW_WHILE_IN_CITADEL number
----@field public ALLOW_WHILE_IN_OUTPOST number
----@field public ALLOW_WHILE_IN_STRONGHOLD number
----@field public ALLOW_WHILE_IN_BASTION number
+---@field ALLOW_WHILE_IN_CORRUPTED_STATE number
+---@field ALLOW_WHILE_IN_PURITY_STATE number
+---@field IGNORE_TARGET_ALIGNMENT number
+---@field IGNORE_CASTER_ALIGNMENT number
+---@field ALLOW_WHILE_IN_ENERGY_FIELD number
+---@field ALLOW_WHILE_ON_MOUNTAIN number
+---@field ALLOW_WHILE_IN_VALLEY number
+---@field ALLOW_WHILE_IN_RUINS number
+---@field ALLOW_WHILE_ON_PLATFORM number
+---@field ALLOW_WHILE_ON_BALCONY number
+---@field ALLOW_WHILE_ON_RAMP number
+---@field ALLOW_WHILE_IN_CAVE number
+---@field ALLOW_WHILE_IN_CASTLE number
+---@field ALLOW_WHILE_IN_FOREST number
+---@field ALLOW_WHILE_IN_FIELD number
+---@field ALLOW_WHILE_IN_GLACIER number
+---@field ALLOW_WHILE_IN_VOLCANO number
+---@field ALLOW_WHILE_ON_BRIDGE number
+---@field ALLOW_WHILE_ON_STAIRCASE number
+---@field ALLOW_WHILE_ON_ROOF number
+---@field ALLOW_WHILE_IN_VILLAGE number
+---@field ALLOW_WHILE_IN_CITY number
+---@field ALLOW_WHILE_IN_TOWN number
+---@field ALLOW_WHILE_IN_HAMLET number
+---@field ALLOW_WHILE_IN_SANCTUARY number
+---@field ALLOW_WHILE_IN_MONASTERY number
+---@field ALLOW_WHILE_IN_TEMPLE number
+---@field ALLOW_WHILE_IN_SHRINE number
+---@field ALLOW_WHILE_IN_CITADEL number
+---@field ALLOW_WHILE_IN_OUTPOST number
+---@field ALLOW_WHILE_IN_STRONGHOLD number
+---@field ALLOW_WHILE_IN_BASTION number
 
 ---@class spell_attr12
----@field public ALLOW_WHILE_IN_CRYSTAL_CAVE number
----@field public ALLOW_WHILE_IN_GEM_FIELD number
----@field public ALLOW_WHILE_IN_MINERAL_RICH_AREA number
----@field public ALLOW_WHILE_IN_GAS_FIELD number
----@field public ALLOW_WHILE_IN_ETHER_FIELD number
----@field public ALLOW_WHILE_IN_DIMENSIONAL_RIFT number
----@field public ALLOW_WHILE_IN_PARALLEL_DIMENSION number
----@field public ALLOW_WHILE_IN_ALTERNATE_REALITY number
----@field public ALLOW_WHILE_IN_POCKET_DIMENSION number
----@field public ALLOW_WHILE_IN_VOID number
----@field public ALLOW_WHILE_IN_ABYSS number
----@field public ALLOW_WHILE_IN_MIRAGE number
----@field public ALLOW_WHILE_IN_HALLUCINATION number
----@field public ALLOW_WHILE_IN_FATA_MORGANA number
----@field public ALLOW_WHILE_IN_COSMIC_VORTEX number
----@field public ALLOW_WHILE_IN_SOLAR_FLARE number
----@field public ALLOW_WHILE_IN_LUNAR_ECLIPSE number
----@field public ALLOW_WHILE_IN_SUPERNOVA number
----@field public ALLOW_WHILE_IN_GALACTIC_SHOCKWAVE number
----@field public ALLOW_WHILE_IN_PLANETARY_RING number
----@field public ALLOW_WHILE_ON_ASTERIOD number
----@field public ALLOW_WHILE_ON_COMET number
----@field public ALLOW_WHILE_ON_STAR number
----@field public ALLOW_WHILE_ON_DWARF_PLANET number
----@field public ALLOW_WHILE_ON_GAS_GIANT number
----@field public ALLOW_WHILE_ON_ICE_PLANET number
----@field public ALLOW_WHILE_ON_LAVA_PLANET number
----@field public ALLOW_WHILE_ON_METEOR_SHOWER number
----@field public ALLOW_WHILE_IN_SOLAR_STORM number
----@field public ALLOW_WHILE_IN_ORBIT number
----@field public ALLOW_WHILE_ON_SATELLITE number
----@field public ALLOW_WHILE_ON_SPACE_STATION number
+---@field ALLOW_WHILE_IN_CRYSTAL_CAVE number
+---@field ALLOW_WHILE_IN_GEM_FIELD number
+---@field ALLOW_WHILE_IN_MINERAL_RICH_AREA number
+---@field ALLOW_WHILE_IN_GAS_FIELD number
+---@field ALLOW_WHILE_IN_ETHER_FIELD number
+---@field ALLOW_WHILE_IN_DIMENSIONAL_RIFT number
+---@field ALLOW_WHILE_IN_PARALLEL_DIMENSION number
+---@field ALLOW_WHILE_IN_ALTERNATE_REALITY number
+---@field ALLOW_WHILE_IN_POCKET_DIMENSION number
+---@field ALLOW_WHILE_IN_VOID number
+---@field ALLOW_WHILE_IN_ABYSS number
+---@field ALLOW_WHILE_IN_MIRAGE number
+---@field ALLOW_WHILE_IN_HALLUCINATION number
+---@field ALLOW_WHILE_IN_FATA_MORGANA number
+---@field ALLOW_WHILE_IN_COSMIC_VORTEX number
+---@field ALLOW_WHILE_IN_SOLAR_FLARE number
+---@field ALLOW_WHILE_IN_LUNAR_ECLIPSE number
+---@field ALLOW_WHILE_IN_SUPERNOVA number
+---@field ALLOW_WHILE_IN_GALACTIC_SHOCKWAVE number
+---@field ALLOW_WHILE_IN_PLANETARY_RING number
+---@field ALLOW_WHILE_ON_ASTERIOD number
+---@field ALLOW_WHILE_ON_COMET number
+---@field ALLOW_WHILE_ON_STAR number
+---@field ALLOW_WHILE_ON_DWARF_PLANET number
+---@field ALLOW_WHILE_ON_GAS_GIANT number
+---@field ALLOW_WHILE_ON_ICE_PLANET number
+---@field ALLOW_WHILE_ON_LAVA_PLANET number
+---@field ALLOW_WHILE_ON_METEOR_SHOWER number
+---@field ALLOW_WHILE_IN_SOLAR_STORM number
+---@field ALLOW_WHILE_IN_ORBIT number
+---@field ALLOW_WHILE_ON_SATELLITE number
+---@field ALLOW_WHILE_ON_SPACE_STATION number
 
 ---@class spell_attr13
----@field public ALLOW_WHILE_IN_RITUAL number
----@field public ALLOW_WHILE_IN_CEREMONY number
----@field public ALLOW_WHILE_IN_FESTIVAL number
----@field public ALLOW_WHILE_IN_PROCESSION number
----@field public ALLOW_WHILE_IN_MEDITATION number
----@field public ALLOW_WHILE_IN_CHANTING number
----@field public ALLOW_WHILE_IN_PRAYER number
----@field public ALLOW_WHILE_IN_DEVOTION number
----@field public ALLOW_WHILE_IN_EXORCISM number
----@field public ALLOW_WHILE_IN_BLESSING number
----@field public ALLOW_WHILE_IN_CONSECRATION number
----@field public ALLOW_WHILE_IN_CURSE number
----@field public ALLOW_WHILE_IN_BINDING number
----@field public ALLOW_WHILE_IN_SEALING number
----@field public ALLOW_WHILE_IN_SANCTIFICATION number
----@field public ALLOW_WHILE_IN_ABSOLUTION number
----@field public ALLOW_WHILE_IN_ANOINTING number
----@field public ALLOW_WHILE_IN_DIVINATION number
----@field public ALLOW_WHILE_IN_SUMMONING number
----@field public ALLOW_WHILE_IN_BANISHING number
----@field public ALLOW_WHILE_IN_ELEVATION number
----@field public ALLOW_WHILE_IN_TRANSFIGURATION number
----@field public ALLOW_WHILE_IN_COMMUNION number
----@field public ALLOW_WHILE_IN_LITURGY number
----@field public ALLOW_WHILE_IN_INCANTATION number
----@field public ALLOW_WHILE_IN_MANTRA number
----@field public ALLOW_WHILE_IN_SUTRA number
----@field public ALLOW_WHILE_IN_SERMON number
----@field public ALLOW_WHILE_IN_EPIPHANY number
----@field public ALLOW_WHILE_IN_PROPHECY number
----@field public ALLOW_WHILE_IN_REVELATION number
----@field public ALLOW_WHILE_IN_VISION number
+---@field ALLOW_WHILE_IN_RITUAL number
+---@field ALLOW_WHILE_IN_CEREMONY number
+---@field ALLOW_WHILE_IN_FESTIVAL number
+---@field ALLOW_WHILE_IN_PROCESSION number
+---@field ALLOW_WHILE_IN_MEDITATION number
+---@field ALLOW_WHILE_IN_CHANTING number
+---@field ALLOW_WHILE_IN_PRAYER number
+---@field ALLOW_WHILE_IN_DEVOTION number
+---@field ALLOW_WHILE_IN_EXORCISM number
+---@field ALLOW_WHILE_IN_BLESSING number
+---@field ALLOW_WHILE_IN_CONSECRATION number
+---@field ALLOW_WHILE_IN_CURSE number
+---@field ALLOW_WHILE_IN_BINDING number
+---@field ALLOW_WHILE_IN_SEALING number
+---@field ALLOW_WHILE_IN_SANCTIFICATION number
+---@field ALLOW_WHILE_IN_ABSOLUTION number
+---@field ALLOW_WHILE_IN_ANOINTING number
+---@field ALLOW_WHILE_IN_DIVINATION number
+---@field ALLOW_WHILE_IN_SUMMONING number
+---@field ALLOW_WHILE_IN_BANISHING number
+---@field ALLOW_WHILE_IN_ELEVATION number
+---@field ALLOW_WHILE_IN_TRANSFIGURATION number
+---@field ALLOW_WHILE_IN_COMMUNION number
+---@field ALLOW_WHILE_IN_LITURGY number
+---@field ALLOW_WHILE_IN_INCANTATION number
+---@field ALLOW_WHILE_IN_MANTRA number
+---@field ALLOW_WHILE_IN_SUTRA number
+---@field ALLOW_WHILE_IN_SERMON number
+---@field ALLOW_WHILE_IN_EPIPHANY number
+---@field ALLOW_WHILE_IN_PROPHECY number
+---@field ALLOW_WHILE_IN_REVELATION number
+---@field ALLOW_WHILE_IN_VISION number
 
 ---@class spell_attr14
----@field public ALLOW_WHILE_IN_ASTRAL_PLANE number
----@field public ALLOW_WHILE_IN_ETHEREAL_REALM number
----@field public ALLOW_WHILE_IN_SPIRIT_WORLD number
----@field public ALLOW_WHILE_IN_OTHERWORLD number
----@field public ALLOW_WHILE_IN_DREAMSTATE number
----@field public ALLOW_WHILE_IN_PARADISE number
----@field public ALLOW_WHILE_IN_NETHERWORLD number
----@field public ALLOW_WHILE_IN_UTOPIA number
----@field public ALLOW_WHILE_IN_ARCADIA number
----@field public ALLOW_WHILE_IN_ELYSIUM number
----@field public ALLOW_WHILE_IN_VALHALLA number
----@field public ALLOW_WHILE_IN_HEAVEN number
----@field public ALLOW_WHILE_IN_PURGATORY number
----@field public ALLOW_WHILE_IN_TARTARUS number
----@field public ALLOW_WHILE_IN_HADES number
----@field public ALLOW_WHILE_IN_LIMBO number
----@field public ALLOW_WHILE_IN_BIFROST number
----@field public ALLOW_WHILE_IN_ASGARD number
----@field public ALLOW_WHILE_IN_NIFLHEIM number
----@field public ALLOW_WHILE_IN_MIDGARD number
----@field public ALLOW_WHILE_IN_JOTUNHEIM number
----@field public ALLOW_WHILE_IN_MUSPELHEIM number
----@field public ALLOW_WHILE_IN_ALFHEIM number
----@field public ALLOW_WHILE_IN_VANAHEIM number
----@field public ALLOW_WHILE_IN_HELHEIM number
----@field public ALLOW_WHILE_IN_VALHALLA_REALM number
----@field public ALLOW_WHILE_IN_DEMONIC_REALM number
----@field public ALLOW_WHILE_IN_ANGELIC_REALM number
----@field public ALLOW_WHILE_IN_DIVINE_REALM number
----@field public ALLOW_WHILE_IN_MYTHICAL_REALM number
----@field public ALLOW_WHILE_IN_SACRED_REALM number
----@field public ALLOW_WHILE_IN_CELESTIAL_REALM number
+---@field ALLOW_WHILE_IN_ASTRAL_PLANE number
+---@field ALLOW_WHILE_IN_ETHEREAL_REALM number
+---@field ALLOW_WHILE_IN_SPIRIT_WORLD number
+---@field ALLOW_WHILE_IN_OTHERWORLD number
+---@field ALLOW_WHILE_IN_DREAMSTATE number
+---@field ALLOW_WHILE_IN_PARADISE number
+---@field ALLOW_WHILE_IN_NETHERWORLD number
+---@field ALLOW_WHILE_IN_UTOPIA number
+---@field ALLOW_WHILE_IN_ARCADIA number
+---@field ALLOW_WHILE_IN_ELYSIUM number
+---@field ALLOW_WHILE_IN_VALHALLA number
+---@field ALLOW_WHILE_IN_HEAVEN number
+---@field ALLOW_WHILE_IN_PURGATORY number
+---@field ALLOW_WHILE_IN_TARTARUS number
+---@field ALLOW_WHILE_IN_HADES number
+---@field ALLOW_WHILE_IN_LIMBO number
+---@field ALLOW_WHILE_IN_BIFROST number
+---@field ALLOW_WHILE_IN_ASGARD number
+---@field ALLOW_WHILE_IN_NIFLHEIM number
+---@field ALLOW_WHILE_IN_MIDGARD number
+---@field ALLOW_WHILE_IN_JOTUNHEIM number
+---@field ALLOW_WHILE_IN_MUSPELHEIM number
+---@field ALLOW_WHILE_IN_ALFHEIM number
+---@field ALLOW_WHILE_IN_VANAHEIM number
+---@field ALLOW_WHILE_IN_HELHEIM number
+---@field ALLOW_WHILE_IN_VALHALLA_REALM number
+---@field ALLOW_WHILE_IN_DEMONIC_REALM number
+---@field ALLOW_WHILE_IN_ANGELIC_REALM number
+---@field ALLOW_WHILE_IN_DIVINE_REALM number
+---@field ALLOW_WHILE_IN_MYTHICAL_REALM number
+---@field ALLOW_WHILE_IN_SACRED_REALM number
+---@field ALLOW_WHILE_IN_CELESTIAL_REALM number

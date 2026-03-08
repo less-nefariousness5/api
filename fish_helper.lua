@@ -17,16 +17,16 @@
 --- and handling loot in a flexible way (all, gold-only, whitelist, blacklist, or custom filter).
 
 ---@class fish_helper
----@field public bobber_cache table<game_object, number>  # key: bobber object, value: core.time() of last bite/animation
----@field public is_fish_bobber fun(self: fish_helper, obj: game_object): boolean
----@field public does_bobber_have_fish fun(self: fish_helper, obj: game_object): boolean
----@field public get_last_animation_time fun(self: fish_helper, obj: game_object): number
----@field public open_loot fun(self: fish_helper, target: game_object): boolean, string
----@field public loot_all fun(self: fish_helper): boolean, {looted:integer, skipped:integer, gold:integer}
----@field public loot_gold_only fun(self: fish_helper): boolean, {looted:integer, skipped:integer, gold:integer}
----@field public loot_items_whitelist fun(self: fish_helper, whitelist: number[], loot_gold?: boolean): boolean, {looted:integer, skipped:integer, gold:integer}
----@field public loot_items_excluding_blacklist fun(self: fish_helper, blacklist: number[], loot_gold?: boolean): boolean, {looted:integer, skipped:integer, gold:integer}
----@field public loot_with_filter fun(self: fish_helper, filter: fun(slot: loot_slot): boolean): boolean, {looted:integer, skipped:integer, gold:integer}
+---@field bobber_cache table<game_object, number>  # key: bobber object, value: core.time() of last bite/animation
+---@field is_fish_bobber fun(self: fish_helper, obj: game_object): boolean
+---@field does_bobber_have_fish fun(self: fish_helper, obj: game_object): boolean
+---@field get_last_animation_time fun(self: fish_helper, obj: game_object): number
+---@field open_loot fun(self: fish_helper, target: game_object): boolean, string
+---@field loot_all fun(self: fish_helper): boolean, {looted:integer, skipped:integer, gold:integer}
+---@field loot_gold_only fun(self: fish_helper): boolean, {looted:integer, skipped:integer, gold:integer}
+---@field loot_items_whitelist fun(self: fish_helper, whitelist: number[], loot_gold?: boolean): boolean, {looted:integer, skipped:integer, gold:integer}
+---@field loot_items_excluding_blacklist fun(self: fish_helper, blacklist: number[], loot_gold?: boolean): boolean, {looted:integer, skipped:integer, gold:integer}
+---@field loot_with_filter fun(self: fish_helper, filter: fun(slot: loot_slot): boolean): boolean, {looted:integer, skipped:integer, gold:integer}
 
 --========================
 -- Bobber identification

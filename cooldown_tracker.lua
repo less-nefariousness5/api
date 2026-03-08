@@ -10,23 +10,23 @@
 --- to extend the internal whitelists/lists safely at runtime.
 
 ---@class cooldown_tracker
----@field public has_any_relevant_defensive_up fun(self: cooldown_tracker, unit: game_object): boolean
----@field public is_spell_ready fun(self: cooldown_tracker, unit: game_object, spell_id: number): boolean
----@field public has_any_kick_up fun(self: cooldown_tracker, caster: game_object, target: game_object, include_los: boolean): boolean
----@field public is_any_kick_around fun(self: cooldown_tracker, enemy_list: game_objects_table, include_los: boolean): boolean
----@field public is_spell_castable_to_player fun(self: cooldown_tracker, spell_id: number, caster: game_object, target: game_object, include_los: boolean): boolean
----@field public is_spell_in_range fun(self: cooldown_tracker, spell_id: number, caster: game_object, target: game_object): boolean
----@field public is_spell_los fun(self: cooldown_tracker, spell_id: number, caster: game_object, target: game_object): boolean
+---@field has_any_relevant_defensive_up fun(self: cooldown_tracker, unit: game_object): boolean
+---@field is_spell_ready fun(self: cooldown_tracker, unit: game_object, spell_id: number): boolean
+---@field has_any_kick_up fun(self: cooldown_tracker, caster: game_object, target: game_object, include_los: boolean): boolean
+---@field is_any_kick_around fun(self: cooldown_tracker, enemy_list: game_objects_table, include_los: boolean): boolean
+---@field is_spell_castable_to_player fun(self: cooldown_tracker, spell_id: number, caster: game_object, target: game_object, include_los: boolean): boolean
+---@field is_spell_in_range fun(self: cooldown_tracker, spell_id: number, caster: game_object, target: game_object): boolean
+---@field is_spell_los fun(self: cooldown_tracker, spell_id: number, caster: game_object, target: game_object): boolean
 --- This function is the base of everything and it will return the amount of seconds left of cooldown of the spell, however if the spell you request doesnt match class or spec of the unit then it will return 999.
----@field public get_remaining_cooldown fun(self: cooldown_tracker, unit: game_object, spell_id: number): number
----@field public get_last_cast_time fun(self: cooldown_tracker, unit: game_object, spell_id: number): number
+---@field get_remaining_cooldown fun(self: cooldown_tracker, unit: game_object, spell_id: number): number
+---@field get_last_cast_time fun(self: cooldown_tracker, unit: game_object, spell_id: number): number
 
 -- NEW: whitelist/list extension APIs (safe to call every frame; duplicates rejected)
 ---@class cooldown_tracker
----@field public add_self_cast_spell fun(self: cooldown_tracker, spellDef: cooldown_tracker.SpellDef, overwrite?: boolean): boolean, string
----@field public add_target_spell fun(self: cooldown_tracker, spellDef: cooldown_tracker.SpellDef, overwrite?: boolean): boolean, string
----@field public add_relevant_kick fun(self: cooldown_tracker, spellId: number): boolean, string
----@field public add_relevant_defensive fun(self: cooldown_tracker, spellId: number): boolean, string
+---@field add_self_cast_spell fun(self: cooldown_tracker, spellDef: cooldown_tracker.SpellDef, overwrite?: boolean): boolean, string
+---@field add_target_spell fun(self: cooldown_tracker, spellDef: cooldown_tracker.SpellDef, overwrite?: boolean): boolean, string
+---@field add_relevant_kick fun(self: cooldown_tracker, spellId: number): boolean, string
+---@field add_relevant_defensive fun(self: cooldown_tracker, spellId: number): boolean, string
 
 ---@class cooldown_tracker.SpellDef
 ---@field name string       -- Display name (only cosmetic for the tracker)

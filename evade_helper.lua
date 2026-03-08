@@ -7,20 +7,20 @@
 -- Warning: Access with ":", not "."
 
 ---@class evade_helper
----@field public get_database_info fun(self: evade_helper): any
----@field public get_geometry fun(self: evade_helper): any
----@field public get_geometry_inst fun(self: evade_helper): any
----@field public get_customizations fun(self: evade_helper): any
----@field public is_point_safe fun(self: evade_helper, point: vec3): boolean
----@field public is_point_safe_full fun(self: evade_helper, point: vec3, fall_threshold?: number): boolean
----@field public add_debug_spells fun(self: evade_helper, key: string, add_cone: boolean, add_rect: boolean, add_circle: boolean): any
+---@field get_database_info fun(self: evade_helper): any
+---@field get_geometry fun(self: evade_helper): any
+---@field get_geometry_inst fun(self: evade_helper): any
+---@field get_customizations fun(self: evade_helper): any
+---@field is_point_safe fun(self: evade_helper, point: vec3): boolean
+---@field is_point_safe_full fun(self: evade_helper, point: vec3, fall_threshold?: number): boolean
+---@field add_debug_spells fun(self: evade_helper, key: string, add_cone: boolean, add_rect: boolean, add_circle: boolean): any
 --- Simplified adders (safe to call every frame; dedup by key and by geometry+object_id)
----@field public add_custom fun(self: evade_helper, key: string, data: table): boolean, string
----@field public add_circle fun(self: evade_helper, key: string, params: table): boolean, string
----@field public add_rect fun(self: evade_helper, key: string, params: table): boolean, string
----@field public add_cone fun(self: evade_helper, key: string, params: table): boolean, string
----@field public has_entry fun(self: evade_helper, key: string): boolean
----@field public clear_cache fun(self: evade_helper): nil
+---@field add_custom fun(self: evade_helper, key: string, data: table): boolean, string
+---@field add_circle fun(self: evade_helper, key: string, params: table): boolean, string
+---@field add_rect fun(self: evade_helper, key: string, params: table): boolean, string
+---@field add_cone fun(self: evade_helper, key: string, params: table): boolean, string
+---@field has_entry fun(self: evade_helper, key: string): boolean
+---@field clear_cache fun(self: evade_helper): nil
 
 -- ===============
 -- param reference

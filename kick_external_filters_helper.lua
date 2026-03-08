@@ -19,12 +19,12 @@
 ---@field count number|nil   -- opts.count  (diagnostic echo)
 
 ---@class kick_external_filters
----@field public register fun(self: kick_external_filters, name: string, func: fun(local_player: game_object, solution_table: table, spell_to_kick_table: table, kick_target: game_object, prediction_data: table): boolean, string|nil, opts: table|nil): nil
----@field public unregister fun(self: kick_external_filters, name: string): nil
----@field public clear fun(self: kick_external_filters): nil
----@field public list fun(self: kick_external_filters): table              -- snapshot of active filters (for debug UIs)
----@field public touch fun(self: kick_external_filters, name: string, opts_patch: table): boolean
----@field public apply fun(self: kick_external_filters, local_player: game_object, solution_table: table, spell_to_kick_table: table, kick_target: game_object, prediction_data: table): boolean, external_filter_info|nil
+---@field register fun(self: kick_external_filters, name: string, func: fun(local_player: game_object, solution_table: table, spell_to_kick_table: table, kick_target: game_object, prediction_data: table): boolean, string|nil, opts: table|nil): nil
+---@field unregister fun(self: kick_external_filters, name: string): nil
+---@field clear fun(self: kick_external_filters): nil
+---@field list fun(self: kick_external_filters): table              -- snapshot of active filters (for debug UIs)
+---@field touch fun(self: kick_external_filters, name: string, opts_patch: table): boolean
+---@field apply fun(self: kick_external_filters, local_player: game_object, solution_table: table, spell_to_kick_table: table, kick_target: game_object, prediction_data: table): boolean, external_filter_info|nil
 -- Notes:
 -- • type="block": your func returns FALSE to block the kick.
 -- • type="allow": when ANY allow filter exists, at least one must return TRUE or the kick is blocked.
