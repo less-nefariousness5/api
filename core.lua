@@ -762,45 +762,6 @@ function core.game_ui.get_vendor_item_count()
     return 0
 end
 
----@class quest_log_info
----@field title string The title of the quest.
----@field level integer The level of the quest.
----@field suggested_group string The suggested group size for the quest.
----@field is_header boolean Whether this entry is a header (zone name) rather than a quest.
----@field is_collapsed boolean Whether this header is collapsed.
----@field is_complete integer Whether the quest is complete (1 = complete, -1 = failed, 0 = in progress).
----@field frequency integer The quest frequency (0 = normal, 1 = daily, 2 = weekly).
----@field quest_id integer The unique quest ID.
----@field start_event boolean Whether the quest has a start event.
----@field display_quest_id boolean Whether the quest ID should be displayed.
----@field is_on_map boolean Whether the quest is shown on the map.
----@field has_local_poi boolean Whether the quest has a local point of interest.
----@field is_task boolean Whether the quest is a bonus objective / world quest task.
----@field is_bounty boolean Whether the quest is a bounty (emissary) quest.
----@field is_story boolean Whether the quest is part of the zone story line.
----@field is_hidden boolean Whether the quest is hidden.
----@field is_scaling boolean Whether the quest scales with the player's level.
-
---- Returns information about a quest in the quest log.
---- Note: quest_log_id is 1-indexed (internally adjusted to 0-indexed).
----@param quest_log_id integer The 1-based index of the quest log entry.
----@return quest_log_info A table containing the quest log entry information.
-function core.game_ui.get_quest_log_info(quest_log_id)
-    return {}
-end
-
---- Returns the total number of entries in the quest log (including headers).
----@return integer The number of quest log entries.
-function core.game_ui.get_quest_log_count()
-    return 0
-end
-
---- Returns a list of all completed quest IDs for the player.
----@return integer[] An array of completed quest IDs.
-function core.game_ui.get_all_completed_quest_ids()
-    return {}
-end
-
 ---@class input
 core.input = {}
 
@@ -1000,7 +961,7 @@ function core.input.set_pitch(radians)
     return nil
 end
 
---- Stops the local player’s current attack.
+--- Stops the local player's current attack.
 ---@return nil
 function core.input.stop_attack()
     return nil
@@ -1588,7 +1549,7 @@ end
 --- Checks whether a spell is in range from a specified caster to a target.
 --- If `caster` is not provided, it defaults to the local player.
 --- If `target` is not provided, it defaults to the current target of the local player.
---- This function internally evaluates the spell’s range data and both game object positions.
+--- This function internally evaluates the spell's range data and both game object positions.
 ---@param spell_id integer The ID of the spell to check.
 ---@param target? game_object (optional) The target game object to check range against. Defaults to current target if omitted.
 ---@param caster? game_object (optional) The caster game object. Defaults to the local player if omitted.
@@ -1598,7 +1559,7 @@ function core.spell_book.is_spell_in_range(spell_id, target, caster)
 end
 
 --- Checks whether an item has a built-in range definition (e.g., targetable items).
---- Engine should resolve the item’s underlying “use spell” and report if range data exists.
+--- Engine should resolve the item's underlying "use spell" and report if range data exists.
 ---@param item_id integer
 ---@return boolean  -- true if the item supports range checking
 function core.spell_book.has_item_range(item_id)
@@ -1607,7 +1568,7 @@ function core.spell_book.has_item_range(item_id)
 end
 
 --- Checks whether an item can be used on `target` with respect to range.
---- Internally maps the item to its “use spell” and performs a spell range check.
+--- Internally maps the item to its "use spell" and performs a spell range check.
 --- If `target` is nil, the engine may default to the current target.
 ---@param item_id integer
 ---@param target? game_object
@@ -1884,15 +1845,6 @@ function core.graphics.rect_2d_filled(top_left_point, width, height, color, roun
 ---@param has_volume? boolean Add volume. Default true.
 function core.graphics.line_3d(start_point, end_point, color, thickness, fade_factor, has_volume) end
 
---- Draw 3D Rectangle Outline
--- ---@param p1 vec3 The first corner point of the rectangle in 3D space.
--- ---@param p2 vec3 The second corner point of the rectangle in 3D space.
--- ---@param p3 vec3 The third corner point of the rectangle in 3D space.
--- ---@param p4 vec3 The fourth corner point of the rectangle in 3D space.
--- ---@param color color The color of the rectangle outline.
--- ---@param thickness? number The thickness of the outline. Default is 1.
--- function core.graphics.rect_3d(p1, p2, p3, p4, color, thickness) end
-
 --- Draw 3D Rectangle Outline New
 ---@param origin vec3
 ---@param destination vec3
@@ -2010,6 +1962,70 @@ function core.graphics.render_system_menu() end
 function core.graphics.capture_next_mouse_input() end
 
 function core.graphics.capture_next_keyboard_input() end
+
+--- Pushes a scissor (clipping) rectangle onto the clip stack.
+--- All subsequent draw calls will be clipped to the specified rectangular region
+--- until scissor_pop is called. Scissor calls can be nested.
+---
+--- Example:
+--- ```lua
+--- core.graphics.scissor_push(100, 150, 555, 200)
+--- core.graphics.rect_2d_filled(vec2.new(150, 50), 600, 400, color.red(255))
+--- core.graphics.scissor_pop()
+--- ```
+---
+---@param x number The x position of the clipping region top-left corner.
+---@param y number The y position of the clipping region top-left corner.
+---@param w number The width of the clipping region.
+---@param h number The height of the clipping region.
+---@return nil
+function core.graphics.scissor_push(x, y, w, h)
+    return nil
+end
+
+--- Pops the last scissor (clipping) rectangle from the clip stack.
+--- Must be called after a matching scissor_push to restore the previous clipping state.
+---
+--- Example:
+--- ```lua
+--- core.graphics.scissor_push(100, 150, 555, 200)
+--- core.graphics.rect_2d_filled(vec2.new(150, 50), 600, 400, color.red(255))
+--- core.graphics.scissor_pop()
+--- ```
+---
+---@return nil
+function core.graphics.scissor_pop()
+    return nil
+end
+
+--- Draws a previously loaded texture with custom UV coordinates, allowing rendering
+--- of a sub-region (e.g., a single icon from a sprite atlas).
+--- Use UV (0,0)-(1,1) to draw the full texture (same behavior as draw_texture).
+---
+--- Example (full texture):
+--- ```lua
+--- core.graphics.draw_texture_rect(tex_id, vec2.new(100, 100), 200, 100, 0, 0, 1, 1, color.white(180))
+--- ```
+---
+--- Example (sub-region from atlas):
+--- ```lua
+--- core.graphics.draw_texture_rect(tex_id, vec2.new(50, 50), 32, 32, 0.0, 0.0, 0.25, 0.25)
+--- ```
+---
+---@param texture_id integer The texture handle returned by core.graphics.load_texture.
+---@param top_left vec2 The screen position of the top-left corner.
+---@param width number The draw width in pixels.
+---@param height number The draw height in pixels.
+---@param uv0_x number The left UV coordinate of the source region (0.0 to 1.0).
+---@param uv0_y number The top UV coordinate of the source region (0.0 to 1.0).
+---@param uv1_x number The right UV coordinate of the source region (0.0 to 1.0).
+---@param uv1_y number The bottom UV coordinate of the source region (0.0 to 1.0).
+---@param color? color Optional tint color. Defaults to white.
+---@param is_for_window? boolean Optional. If true, draws to the current window draw list. Defaults to false (background).
+---@return nil
+function core.graphics.draw_texture_rect(texture_id, top_left, width, height, uv0_x, uv0_y, uv1_x, uv1_y, color, is_for_window)
+    return nil
+end
 
 ---@class menu
 core.menu = {}
@@ -2451,3 +2467,266 @@ end
 --         core.log("HTTP request failed. Code: " .. tostring(http_code))
 --     end
 -- end)
+
+---@class quest_log_entry
+---@field title string The title of the quest.
+---@field level integer The level of the quest.
+---@field suggested_group integer The suggested group size for the quest.
+---@field is_header boolean Whether this entry is a header (zone name) rather than a quest.
+---@field is_collapsed boolean Whether this header is collapsed.
+---@field is_complete integer|nil 1 if the quest is complete, -1 if failed, nil if in progress.
+---@field frequency integer The quest frequency (0 = normal, 1 = daily, 2 = weekly).
+---@field quest_id integer The unique quest ID.
+---@field is_task boolean Whether the quest is a bonus objective / world quest task.
+---@field is_story boolean Whether the quest is part of the zone story line.
+---@field start_event boolean Whether the quest has a start event.
+---@field is_on_map boolean Whether the quest is shown on the map.
+---@field has_local_poi boolean Whether the quest has a local point of interest.
+---@field is_hidden boolean Whether the quest is hidden.
+---@field quest_log_index integer The internal quest log index.
+
+---@class quest_objective
+---@field description string The objective description text.
+---@field objective_type string The type of objective.
+---@field is_completed boolean Whether this objective is completed.
+
+---@class gossip_reward
+---@field id integer The reward item ID.
+---@field quantity integer The reward quantity.
+---@field reward_type integer The reward type.
+
+---@class gossip_option
+---@field name string The gossip option name.
+---@field gossip_type string The gossip type.
+---@field gossip_option_id integer The gossip option ID.
+---@field icon integer The gossip icon.
+---@field status integer The gossip status.
+---@field spell_id integer The associated spell ID.
+---@field flags integer The gossip flags.
+---@field order_index integer The order index.
+---@field rewards gossip_reward[] The rewards for this gossip option.
+
+---@class gossip_quest
+---@field title string The quest title.
+---@field quest_level integer The quest level.
+---@field is_trivial boolean Whether the quest is trivial (grey).
+---@field frequency integer The quest frequency.
+---@field is_repeatable boolean Whether the quest is repeatable.
+---@field is_complete boolean Whether the quest is complete.
+---@field is_legendary boolean Whether the quest is legendary.
+---@field is_ignored boolean Whether the quest is ignored.
+---@field quest_id integer The unique quest ID.
+---@field is_important boolean Whether the quest is important.
+---@field is_meta boolean Whether the quest is a meta quest.
+
+---@class trainer_service_info
+---@field spell_name string The spell name.
+---@field rank string The spell rank.
+---@field category string The spell category.
+---@field expanded integer Whether the category is expanded.
+
+---@class trainer_service_cost
+---@field service_cost integer The service cost in copper.
+---@field talent_cost integer The talent cost.
+---@field profession_cost integer The profession cost.
+
+---@class item_spell_info
+---@field spell_name string The spell name.
+---@field spell_id integer The spell ID.
+
+---@class quest_item_info
+---@field name string The item name.
+---@field item_link string The item link string.
+---@field quality integer The item quality (0-8).
+---@field item_level integer The item level.
+---@field min_level integer The minimum required level.
+---@field item_type string The item type.
+---@field item_sub_type string The item sub type.
+---@field stack_count integer The max stack count.
+---@field equip_loc string The equip location.
+---@field texture integer The item texture ID.
+---@field sell_price integer The sell price in copper.
+---@field class_id integer The item class ID.
+---@field subclass_id integer The item subclass ID.
+---@field bind_type integer The bind type.
+---@field expansion_id integer The expansion ID.
+---@field set_id integer The set ID.
+---@field is_crafting_reagent boolean Whether the item is a crafting reagent.
+---@field description string The item description.
+
+core.quests = {}
+
+--- Accepts the currently offered quest.
+function core.quests.accept_quest() end
+
+--- Closes the quest dialog.
+function core.quests.close_quest() end
+
+--- Declines the currently offered quest.
+function core.quests.decline_quest() end
+
+--- Completes the currently active quest dialog.
+function core.quests.complete_quest() end
+
+--- Selects a quest reward choice.
+---@param choice? integer The reward choice index (default 0).
+function core.quests.get_quest_reward(choice) end
+
+--- Confirms acceptance of an auto-accept quest.
+function core.quests.confirm_accept_quest() end
+
+--- Returns the total number of entries in the quest log (including headers).
+---@return integer count The number of quest log entries.
+function core.quests.get_num_quest_log_entries() return 0 end
+
+--- Returns information about a quest in the quest log.
+---@param index integer The quest log index.
+---@return quest_log_entry entry A table containing the quest log entry information.
+function core.quests.get_quest_log_title(index) return {} end
+
+--- Checks if a quest has been flagged as completed (historically).
+---@param quest_id integer The quest ID.
+---@return boolean is_completed Whether the quest is flagged completed.
+function core.quests.is_quest_flagged_completed(quest_id) return false end
+
+--- Checks if the player is currently on a quest.
+---@param quest_id integer The quest ID.
+---@return boolean is_on_quest Whether the player is on the quest.
+function core.quests.is_on_quest(quest_id) return false end
+
+--- Selects a quest log entry (sets it as the active quest).
+---@param index integer The quest log index.
+function core.quests.select_quest_log_entry(index) end
+
+--- Returns the number of objectives for a quest.
+---@param quest_log_index integer The quest log index.
+---@return integer count The number of objectives.
+function core.quests.get_num_quest_leader_boards(quest_log_index) return 0 end
+
+--- Returns information about a quest objective.
+---@param obj_index integer The objective index.
+---@param quest_log_index? integer The quest log index (default 0).
+---@return quest_objective objective A table containing the objective information.
+function core.quests.get_quest_log_leader_board(obj_index, quest_log_index) return {} end
+
+--- Returns the item link for a quest log reward/choice item.
+---@param type string The type of item ("reward" or "choice").
+---@param index integer The item index.
+---@param quest_id? integer The quest ID (default 0).
+---@return string link The item link string.
+function core.quests.get_quest_log_item_link(type, index, quest_id) return "" end
+
+--- Adds a quest to the watch list (tracker).
+---@param index integer The quest log index.
+---@param watch_time? number The watch time duration (default 0).
+function core.quests.add_quest_watch(index, watch_time) end
+
+--- Removes a quest from the watch list (tracker).
+---@param index integer The quest log index.
+function core.quests.remove_quest_watch(index) end
+
+--- Pushes the selected quest to the quest detail frame.
+function core.quests.quest_log_push_quest() end
+
+--- Sets the selected quest for abandonment.
+function core.quests.set_abandon_quest() end
+
+--- Abandons the currently selected quest.
+function core.quests.abandon_quest() end
+
+--- Returns the list of gossip options from an NPC.
+---@return gossip_option[] options An array of gossip option tables.
+function core.quests.get_gossip_options() return {} end
+
+--- Selects a gossip option by ID.
+---@param id integer The gossip option ID.
+function core.quests.select_gossip_option(id) end
+
+--- Returns the list of available quests from a gossip NPC.
+---@return gossip_quest[] quests An array of available quest tables.
+function core.quests.get_gossip_available_quests() return {} end
+
+--- Returns the list of active quests from a gossip NPC.
+---@return gossip_quest[] quests An array of active quest tables.
+function core.quests.get_gossip_active_quests() return {} end
+
+--- Selects an available quest from the gossip frame.
+---@param quest_id integer The quest ID.
+function core.quests.select_gossip_available_quest(quest_id) end
+
+--- Selects an active quest from the gossip frame.
+---@param quest_id integer The quest ID.
+function core.quests.select_gossip_active_quest(quest_id) end
+
+--- Closes the gossip frame.
+function core.quests.close_gossip() end
+
+--- Returns whether the gossip frame is currently shown.
+---@return boolean is_shown Whether the gossip frame is shown.
+function core.quests.is_gossip_frame_shown() return false end
+
+--- Returns the number of trainer services available.
+---@return integer count The number of trainer services.
+function core.quests.get_num_trainer_services() return 0 end
+
+--- Returns information about a trainer service.
+---@param index integer The trainer service index.
+---@return trainer_service_info info A table containing the trainer service information.
+function core.quests.get_trainer_service_info(index) return {} end
+
+--- Returns the cost of a trainer service.
+---@param index integer The trainer service index.
+---@return trainer_service_cost cost A table containing the trainer service costs.
+function core.quests.get_trainer_service_cost(index) return {} end
+
+--- Buys a trainer service.
+---@param index integer The trainer service index.
+function core.quests.buy_trainer_service(index) end
+
+--- Returns spell information for an item.
+---@param item_id_or_link integer|string The item ID or item link.
+---@return item_spell_info info A table containing the item spell information.
+function core.quests.get_item_spell(item_id_or_link) return {} end
+
+--- Returns detailed information about an item.
+---@param item_id_or_link integer|string The item ID or item link.
+---@return quest_item_info info A table containing the item information.
+function core.quests.get_item_info(item_id_or_link) return {} end
+
+--- Returns the title of an active quest at the given index (NPC quest frame).
+---@param index integer The active quest index.
+---@return string title The quest title.
+function core.quests.get_active_title(index) return "" end
+
+--- Returns the title of an available quest at the given index (NPC quest frame).
+---@param index integer The available quest index.
+---@return string title The quest title.
+function core.quests.get_available_title(index) return "" end
+
+--- Returns the level of an active quest at the given index (NPC quest frame).
+---@param index integer The active quest index.
+---@return integer level The quest level.
+function core.quests.get_active_level(index) return 0 end
+
+--- Returns the level of an available quest at the given index (NPC quest frame).
+---@param index integer The available quest index.
+---@return integer level The quest level.
+function core.quests.get_available_level(index) return 0 end
+
+--- Selects an active quest from the NPC quest frame.
+---@param index integer The active quest index.
+function core.quests.select_active_quest(index) end
+
+--- Selects an available quest from the NPC quest frame.
+---@param index integer The available quest index.
+function core.quests.select_available_quest(index) end
+
+--- Returns the reward money for the current quest.
+---@return integer copper The reward money in copper.
+function core.quests.get_reward_money() return 0 end
+
+--- Returns the item link for a quest reward/choice item.
+---@param type string The type of item ("reward" or "choice").
+---@param index integer The item index.
+---@return string link The item link string.
+function core.quests.get_quest_item_link(type, index) return "" end
