@@ -4,6 +4,8 @@
 ---@field render fun(self:tree_node, header:string, callback:function):nil
 ---@field get_widget_bounds fun(self:tree_node):table -- Returns a table with 2 elements, min and max. get_widget_bounds().min is the left border of the widget, and .max is the right border.
 ---@field set_open_state fun(self:tree_node, state:boolean):nil
+---@field just_issued_state_change fun(self:tree_node):boolean -- Returns whether the open/close state just changed.
+---@field get_label fun(self:tree_node):string -- The menu element needs to be rendered for this to return a string different than ""
 ---@field set fun(self:checkbox, nil):nil -- Dummy function. Do not use. This is for you to be able to loop menu elements and set them all to default without any LUA errors.
 ---@field get fun(self:checkbox):nil
 
@@ -15,6 +17,7 @@
 ---@field get_widget_bounds fun(self:checkbox):table -- Returns a table with 2 elements, min and max. get_widget_bounds().min is the left border of the widget, and .max is the right border.
 ---@field set fun(self:checkbox, val:boolean):nil
 ---@field get_default fun(self:checkbox):boolean
+---@field get_label fun(self:checkbox):string -- The menu element needs to be rendered for this to return a string different than ""
 
 ---@class key_checkbox
 ---@field get_main_checkbox_state fun(self:key_checkbox):boolean
@@ -27,6 +30,9 @@
 ---@field get_mode fun(self:key_checkbox):integer -- 0 is hold, 1 is toggle, 2 is always
 ---@field get_type fun(self:key_checkbox)
 ---@field render fun(self:key_checkbox, label:string, tooltip:string|nil):nil
+---@field set_keybind_forced_state fun(self:key_checkbox, state:boolean):nil -- Forces the keybind to a specific state.
+---@field stop_forcing_keybind_state fun(self:key_checkbox):nil -- Stops forcing the keybind state.
+---@field get_label fun(self:key_checkbox):string -- The menu element needs to be rendered for this to return a string different than ""
 
 ---@class slider_int
 ---@field get fun():number
@@ -36,6 +42,8 @@
 ---@field get_widget_bounds fun(self:slider_int):table -- Returns a table with 2 elements, min and max. get_widget_bounds().min is the left border of the widget, and .max is the right border.
 ---@field set fun(self:slider_int, val:integer):nil
 ---@field get fun(self:slider_int):integer
+---@field get_default fun(self:slider_int):integer
+---@field get_label fun(self:slider_int):string -- The menu element needs to be rendered for this to return a string different than ""
 
 ---@class slider_float
 ---@field get fun():number
@@ -45,11 +53,13 @@
 ---@field get_widget_bounds fun(self:slider_float):table -- Returns a table with 2 elements, min and max. get_widget_bounds().min is the left border of the widget, and .max is the right border.
 ---@field set fun(self:slider_float, val:number):nil
 ---@field get fun(self:slider_float):number
+---@field get_default fun(self:slider_float):number
+---@field get_label fun(self:slider_float):string -- The menu element needs to be rendered for this to return a string different than ""
 
 ---@class combobox
 ---@field get fun():number
 ---@field get_type fun(self:combobox)
----@field get_label fun(self:keybind):string -- The menu element needs to be rendered for this to return a string different than ""
+---@field get_label fun(self:combobox):string -- The menu element needs to be rendered for this to return a string different than ""
 ---@field get_widget_bounds fun(self:combobox):table -- Returns a table with 2 elements, min and max. get_widget_bounds().min is the left border of the widget, and .max is the right border.
 ---@field set fun(self:combobox, new_value:number):nil
 ---@field is_showing_on_control_panel fun(self:combobox):boolean
@@ -57,6 +67,10 @@
 ---@field render fun(self:combobox, label:string, options:table, tooltip:string|nil):nil
 ---@field set fun(self:combobox, val:integer):nil
 ---@field get fun(self:combobox):integer
+---@field get_default fun(self:combobox):integer -- Returns the default value (1-based index).
+---@field set_draggable_state fun(self:combobox, state:boolean):nil -- Sets the draggable state for the combobox.
+---@field set_items fun(self:combobox, items:string[]):nil -- Sets the items list (max 64 entries).
+---@field get_items fun(self:combobox):string[] -- Returns the items list as a string array.
 
 ---@class combobox_reorderable
 ---@field get fun():number
@@ -64,6 +78,17 @@
 ---@field render fun(self:combobox_reorderable, label:string, options:table, tooltip:string|nil):nil
 ---@field set fun(self:combobox_reorderable, val:integer):nil
 ---@field get fun(self:combobox_reorderable):integer
+---@field get_item_at_index fun(self:combobox_reorderable, index:integer):string -- Gets the item name at a 1-based index.
+---@field set_items fun(self:combobox_reorderable, items:string[]):nil -- Sets the items list.
+---@field get_default fun(self:combobox_reorderable):integer -- Returns the default value (1-based index).
+
+---@class combobox_reorderable_ow
+---@field render fun(self:combobox_reorderable_ow, label:string, tooltip:string|nil):nil
+---@field get fun(self:combobox_reorderable_ow):integer -- Returns the current value (1-based index).
+---@field get_type fun(self:combobox_reorderable_ow):integer
+---@field get_item_at_index fun(self:combobox_reorderable_ow, index:integer):string -- Gets the item name at a 1-based index.
+---@field set_items fun(self:combobox_reorderable_ow, items:string[]):nil -- Sets the items list (must match original count).
+---@field get_items fun(self:combobox_reorderable_ow):string[] -- Returns the items list as a string array.
 
 ---@class keybind
 ---@field get_type fun(self:keybind)
@@ -79,12 +104,18 @@
 ---@field render fun(self:keybind, label:string, tooltip:string|nil, add_separator:boolean|nil):nil
 ---@field set fun(self:keybind, val:integer):nil
 ---@field get fun(self:keybind):integer
+---@field get_default fun(self:keybind):integer -- Returns the default key code.
+---@field set_forced_state fun(self:keybind, state:boolean):nil -- Forces the keybind to a specific state.
+---@field stop_forcing_state fun(self:keybind):nil -- Stops forcing the keybind state.
+---@field get_forced_state fun(self:keybind):boolean -- Returns the current forced state.
+---@field set_draggable_state fun(self:keybind, state:boolean):nil -- Sets whether the keybind is draggable.
 
 ---@class button
 ---@field get_type fun(self:button)
 ---@field is_clicked fun(self:button):boolean
 ---@field get_widget_bounds fun(self:button):table -- Returns a table with 2 elements, min and max. get_widget_bounds().min is the left border of the widget, and .max is the right border.
 ---@field render fun(self:button, label:string, tooltip:string|nil):nil
+---@field get_label fun(self:button):string -- The menu element needs to be rendered for this to return a string different than ""
 ---@field set fun(self:checkbox, nil):nil -- Dummy function. Do not use. This is for you to be able to loop menu elements and set them all to default without any LUA errors.
 ---@field get fun(self:checkbox):nil
 
@@ -97,6 +128,10 @@
 ---@field render_custom fun(self:text_input, label:string, tooltip:string, frame_bg:color, border_color:color, text_selected_bg_col:color, text_color:color, width_offset:number, height_offset:number|nil):nil
 ---@field set fun(self:text_input, val:string):nil
 ---@field get fun(self:text_input):integer
+---@field is_reading_input fun(self:text_input):boolean -- Returns whether the text input is currently being edited/focused.
+---@field set_buffer fun(self:text_input, text:string):nil -- Sets the text buffer content.
+---@field copy_to_clipboard fun(self:text_input):nil -- Copies the current text to clipboard.
+---@field get_label fun(self:text_input):string -- The menu element needs to be rendered for this to return a string different than ""
 
 ---@class color_picker
 ---@field get fun():color
@@ -106,10 +141,12 @@
 ---@field set fun(self:color_picker, val:color):nil
 ---@field get fun(self:color_picker):color
 ---@field get_default fun(self:color_picker):color
+---@field get_label fun(self:color_picker):string -- The menu element needs to be rendered for this to return a string different than ""
 
 ---@class header
 ---@field get_type fun(self:header)
 ---@field render fun(self:header, label:string, color:color):nil
+---@field get_label fun(self:header):string -- The menu element needs to be rendered for this to return a string different than ""
 ---@field set fun(self:checkbox, nil):nil -- Dummy function. Do not use. This is for you to be able to loop menu elements and set them all to default without any LUA errors.
 ---@field get fun(self:checkbox):nil
 
