@@ -4329,6 +4329,25 @@ function core.addons.timeline_reminders.get_reminders(encounter_id, difficulty_i
 end
 
 -- ========================================
+-- core.addons.maxdps
+-- ========================================
+
+---@class addons_maxdps
+core.addons.maxdps = {}
+
+--- Returns whether the MaxDps addon is loaded.
+---@return boolean is_loaded Whether MaxDps is loaded.
+function core.addons.maxdps.is_loaded()
+    return false
+end
+
+--- Returns the next recommended spell ID from MaxDps.
+---@return integer spell_id The next spell ID suggested by MaxDps.
+function core.addons.maxdps.get_next_spell()
+    return 0
+end
+
+-- ========================================
 -- core.damage_meter
 -- ========================================
 
