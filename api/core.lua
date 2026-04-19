@@ -413,6 +413,31 @@ function core.create_log_file(filename)
     return nil
 end
 
+--- Creates a folder inside the loader's `scripts_log/` directory.
+---
+--- Sandbox scope:
+--- - Folders are created under: `<loader_path>/scripts_log/`
+--- - Only this directory is writable by scripts for logging (by design).
+---
+--- Path rules:
+--- - `folder` is relative to `scripts_log/`.
+--- - Do not prefix with `scripts_log/` yourself.
+---
+--- Notes:
+--- - Intermediate segments are created automatically (path is walked segment by segment).
+---
+--- Example:
+--- ```lua
+--- core.create_log_folder("my_addon")
+--- core.create_log_file("my_addon/combat.log")
+--- ```
+---
+---@param folder string Folder path inside `scripts_log/` (UTF-8), relative to the loader log directory.
+---@return boolean success `true` if the folder (and any missing parents) was created or already exists.
+function core.create_log_folder(folder)
+    return true
+end
+
 --- Writes a message to a log file.
 ---
 --- Purpose:
@@ -1548,9 +1573,11 @@ function core.spell_book.get_spell_description(spell_id)
     return ""
 end
 
+--- NOTE: DEPRECATED AFTER 03/2026 WILL RETURN JUST INTS AS STRING, BETTER TO USE BUFF.POINTS
 --- Retrieves the whole tooltip text of the specified buff.
 ---@param buff_ptr buff
 ---@return string The tooltip text of the specified buff.
+---@diagnostic disable-next-line: duplicate-set-field
 function core.spell_book.get_buff_description(buff_ptr)
     return ""
 end
@@ -1572,6 +1599,13 @@ end
 ---@param spell_id integer The ID of the spell.
 ---@return boolean Returns true if the specified spell is learned, otherwise returns false.
 function core.spell_book.is_spell_learned(spell_id)
+    return false
+end
+
+--- Checks if the specified spell identified by its ID is known by the localplayer.
+---@param spell_id integer The ID of the spell.
+---@return boolean Returns true if the specified spell is known, otherwise returns false.
+function core.spell_book.is_spell_known(spell_id)
     return false
 end
 
@@ -1618,15 +1652,19 @@ function core.spell_book.cursor_has_spell()
 end
 
 ---@class spell_costs
----@field min_cost number
----@field cost number
----@field cost_per_sec number
----@field cost_type number
----@field required_buff_id number
+---@field min_cost number         Minimum absolute cost (usually equal to `cost` unless the spell scales).
+---@field cost number             Absolute resource cost (0 for spells that use `cost_percent` instead).
+---@field cost_per_sec number     Drain rate for channelled abilities; 0 otherwise.
+---@field cost_percent number     Percent-of-base cost (e.g. 8 for an ability costing 8% of base mana). Monk/modern abilities use this instead of `cost`.
+---@field cost_type number        Enum.PowerType of the resource (0 = Mana, 3 = Energy, 4 = Rage, ...).
+---@field required_buff_id number Spell ID of the aura that must be up for this entry to apply; 0 if unconditional.
 
---- Returns spell_costs structure
+--- Returns the list of power costs for a spell. A single spell can return multiple
+--- entries — one per resource (e.g. a spell that costs both Mana and Energy) or one
+--- per gated variant (e.g. Monk abilities that cost different resources depending on
+--- which stance aura is active).
 ---@param spell_id integer The ID of the spell.
----@return spell_costs
+---@return spell_costs[] costs Array of cost entries; empty if the spell has no costs or data isn't loaded.
 function core.spell_book.get_spell_costs(spell_id)
     return {}
 end
@@ -4345,6 +4383,30 @@ end
 ---@return integer spell_id The next spell ID suggested by MaxDps.
 function core.addons.maxdps.get_next_spell()
     return 0
+end
+
+-- ========================================
+-- core.addons.swing_timer
+-- ========================================
+
+---@class addons_swing_timer
+core.addons.swing_timer = {}
+
+--- Returns whether the Swing Timer addon is loaded.
+---@return boolean is_loaded Whether Swing Timer is loaded.
+function core.addons.swing_timer.is_loaded()
+    return false
+end
+
+--- Returns the player's ranged auto-shot swing timer information.
+---@class swing_timer_ranged_info
+---@field expiration_time number The time when the current auto-shot expires.
+---@field last_swing number The time of the last ranged swing.
+---@field auto_shot_cast_time number The cast time of the auto-shot.
+
+---@return swing_timer_ranged_info info The ranged swing timer information.
+function core.addons.swing_timer.get_player_ranged_info()
+    return {}
 end
 
 -- ========================================
