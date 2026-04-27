@@ -170,7 +170,7 @@ function core.get_game_version()
     return ""
 end
 
---- Returns the exact game version string (e.g. "tbc_cn").
+--- Returns the exact game version string (e.g. "wow_tbc_cn", "wow_tbc_ps", "wow_tbc_us", "wow_titan_cn", "wow_midnight_us").
 ---@return string version The exact game version.
 function core.get_exact_game_version()
     return ""
