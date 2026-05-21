@@ -459,6 +459,39 @@ function core.write_log_file(filename, message)
     return nil
 end
 
+--- Lists entry names (files and folders) inside a `scripts_log/` subdirectory.
+---
+--- Sandbox scope:
+--- - Only reads from: `<loader_path>/scripts_log/<dir_name>/`
+--- - Returns nil on failure (missing directory, path escape, etc).
+---
+---@param dir_name string Subdirectory name inside `scripts_log/` (UTF-8).
+---@return string[]|nil entries Array of entry names, or nil on failure.
+function core.read_log_dir(dir_name)
+    return nil
+end
+
+--- Recursively deletes a folder and all its contents under `scripts_log/`.
+---
+--- Sandbox scope:
+--- - Only deletes inside: `<loader_path>/scripts_log/`
+--- - Path traversal attempts are rejected (returns false).
+---
+---@param folder_path string Folder path inside `scripts_log/` (UTF-8).
+---@return boolean success `true` if the folder was deleted successfully.
+function core.delete_log_folder(folder_path)
+    return true
+end
+
+--- Returns the local system date and time as a table.
+---
+--- Useful in sandboxed Lua where `os.date()` / `os.time()` are unavailable.
+---
+---@return { year: integer, month: integer, day: integer, hour: integer, minute: integer, second: integer }
+function core.get_local_time()
+    return { year = 2025, month = 1, day = 1, hour = 0, minute = 0, second = 0 }
+end
+
 --- Reads a portion of a loader data file from `scripts_data/`, starting at a byte offset.
 ---
 --- Sandbox scope:
@@ -804,18 +837,15 @@ function core.game_ui.get_tooltip_info()
     return {}
 end
 
---- Sets up the tooltip data processor hook for displaying item/spell/NPC IDs.
----@return boolean success True if the processor was registered successfully.
-function core.game_ui.setup_tooltip_processor()
-    return false
-end
+--- Deprecated. Removed from core.game_ui on May 10, 2026 and will be nil at runtime.
+--- IMPORTANT: Do not call this function. It no longer exists in core 1.930+.
+---@deprecated Removed on May 10, 2026. This field is nil in core 1.930+.
+core.game_ui.setup_tooltip_processor = nil
 
---- Sets the fallback NPC ID for the tooltip processor.
----@param npc_id integer The NPC ID to set.
----@return nil
-function core.game_ui.set_tooltip_npc_id(npc_id)
-    return nil
-end
+--- Deprecated. Removed from core.game_ui on May 10, 2026 and will be nil at runtime.
+--- IMPORTANT: Do not call this function. It no longer exists in core 1.930+.
+---@deprecated Removed on May 10, 2026. This field is nil in core 1.930+.
+core.game_ui.set_tooltip_npc_id = nil
 
 --- Adds a colored line to the GameTooltip.
 ---@param text string The line text.
@@ -906,25 +936,35 @@ function core.game_ui.get_active_talents()
     return {}
 end
 
---- Shows a context menu at the cursor with simple text buttons.
---- Use get_context_menu_result() to poll for the clicked option.
----@class context_menu_entry
----@field text string The button label.
----@field id integer The button identifier.
+--- Deprecated. Removed from core.game_ui on May 10, 2026 and will be nil at runtime.
+--- IMPORTANT: Do not call this function. It no longer exists in core 1.930+.
+---@deprecated Removed on May 10, 2026. This field is nil in core 1.930+.
+core.game_ui.show_context_menu = nil
 
----@param items context_menu_entry[] Array of menu entries.
----@return nil
-function core.game_ui.show_context_menu(items)
-    return nil
-end
+--- Deprecated. Removed from core.game_ui on May 10, 2026 and will be nil at runtime.
+--- IMPORTANT: Do not call this function. It no longer exists in core 1.930+.
+---@deprecated Removed on May 10, 2026. This field is nil in core 1.930+.
+core.game_ui.get_context_menu_result = nil
 
---- Polls the result of the last context menu shown with show_context_menu.
---- Returns the id of the clicked button, or 0 if nothing was clicked.
---- Reading the result consumes it (one-shot).
----@return integer id The clicked button id, or 0 if none.
-function core.game_ui.get_context_menu_result()
-    return 0
-end
+--- Deprecated. Removed from core.game_ui on May 10, 2026 and will be nil at runtime.
+--- IMPORTANT: Do not call this function. It no longer exists in core 1.930+.
+---@deprecated Removed on May 10, 2026. This field is nil in core 1.930+.
+core.game_ui.add_unit_menu_button = nil
+
+--- Deprecated. Removed from core.game_ui on May 10, 2026 and will be nil at runtime.
+--- IMPORTANT: Do not call this function. It no longer exists in core 1.930+.
+---@deprecated Removed on May 10, 2026. This field is nil in core 1.930+.
+core.game_ui.set_unit_menu_button_text = nil
+
+--- Deprecated. Removed from core.game_ui on May 10, 2026 and will be nil at runtime.
+--- IMPORTANT: Do not call this function. It no longer exists in core 1.930+.
+---@deprecated Removed on May 10, 2026. This field is nil in core 1.930+.
+core.game_ui.remove_unit_menu_button = nil
+
+--- Deprecated. Removed from core.game_ui on May 10, 2026 and will be nil at runtime.
+--- IMPORTANT: Do not call this function. It no longer exists in core 1.930+.
+---@deprecated Removed on May 10, 2026. This field is nil in core 1.930+.
+core.game_ui.poll_unit_menu_click = nil
 
 --- Adds a custom button to all unit right-click context menus.
 --- The button appears in menus for players, targets, focus, party, raid, arena, boss, pet, and vehicle units.
@@ -1515,6 +1555,12 @@ function core.object_manager.get_arena_frames()
     return {}
 end
 
+--- Retrieves a list of game objects with all the party frames, excluding the local player.
+---@return game_objects_table party_members An array of party frame game objects.
+function core.object_manager.get_party_frames()
+    return {}
+end
+
 --- Retrieves mouse_over object
 ---@return game_object
 function core.object_manager.get_mouse_over_object()
@@ -1554,6 +1600,24 @@ end
 --- Returns all in-flight spell missiles (projectiles) currently in the world.
 ---@return missile[]|nil missiles Array of missile tables, or nil if none.
 function core.object_manager.get_all_missiles()
+    return {}
+end
+
+---@class lfg_list
+core.lfg_list = {}
+
+---@class lfg_search_result_member_counts
+---@field tank integer Filled tank slots.
+---@field healer integer Filled healer slots.
+---@field damager integer Filled damage slots.
+---@field tank_remaining integer Open tank slots.
+---@field healer_remaining integer Open healer slots.
+---@field damager_remaining integer Open damage slots.
+
+--- Returns role slot counts for an LFG search result.
+---@param result_id number The LFG search result ID.
+---@return lfg_search_result_member_counts|nil counts Filled and remaining role slot counts, or nil if unavailable.
+function core.lfg_list.get_search_result_member_counts(result_id)
     return {}
 end
 
@@ -1984,6 +2048,21 @@ end
 ---@return integer override_id The override spell ID.
 function core.spell_book.get_override_spell_id(spell_id)
     return 0
+end
+
+--- Returns the current shapeshift form ID.
+--- Returns 0 if the player is not shapeshifted or the Blizzard API is unavailable.
+---@return integer form_id The current shapeshift form ID.
+function core.spell_book.get_shapeshift_form_id()
+    return 0
+end
+
+--- Casts the shapeshift form at the given 1-based shapeshift/stance bar index.
+--- The actual form change is observed asynchronously via UPDATE_SHAPESHIFT_FORM.
+---@param index integer The 1-based shapeshift/stance bar index to cast.
+---@return boolean success True if the cast call was issued without a Lua error.
+function core.spell_book.cast_shapeshift_form(index)
+    return false
 end
 
 ---@class graphics

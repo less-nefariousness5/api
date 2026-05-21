@@ -310,6 +310,8 @@
 ---@field get_unit_ranged_damage fun(self: game_object): unit_ranged_damage_data
 ---Returns the armor value of the game object.
 ---@field get_armor fun(self: game_object): number
+---Returns the current state flags bitfield of the game object.
+---@field get_state_flags fun(self: game_object): integer
 ---Returns whatever the npc is tap denied for the localplayer (grey healthbar)
 ---@field is_tap_denied fun(self: game_object): number
 
