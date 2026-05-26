@@ -1,3 +1,4 @@
+---@diagnostic disable: duplicate-doc-field
 
 -- Example:
 -- ---@type vec3

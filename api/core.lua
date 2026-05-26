@@ -611,9 +611,19 @@ function core.delete_data_file(filename)
     return false
 end
 
----@param id number
----@return nil
+--- Plays a sound by sound kit ID.
+---@param id integer The sound kit ID to play.
+---@return boolean will_play Whether the sound will play.
+---@return number handle The sound handle that can be passed to core.stop_sound_by_handle.
 function core.play_sound_by_id(id)
+    return false, 0
+end
+
+--- Stops a sound instance by handle.
+---@param handle integer The handle returned by core.play_sound_by_id.
+---@param fadeout_ms? integer Optional fadeout time in milliseconds.
+---@return nil
+function core.stop_sound_by_handle(handle, fadeout_ms)
     return nil
 end
 
@@ -1049,6 +1059,18 @@ end
 ---@param ui_map_id integer The UI map ID to query encounters for.
 ---@return encounter_info[] An array of encounter info tables.
 function core.world.get_encounters_on_map(ui_map_id)
+    return {}
+end
+
+---@class active_keystone_info
+---@field level integer Keystone level. Missing or 0 when no active keystone is available.
+---@field was_charged boolean Whether the keystone was charged when slotted.
+---@field affix_ids integer[] Array of active affix IDs.
+
+--- Returns the active Mythic+ keystone information.
+--- Returns an empty table on classic clients or when no active keystone is available.
+---@return active_keystone_info info The active keystone info table.
+function core.world.get_active_keystone_info()
     return {}
 end
 
@@ -1889,6 +1911,18 @@ function core.spell_book.get_mount_info(mount_index)
     return {}
 end
 
+---@class gliding_info
+---@field is_gliding boolean Whether the local player is currently gliding/skyriding.
+---@field can_glide boolean Whether the local player can currently glide.
+---@field forward_speed number The current forward speed in yards per second.
+
+--- Retrieves the local player's current gliding/skyriding state.
+--- Returns a fallback table with false/false/0 when gliding info is unavailable.
+---@return gliding_info info A table containing is_gliding, can_glide, and forward_speed.
+function core.spell_book.get_gliding_info()
+    return {}
+end
+
 ---@return integer
 ---@param spell_id integer
 function core.spell_book.get_base_spell_id(spell_id)
@@ -2284,7 +2318,7 @@ function core.graphics.rect_2d_filled(top_left_point, width, height, color, roun
 ---@param has_volume? boolean Add volume. Default true.
 function core.graphics.line_3d(start_point, end_point, color, thickness, fade_factor, has_volume) end
 
---- Draw 3D Rectangle Outline New
+--- Draw 3D Rectangle Outline Old (Works but require thickness compensation)
 ---@param origin vec3
 ---@param destination vec3
 ---@param color color The color of the rectangle outline.
@@ -2292,6 +2326,15 @@ function core.graphics.line_3d(start_point, end_point, color, thickness, fade_fa
 ---@param fade_factor? number The thickness of the outline. Default is 2.5.
 function core.graphics.rect_3d(origin, destination, width, color, thickness, fade_factor) end
 
+--- Draws a crisp 3D rectangle outline inside the requested bounds.
+---@param start_pos vec3 The start position of the rectangle center line.
+---@param end_pos vec3 The end position of the rectangle center line.
+---@param width number The perpendicular width of the rectangle.
+---@param thickness number The outline thickness.
+---@param color color The outline color.
+function core.graphics.render_rect_3d_new(start_pos, end_pos, width, thickness, color) end
+
+--- DEPRECATED
 --- Draw 3D Filled Rectangle
 ---@param p1 vec3 The first corner point of the rectangle in 3D space.
 ---@param p2 vec3 The second corner point of the rectangle in 3D space.
@@ -2299,6 +2342,13 @@ function core.graphics.rect_3d(origin, destination, width, color, thickness, fad
 ---@param p4 vec3 The fourth corner point of the rectangle in 3D space.
 ---@param color color The fill color of the rectangle.
 function core.graphics.rect_3d_filled(p1, p2, p3, p4, color) end
+
+--- Draws a filled 3D rectangle inside the requested bounds.
+---@param start_pos vec3 The start position of the rectangle center line.
+---@param end_pos vec3 The end position of the rectangle center line.
+---@param width number The perpendicular width of the rectangle.
+---@param color color The fill color.
+function core.graphics.render_rect_3d_filled_new(start_pos, end_pos, width, color) end
 
 --- Draw 2D Circle Outline
 ---@param center vec2 The center point of the circle.
@@ -2874,6 +2924,34 @@ function core.graphics.render_slider_track(p_min, p_max, fill_lo, fill_hi, rail_
 ---@param time_val number|nil Animation time value (default 0.0).
 ---@param speed number|nil Animation speed multiplier (default 1.0).
 function core.graphics.render_hover_pill(p_min, p_max, base_color, streak_color, rounding, softness, density, time_val, speed) end
+
+--- Draws a 2D circular progress ring using an SDF pixel shader.
+---@param p_min vec2 Top-left corner in screen space.
+---@param p_max vec2 Bottom-right corner in screen space.
+---@param bg_color color Background ring color.
+---@param fill_start_color color Fill gradient start color.
+---@param fill_end_color color Fill gradient end color.
+---@param progress number Fill fraction from 0.0 to 1.0.
+---@param start_angle_rad number|nil Arc start angle in radians (default -pi/2).
+---@param direction number|nil Positive values draw clockwise, negative values draw counter-clockwise (default 1.0).
+---@param inner_norm number|nil Inner radius normalized 0-1 (default 0.70).
+---@param outer_norm number|nil Outer radius normalized 0-1 (default 0.98).
+---@param softness number|nil Edge softness in pixels (default 1.0).
+function core.graphics.render_circle_percentage(p_min, p_max, bg_color, fill_start_color, fill_end_color, progress, start_angle_rad, direction, inner_norm, outer_norm, softness) end
+
+--- Draws a 3D circular progress ring using an SDF pixel shader.
+---@param world_pos vec3 Center position in world space.
+---@param world_radius number Circle radius in world units.
+---@param bg_color color Background ring color.
+---@param fill_start_color color Fill gradient start color.
+---@param fill_end_color color Fill gradient end color.
+---@param progress number Fill fraction from 0.0 to 1.0.
+---@param start_angle_rad number|nil Arc start angle in radians (default -pi/2).
+---@param direction number|nil Positive values draw clockwise, negative values draw counter-clockwise (default 1.0).
+---@param inner_norm number|nil Inner radius normalized 0-1 (default 0.70).
+---@param outer_norm number|nil Outer radius normalized 0-1 (default 0.98).
+---@param softness number|nil Edge softness in pixels (default 1.0).
+function core.graphics.render_circle_percentage_3d(world_pos, world_radius, bg_color, fill_start_color, fill_end_color, progress, start_angle_rad, direction, inner_norm, outer_norm, softness) end
 
 --------------------------------------------------------------------------------
 -- EXAMPLES
@@ -4673,6 +4751,184 @@ end
 
 ---@return swing_timer_ranged_info info The ranged swing timer information.
 function core.addons.swing_timer.get_player_ranged_info()
+    return {}
+end
+
+---@class swing_timer_hand_info
+---@field expiration_time number The time when the current melee swing expires.
+---@field last_swing number The time of the last melee swing.
+---@field swing_speed number The current melee swing speed.
+---@field base_swing_speed number The base melee swing speed.
+
+--- Returns the player's main-hand melee swing timer information.
+---@return swing_timer_hand_info info The main-hand swing timer information.
+function core.addons.swing_timer.get_player_mainhand_info()
+    return {}
+end
+
+--- Returns the player's off-hand melee swing timer information.
+--- Returns nil when the player is not dual wielding.
+---@return swing_timer_hand_info|nil info The off-hand swing timer information, or nil when unavailable.
+function core.addons.swing_timer.get_player_offhand_info()
+    return {}
+end
+
+-- ========================================
+-- core.addons.arena_core
+-- ========================================
+
+---@class addons_arena_core
+core.addons.arena_core = {}
+
+---@class arena_core_frame_info
+---@field unit string The arena unit token, such as "arena1".
+---@field id integer The arena frame ID.
+---@field class string The class name.
+---@field spec_id integer The specialization ID.
+---@field spec_icon_texture string The specialization icon texture path.
+---@field class_icon integer The class icon texture ID.
+---@field spec_icon integer The specialization icon texture ID.
+
+--- Returns whether the Arena Core addon is loaded.
+---@return boolean is_loaded Whether Arena Core is loaded.
+function core.addons.arena_core.is_loaded()
+    return false
+end
+
+--- Returns frame info for an arena opponent.
+---@param arena_index integer The arena frame index.
+---@return arena_core_frame_info|nil info The arena frame info, or nil when unavailable.
+function core.addons.arena_core.get_frame_info(arena_index)
+    return {}
+end
+
+--- Returns the class name for an arena opponent.
+---@param arena_index integer The arena frame index.
+---@return string class_name The class name, or an empty string when unavailable.
+function core.addons.arena_core.get_class(arena_index)
+    return ""
+end
+
+--- Returns the specialization ID for an arena opponent.
+---@param arena_index integer The arena frame index.
+---@return integer spec_id The specialization ID, or 0 when unavailable.
+function core.addons.arena_core.get_spec_id(arena_index)
+    return 0
+end
+
+-- ========================================
+-- core.addons.mdt
+-- ========================================
+
+---@class addons_mdt
+core.addons.mdt = {}
+
+---@class mdt_preset_meta
+---@field text string The current preset display text.
+---@field current_dungeon_idx integer The current MDT dungeon index.
+---@field current_pull integer The current pull index.
+---@field current_sublevel integer The current dungeon sublevel.
+---@field week integer The configured affix week.
+---@field difficulty integer The configured difficulty.
+---@field uid string The preset UID.
+
+---@class mdt_pull_enemy
+---@field enemy_idx integer The MDT enemy index.
+---@field clones integer[] Clone indexes included in the pull.
+
+---@class mdt_pull
+---@field color string The pull color.
+---@field enemies mdt_pull_enemy[] Enemies included in the pull.
+
+---@class mdt_object
+---@field kind string The object kind: "line", "arrow", "note", or "unknown".
+---@field color string The object color.
+---@field note_text string The note text for note objects.
+---@field note_x number The note X coordinate.
+---@field note_y number The note Y coordinate.
+---@field arrow_angle number The arrow angle.
+---@field points number[] Flat array of object points.
+
+---@class mdt_dungeon_enemy_info
+---@field name string The enemy name.
+---@field id integer The NPC ID.
+---@field count integer The enemy count value.
+---@field health integer The enemy health value.
+---@field scale number The enemy scale.
+---@field display_id integer The enemy display ID.
+---@field creature_type string The creature type.
+---@field level integer The enemy level.
+---@field is_boss boolean Whether this enemy is a boss.
+---@field encounter_id integer The encounter ID.
+---@field instance_id integer The instance ID.
+---@field clone_count integer Number of clone placements.
+
+---@class mdt_dungeon_enemy_clone
+---@field x number The clone X coordinate.
+---@field y number The clone Y coordinate.
+---@field g integer The clone group.
+---@field sublevel integer The dungeon sublevel.
+---@field scale number The clone scale.
+
+--- Returns whether Method Dungeon Tools is loaded.
+---@return boolean is_loaded Whether MDT is loaded.
+function core.addons.mdt.is_loaded()
+    return false
+end
+
+--- Returns metadata for the current MDT preset.
+---@return mdt_preset_meta|nil meta The current preset metadata, or nil when unavailable.
+function core.addons.mdt.get_current_preset_meta()
+    return {}
+end
+
+--- Returns the number of pulls in the current MDT preset.
+---@return integer count The pull count.
+function core.addons.mdt.get_pull_count()
+    return 0
+end
+
+--- Returns a pull from the current MDT preset.
+---@param pull_idx integer The pull index.
+---@return mdt_pull|nil pull The pull data, or nil when unavailable.
+function core.addons.mdt.get_pull(pull_idx)
+    return {}
+end
+
+--- Returns the number of map objects in the current MDT preset.
+---@return integer count The object count.
+function core.addons.mdt.get_object_count()
+    return 0
+end
+
+--- Returns a map object from the current MDT preset.
+---@param obj_idx integer The object index.
+---@return mdt_object|nil object The object data, or nil when unavailable.
+function core.addons.mdt.get_object(obj_idx)
+    return {}
+end
+
+--- Returns the number of enemies for a dungeon in MDT data.
+---@param dungeon_idx integer The MDT dungeon index.
+---@return integer count The enemy count.
+function core.addons.mdt.get_dungeon_enemy_count(dungeon_idx)
+    return 0
+end
+
+--- Returns static info for a dungeon enemy in MDT data.
+---@param dungeon_idx integer The MDT dungeon index.
+---@param enemy_idx integer The enemy index.
+---@return mdt_dungeon_enemy_info|nil enemy The enemy info, or nil when unavailable.
+function core.addons.mdt.get_dungeon_enemy_info(dungeon_idx, enemy_idx)
+    return {}
+end
+
+--- Returns clone placement info for a dungeon enemy in MDT data.
+---@param dungeon_idx integer The MDT dungeon index.
+---@param enemy_idx integer The enemy index.
+---@param clone_idx integer The clone index.
+---@return mdt_dungeon_enemy_clone|nil clone The clone placement info, or nil when unavailable.
+function core.addons.mdt.get_dungeon_enemy_clone(dungeon_idx, enemy_idx, clone_idx)
     return {}
 end
 
