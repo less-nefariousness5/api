@@ -79,28 +79,10 @@
 --
 -- ============================================================================
 
----@class CCType
----@field Stun number
----@field Root number
----@field Fear number
----@field Polymorph number
----@field Silence number
----@field Slow number
----@field Disorient number
----@field Incapacitate number
----@field Sap number
----@field Banish number
----@field Imprison number
----@field MindControl number
----@field Repentance number
----@field ShackleUndead number
----@field ControlUndead number
----@field Taunt number
----@field Knock number
----@field Grip number
+-- CCType is defined once by the readable source (common/utility/cc_data_helper.lua,
+-- ---@enum CCType on cc_data_helper.CC); not mirrored here to avoid a duplicate alias.
 
 ---@class cc_data_helper
----@field CC CCType
 ---@field npcs table<number, number> NPC susceptibility table: [npc_id] = cc_bitmask
 
 ---@class cc_data_helper

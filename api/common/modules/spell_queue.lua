@@ -11,7 +11,7 @@
 ---Queues an item for self-cast that skips global cooldown.
 ---@field queue_item_self_fast fun(self: spell_queue, item_id: number, priority: number, message?: string): nil
 ---Queues an item for a target.
----@field queue_item_target fun(self: spell_queue, item_id: number, target: game_object, priority: number, message?: string): nil
+---@field queue_item_target fun(self: spell_queue, item_id: number, target: game_object?, priority: number, message?: string, wait_for_gcd?: boolean): nil
 ---Queues an item for a target that skips global cooldown.
 ---@field queue_item_target_fast fun(self: spell_queue, item_id: number, target: game_object, priority: number, message?: string): nil
 ---Queues an item for a position.
@@ -19,13 +19,13 @@
 ---Queues an item for a position that skips global cooldown.
 ---@field queue_item_position_fast fun(self: spell_queue, item_id: number, position: vec3, priority: number, message?: string): nil
 ---Queues a spell with a target.
----@field queue_spell_target fun(self: spell_queue, spell_id: number, target: game_object, priority: number, message?: string, allow_movement?: boolean): nil
+---@field queue_spell_target fun(self: spell_queue, spell_id: number, target: game_object?, priority: number, message?: string, allow_movement?: boolean): nil
 ---Queues a spell that skips global cooldown with a target.
----@field queue_spell_target_fast fun(self: spell_queue, spell_id: number, target: game_object, priority: number, message?: string, allow_movement?: boolean): nil
+---@field queue_spell_target_fast fun(self: spell_queue, spell_id: number, target: game_object?, priority: number, message?: string, allow_movement?: boolean): nil
 ---Queues a spell with a position.
----@field queue_spell_position fun(self: spell_queue, spell_id: number, position: game_object, priority: number, message?: string, allow_movement?: boolean): nil
+---@field queue_spell_position fun(self: spell_queue, spell_id: number, position: vec3, priority: number, message?: string, allow_movement?: boolean): nil
 ---Queues a spell that skips global cooldown with a position.
----@field queue_spell_position_fast fun(self: spell_queue, spell_id: number, position: game_object, priority: number, message?: string, allow_movement?: boolean): nil
+---@field queue_spell_position_fast fun(self: spell_queue, spell_id: number, position: vec3, priority: number, message?: string, allow_movement?: boolean): nil
 
 -- Example Usage:
 -- local sq = require("common/modules/spell_queue")

@@ -245,6 +245,10 @@
 ---@field render_to_window fun(self: menu_key_checkbox, window: window, label: string): any
 ---Returns the keybind's active state
 ---@field get fun(self: menu_key_checkbox): boolean
+---Toggle state (forwarded to the underlying key_checkbox).
+---@field get_state fun(self: menu_key_checkbox): boolean
+---Set the toggle state (forwarded to the underlying key_checkbox).
+---@field set_toggle_state fun(self: menu_key_checkbox, state: boolean): nil
 ---@field is_active fun(self: menu_key_checkbox): boolean
 ---Returns the bound key code
 ---@field get_key_code fun(self: menu_key_checkbox): integer

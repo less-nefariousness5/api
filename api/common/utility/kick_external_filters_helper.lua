@@ -29,10 +29,22 @@
 -- Class Definition
 -- ─────────────────────────────────────────────────
 
+-- Filter callback signature (see the comment block above for semantics).
+---@alias kick_filter_fn fun(local_player: game_object, solution_table: table, spell_to_kick_table: table, kick_target: game_object, prediction_data: table): boolean, string?
+
+-- Raw external-filters API returned by the ENCRYPTED core_universal_kicks plugin
+-- (require "root/core_universal_kicks/external_filters"). Accessed with ".", not ":".
+---@class kick_external_filters
+---@field register fun(name: string, func: kick_filter_fn, opts?: table)
+---@field unregister fun(name: string)
+---@field clear fun()
+---@field list fun(): table
+---@field touch fun(name: string, opts_patch: table): boolean
+
 ---@class kick_external_filters_helper
 ---@field is_available fun(self: kick_external_filters_helper): boolean                                                                                                                                                              Returns true if the universal kicks plugin is loaded.
----@field get_api fun(self: kick_external_filters_helper): table|nil                                                                                                                                                                 Returns the raw API, or nil.
----@field register fun(self: kick_external_filters_helper, name: string, func: fun(local_player: game_object, solution_table: table, spell_to_kick_table: table, kick_target: game_object, prediction_data: table): boolean, string|nil, opts: table|nil): boolean   Register a filter. Returns false if plugin not loaded.
+---@field get_api fun(self: kick_external_filters_helper): kick_external_filters|nil                                                                                                                                                  Returns the raw API, or nil.
+---@field register fun(self: kick_external_filters_helper, name: string, func: kick_filter_fn, opts?: table): boolean                                                                                                                 Register a filter. Returns false if plugin not loaded.
 ---@field unregister fun(self: kick_external_filters_helper, name: string): boolean                                                                                                                                                  Unregister a filter by name.
 ---@field clear fun(self: kick_external_filters_helper): boolean                                                                                                                                                                     Remove all filters.
 ---@field list fun(self: kick_external_filters_helper): table|nil                                                                                                                                                                    Snapshot of active filters (for debug UIs).

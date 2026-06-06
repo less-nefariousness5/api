@@ -158,6 +158,8 @@
 ---@field get_name fun(self: game_object): string
 ---Returns the current health of the game object.
 ---@field get_health fun(self: game_object): number
+---Returns the unit's money in copper (local player only; may be absent on other builds).
+---@field get_money? fun(self: game_object): number
 ---Returns the maximum health of the game object.
 ---@field get_max_health fun(self: game_object): number
 ---Returns the max health modifier of the game object.

@@ -1,0 +1,238 @@
+
+-- IntelliSense / Syntax helper for: common/utility/sq_override_helper
+-- Spell Queue Override Helper
+--
+-- Override spell queue settings WITHOUT permanently touching the user's menu.
+--
+-- WHY: menu elements persist across scripts. If your script writes the spell
+-- queue menu directly, the user keeps your preferences after they switch to
+-- another script. The session API below is a volatile layer: your overrides sit
+-- ON TOP of the user's real settings and expire automatically (within 500ms) the
+-- moment your plugin stops calling. The user's settings are never modified.
+--
+-- =============================================================================
+-- METHOD 1: SESSION OVERRIDE (RECOMMENDED)
+-- =============================================================================
+--
+--   local sq = require("common/utility/sq_override_helper")
+--
+--   -- Create a session once at plugin load time (use a unique name).
+--   local session = sq:create_session("My Rotation")
+--
+--   function on_update()
+--       -- Set overrides each frame. Each call refreshes the 500ms TTL.
+--       -- If your plugin stops calling, overrides vanish automatically.
+--       session:set_multi_charge_throttle(false)
+--       session:set_skillshot_mode(sq.enums.skillshot_mode.FAST_CAST)
+--       -- ... your rotation logic ...
+--   end
+--
+--   -- Optional: explicitly stop overriding
+--   session:destroy()
+--
+-- =============================================================================
+-- METHOD 2: PERMANENT OVERRIDE (LEGACY)
+-- =============================================================================
+--
+-- Directly writes the user's real spell queue menu settings. Changes persist
+-- even after your plugin is disabled. Prefer session overrides for anything that
+-- should revert when your plugin stops.
+--
+--   local sq = require("common/utility/sq_override_helper")
+--   sq:set_skillshot_mode(sq.enums.skillshot_mode.FAST_CAST)
+--   sq:set_persistent_queue_seconds(3.0)
+--
+-- Write modes (optional last parameter on every permanent setter):
+--   sq.enums.write_mode.ONCE       -- (DEFAULT) apply once per session, never again
+--   sq.enums.write_mode.ON_CHANGE  -- apply only when value differs from last write
+--   sq.enums.write_mode.ALWAYS     -- apply every frame (use sparingly)
+
+-- ─────────────────────────────────────────────────
+-- Enums
+-- ─────────────────────────────────────────────────
+
+---@class sq_write_mode
+---@field ONCE number       Apply once per session (default). Safe to call every frame.
+---@field ON_CHANGE number  Apply only when the value has changed since last write.
+---@field ALWAYS number     Apply every frame. Use only when you need real-time sync.
+
+---@class sq_skillshot_mode
+---@field TOOLTIP number    Hold the skillshot under the cursor (tooltip mode).
+---@field FAST_CAST number  Cast the skillshot immediately when castable.
+
+---@class sq_enums
+---@field write_mode sq_write_mode
+---@field skillshot_mode sq_skillshot_mode
+
+-- ─────────────────────────────────────────────────
+-- Session Object (returned by create_session)
+-- ─────────────────────────────────────────────────
+
+---@class sq_session
+---@field set_enable fun(self: sq_session, enabled: boolean): nil                              Enable/disable the spell queue for this session.
+---@field set_translate_base_id fun(self: sq_session, enabled: boolean): nil                   Enable/disable base-spell-id translation for this session.
+---@field set_multi_charge_throttle fun(self: sq_session, enabled: boolean): nil               Enable/disable the off-GCD multi-charge throttle for this session.
+---@field set_skillshot_mode fun(self: sq_session, mode: number): nil                          Set skillshot interception mode (sq.enums.skillshot_mode) for this session.
+---@field set_spell_tooltip_hold fun(self: sq_session, seconds: number): nil                   Set tooltip-hold time (Tooltip mode) for this session.
+---@field set_spell_tooltip_hold_fast fun(self: sq_session, seconds: number): nil              Set tooltip-hold time (Fast Cast mode) for this session.
+---@field set_persistent_queue fun(self: sq_session, enabled: boolean): nil                    Enable/disable the persistent (retry) queue for this session.
+---@field set_persistent_queue_seconds fun(self: sq_session, seconds: number): nil             Set persistent queue retry seconds for this session.
+---@field set_dynamic_skillshot fun(self: sq_session, enabled: boolean): nil                   Enable/disable dynamic skillshot anchoring for this session.
+---@field set_dynamic_skillshot_distance fun(self: sq_session, distance: number): nil          Set dynamic skillshot distance filter for this session.
+---@field set_control_movement fun(self: sq_session, enabled: boolean): nil                    Enable/disable movement control on cast for this session.
+---@field set_movement_block_percentage fun(self: sq_session, percentage: number): nil         Set movement block percentage (0-100) for this session.
+---@field set_movement_min_stop_time fun(self: sq_session, ms: number): nil                    Set minimum movement stop time (ms) for this session.
+---@field set_risky_changes fun(self: sq_session, enabled: boolean): nil                       Opt this session into the ported [PORTED-RISK] priority-9 changes (ships false).
+---@field set fun(self: sq_session, key: string, value: any): nil                              Generic setter for any override key (advanced / future-proof).
+---@field tick fun(self: sq_session): nil                                                      Refresh session TTL without setting any value.
+---@field destroy fun(self: sq_session): nil                                                   Destroy session immediately. Overrides vanish, user settings restore.
+---@field is_active fun(self: sq_session): boolean                                             Check if this session is still the active one.
+
+-- ─────────────────────────────────────────────────
+-- Class Definition
+-- ─────────────────────────────────────────────────
+
+---@class sq_override_helper
+---@field enums sq_enums                          All enums (write_mode, skillshot_mode).
+---@field menu_elements table                     Direct access to the spell queue menu elements (advanced use).
+--
+-- ═════════════════════════════════════════════════
+-- SESSION OVERRIDE API (recommended)
+-- ═════════════════════════════════════════════════
+--
+---@field create_session fun(self: sq_override_helper, plugin_name: string): sq_session         Create a new session override. Only one active at a time. Returns a session object.
+---@field has_active_session fun(self: sq_override_helper): boolean, string                      Check if a session is active. Returns (active, plugin_name).
+--
+-- Effective value readers (used internally by the spell queue proxy, also available for advanced use):
+---@field get_effective_enable fun(self: sq_override_helper): boolean
+---@field get_effective_translate_base_id fun(self: sq_override_helper): boolean
+---@field get_effective_multi_charge_throttle fun(self: sq_override_helper): boolean
+---@field get_effective_skillshot_mode fun(self: sq_override_helper): number
+---@field get_effective_spell_tooltip_hold fun(self: sq_override_helper): number
+---@field get_effective_spell_tooltip_hold_fast fun(self: sq_override_helper): number
+---@field get_effective_persistent_queue fun(self: sq_override_helper): boolean
+---@field get_effective_persistent_queue_seconds fun(self: sq_override_helper): number
+---@field get_effective_dynamic_skillshot fun(self: sq_override_helper): boolean
+---@field get_effective_dynamic_skillshot_distance fun(self: sq_override_helper): number
+---@field get_effective_control_movement fun(self: sq_override_helper): boolean
+---@field get_effective_movement_block_percentage fun(self: sq_override_helper): number
+---@field get_effective_movement_min_stop_time fun(self: sq_override_helper): number
+---@field get_effective_risky_changes fun(self: sq_override_helper, default: boolean|nil): boolean   Effective [PORTED-RISK] state (session override, else the proxy's ship default / false).
+---@field get_session_value fun(self: sq_override_helper, key: string): any|nil                  Get any session override value by key (nil if none).
+--
+-- ═════════════════════════════════════════════════
+-- PERMANENT OVERRIDE API (legacy, modifies real settings)
+-- ═════════════════════════════════════════════════
+--
+---@field set_enable fun(self: sq_override_helper, enabled: boolean, write_mode: number|nil): nil
+---@field set_translate_base_id fun(self: sq_override_helper, enabled: boolean, write_mode: number|nil): nil
+---@field set_multi_charge_throttle fun(self: sq_override_helper, enabled: boolean, write_mode: number|nil): nil
+---@field set_skillshot_mode fun(self: sq_override_helper, mode: number, write_mode: number|nil): nil
+---@field set_spell_tooltip_hold fun(self: sq_override_helper, seconds: number, write_mode: number|nil): nil
+---@field set_spell_tooltip_hold_fast fun(self: sq_override_helper, seconds: number, write_mode: number|nil): nil
+---@field set_persistent_queue fun(self: sq_override_helper, enabled: boolean, write_mode: number|nil): nil
+---@field set_persistent_queue_seconds fun(self: sq_override_helper, seconds: number, write_mode: number|nil): nil
+---@field set_dynamic_skillshot fun(self: sq_override_helper, enabled: boolean, write_mode: number|nil): nil
+---@field set_dynamic_skillshot_distance fun(self: sq_override_helper, distance: number, write_mode: number|nil): nil
+---@field set_control_movement fun(self: sq_override_helper, enabled: boolean, write_mode: number|nil): nil
+---@field set_movement_block_percentage fun(self: sq_override_helper, percentage: number, write_mode: number|nil): nil
+---@field set_movement_min_stop_time fun(self: sq_override_helper, ms: number, write_mode: number|nil): nil
+---@field reset fun(self: sq_override_helper): nil                                                Reset all ONCE guards (permanent API).
+---@field is_applied fun(self: sq_override_helper, key: string): boolean                          Check if a key was already applied (ONCE mode).
+
+--========================
+-- SESSION EXAMPLES (generic)
+--========================
+
+-- EXAMPLE 1: Session override — disable a feature you don't want (RECOMMENDED)
+--
+-- Overrides are volatile. User settings are NEVER touched. When your plugin is
+-- disabled/unloaded, overrides vanish within 500ms. The spell queue menu shows:
+-- "Overridden by: My Rotation"
+--
+--   local sq = require("common/utility/sq_override_helper")
+--   local session = sq:create_session("My Rotation")  -- unique name, add your dev tag
+--
+--   function on_update()
+--       -- I don't want the off-GCD throttle for my burst window:
+--       session:set_multi_charge_throttle(false)
+--   end
+
+-- EXAMPLE 2: Session override — force fast-cast skillshots + shorter retry
+--
+--   local sq = require("common/utility/sq_override_helper")
+--   local session = sq:create_session("My Skillshot Rotation")
+--
+--   function on_update()
+--       session:set_skillshot_mode(sq.enums.skillshot_mode.FAST_CAST)
+--       session:set_persistent_queue(true)
+--       session:set_persistent_queue_seconds(2.0)
+--   end
+
+-- EXAMPLE 3: Session override — opt into the [PORTED-RISK] behaviour
+--
+-- The proxy ships these changes OFF (priority-9 latency zeroing, fast-queue
+-- preservation). A dev who tested them and wants them can enable them just for
+-- their session, without changing the shipped default for everyone else.
+--
+--   local sq = require("common/utility/sq_override_helper")
+--   local session = sq:create_session("My Rotation")
+--
+--   function on_update()
+--       session:set_risky_changes(true)
+--   end
+
+-- EXAMPLE 4: Generic setter (any key, future-proof)
+--
+--   local sq = require("common/utility/sq_override_helper")
+--   local session = sq:create_session("My Rotation")
+--
+--   function on_update()
+--       session:set("multi_charge_throttle", false)
+--       session:set("skillshot_mode", sq.enums.skillshot_mode.TOOLTIP)
+--   end
+
+-- EXAMPLE 5: Stop overriding explicitly
+--
+--   local sq = require("common/utility/sq_override_helper")
+--   local session = sq:create_session("My Rotation")
+--
+--   function on_update()
+--       if should_override then
+--           session:set_multi_charge_throttle(false)
+--       else
+--           session:destroy()  -- overrides vanish, user settings restore
+--       end
+--   end
+
+-- EXAMPLE 6: Check if a session is active (for UI or debugging)
+--
+--   local sq = require("common/utility/sq_override_helper")
+--   local active, plugin_name = sq:has_active_session()
+--   if active then
+--       core.log("Spell queue overridden by: " .. plugin_name)
+--   end
+
+--========================
+-- PERMANENT EXAMPLES (legacy)
+--========================
+
+-- EXAMPLE 7: Permanent setup (call in on_update, ONCE mode is default)
+--
+--   local sq = require("common/utility/sq_override_helper")
+--   local function setup()
+--       sq:set_skillshot_mode(sq.enums.skillshot_mode.FAST_CAST)
+--       sq:set_persistent_queue_seconds(3.0)
+--   end
+
+-- EXAMPLE 8: ON_CHANGE mode (sync from your own menu slider each frame)
+--
+--   local sq = require("common/utility/sq_override_helper")
+--   local SYNC = sq.enums.write_mode.ON_CHANGE
+--   local function on_update()
+--       sq:set_persistent_queue_seconds(my_menu.retry_slider:get(), SYNC)
+--   end
+
+---@type sq_override_helper
+local tbl
+return tbl

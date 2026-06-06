@@ -1644,6 +1644,11 @@ function core.lfg_list.get_search_result_member_counts(result_id)
 end
 
 ---@class spell_book
+--- Indicates if the spell can be usable based on many requirements.
+--- Declared as a field (not a function stub) because core_lua/go_override_fnc.lua
+--- monkey-patches it at load; a field declaration is not a "set", so the override
+--- is the sole definition and there is no duplicate-set-field.
+---@field is_usable_spell fun(spell_id: integer): boolean
 core.spell_book = {}
 
 --- Retrieves the local_player specialization_id
@@ -1665,12 +1670,8 @@ function core.spell_book.get_spell_cooldown(spell_id)
     return 0
 end
 
---- Indicates if the spell can be usable based on many requirements.
----@param spell_id integer The ID of the spell.
----@return boolean to indicate if the spell is usable.
-function core.spell_book.is_usable_spell(spell_id)
-    return false
-end
+-- core.spell_book.is_usable_spell is declared as a ---@field on the class above
+-- (it is monkey-patched by go_override_fnc.lua, so it must not be a stub "set" here).
 
 --- Retrieves the amount of current charges of the specified spell identified by its ID.
 ---@param spell_id integer The ID of the spell.
@@ -2029,7 +2030,7 @@ end
 
 ---@return number
 ---@param target game_object
----@param ui_check boolean -- true wont suggest the spell unless is on the action bar
+---@param ui_check? boolean -- true wont suggest the spell unless is on the action bar (optional)
 function core.spell_book.get_assisted_spell_id(target, ui_check)
     return 0
 end
@@ -2163,7 +2164,11 @@ end
 --- Accounts for screen resolution, slider offsets, and animation offsets.
 --- Slot N position: vec2(layout.base_pos.x, layout.base_pos.y + layout.separation * N)
 --- Note: actual notification width/height may exceed default_size depending on text content.
---- @return table layout { base_pos: vec2, default_size: vec2, separation: number }
+---@class notifications_layout
+---@field base_pos vec2 Pixel position of the first notification slot.
+---@field default_size vec2 Base notification size in pixels before text expansion.
+---@field separation number Vertical pixel distance between stacked slots.
+---@return notifications_layout layout Pixel-space notification layout data.
 function core.graphics.get_notifications_layout()
     return {}
 end
@@ -2349,6 +2354,15 @@ function core.graphics.rect_3d_filled(p1, p2, p3, p4, color) end
 ---@param width number The perpendicular width of the rectangle.
 ---@param color color The fill color.
 function core.graphics.render_rect_3d_filled_new(start_pos, end_pos, width, color) end
+
+--- Draws a 3D polygon from world-space vertices.
+---@param points vec3[] Array of polygon vertices in ring order. Maximum 64 points.
+---@param color color The polygon fill or outline color.
+---@param filled boolean True to draw a filled polygon, false to draw an outline.
+---@param thickness? number Outline width in pixels when filled is false. Default is 2.
+---@param border_fade? number Edge feather width in pixels. Default is 2; use 0 for a crisp anti-aliased edge.
+---@return nil
+function core.graphics.render_polygon_3d(points, color, filled, thickness, border_fade) end
 
 --- Draw 2D Circle Outline
 ---@param center vec2 The center point of the circle.
@@ -2620,6 +2634,14 @@ end
 ---@param id string The unique identifier for the combobox.
 ---@return combobox_reorderable
 function core.menu.combobox_reorderable(default_index, id)
+    return {} -- Empty return statement to implicitly return nil
+end
+
+--- Creates a new reorderable combobox (overlay-window variant).
+---@param id string The unique identifier for the combobox.
+---@param items string[]|nil The initial items list.
+---@return combobox_reorderable_ow
+function core.menu.combobox_reorderable_ow(id, items)
     return {} -- Empty return statement to implicitly return nil
 end
 

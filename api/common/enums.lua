@@ -206,6 +206,7 @@
 ---@field FONT_SEMI_BIG number
 
 ---@class window_behaviour_flags
+---@field NONE number
 ---@field NO_SCROLLBAR number
 ---@field ALWAYS_AUTO_RESIZE number
 ---@field NO_MOVE number
