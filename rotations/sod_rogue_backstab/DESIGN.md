@@ -212,11 +212,15 @@ on_update():
 - Defensive auto‑use (Evasion, Major Healing Potion at low HP) for solo survivability while questing.
 - AoE branch (optional, menu‑gated): at 2+ enemies in splash range Blade Flurry fires as the cleave button (independent of the burst key); at `aoe_threshold`+ enemies the finisher swaps to **Crimson Tempest** (SoD AoE bleed rune) and the builder switches to the frontal strike (Saber Slash / Sinister Strike — cleaves through Blade Flurry, no positional requirement). Rupture is suppressed in AoE.
 
-**Tank mode (menu‑gated — Just a Flesh Wound / Blade Dance build):**
-Damage = threat, so the normal priority still drives most of it; tank mode layers threat tools on top and disables threat‑shedding behaviour. **All SoD tank‑rune IDs are VERIFY** (the SoD tank guide was egress‑blocked) and auto‑filter from `izi.spell` if wrong, so they no‑op rather than miscast.
-- *Blade Dance* upkeep (parry + threat; no‑ops if the rune is passive), *Main Gauche* off‑hand threat strike on cooldown, and *Feint* as a threat filler under Just a Flesh Wound (energy‑buffered so it never starves a builder/finisher).
-- Vanish burst, auto‑stealth and stealth openers are all suppressed (they shed threat).
-- Evasion is rolled proactively while tanking 2+ enemies, on top of the HP‑gated defensive use.
+**Tank mode (menu‑gated — Just a Flesh Wound build):** transcribed from Wowhead's *Rogue Tank Class Overview* (Simonize). **Just a Flesh Wound** makes every hit generate huge threat (passive), so damage = threat and the normal priority still drives the loop; tank mode layers the tank tools on top and disables threat‑shedding behaviour.
+- **Builders:** Main Gauche → Sinister Strike (not Backstab — the tank stands in front; not Saber Slash — that rune conflicts). CP also flows in passively from Honor Among Thieves / Unfair Advantage.
+- **Finishers:** maintain **Blade Dance** (a CP finisher granting parry — applied with whatever CP when its buff drops) and **Slice and Dice**, then dump extra CP into **Eviscerate**.
+- **Taunt:** **Tease** any add whose current target isn't us (`unit:get_target()` scan over melee range).
+- **Multi‑target threat:** **Shuriken Toss** / **Blunderbuss** on a pack (the guide notes baseline multi‑target threat is weak — it comes from these).
+- **Riposte** (Combat talent) fired whenever it lights up post‑parry.
+- Vanish burst, auto‑stealth and stealth openers are suppressed (they shed threat); **Evasion** is rolled proactively while tanking 2+ enemies (avoidance is the rogue tank's main mitigation).
+- **Stat priority:** Agility → Defense → Stamina → Hit → AP → Crit → Dodge → Parry → Str.
+- **IDs:** Blade Dance (`400012`) and Riposte (`14251`) are higher‑confidence; **Just a Flesh Wound, Main Gauche, Tease, Shuriken Toss, Blunderbuss are left BLANK (nil) in `ids.lua`** — the guide has no IDs and live DBs are egress‑blocked. Blank entries no‑op via `izi.spell`+`learned()`; paste the real IDs to light them up (a blank Main Gauche just means the tank builder falls back to Sinister Strike).
 
 **Extra spell/rune logic (menu‑gated):**
 - *Vanish burst* — in the burst window Vanish is used as a damage cooldown; next frame we are stealthed and the opener fires an instant Ambush, and it refreshes the **Master of Subtlety** aura. Sheds threat/combat, so opt‑in (default off).

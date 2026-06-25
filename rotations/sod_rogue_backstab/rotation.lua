@@ -22,6 +22,7 @@ local R = {}
 -- ---- build spell / item wrappers once ------------------------------------
 local unpack = table.unpack or unpack   -- WoW Lua 5.1 uses global unpack
 local function spell(list)
+    if not list then return nil end                     -- unknown/blank id -> no-op (learned() guards it)
     if type(list) == "table" then return izi.spell(unpack(list)) end
     return izi.spell(list)
 end
@@ -45,9 +46,12 @@ local S = {
     evasion         = spell(IDS.evasion),
     gouge           = spell(IDS.gouge),
     kick            = spell(IDS.kick),
-    feint           = spell(IDS.feint),
     blade_dance     = spell(IDS.blade_dance),
     main_gauche     = spell(IDS.main_gauche),
+    tease           = spell(IDS.tease),
+    shuriken_toss   = spell(IDS.shuriken_toss),
+    blunderbuss     = spell(IDS.blunderbuss),
+    riposte         = spell(IDS.riposte),
     premeditation   = spell(IDS.premeditation),
     cheap_shot      = spell(IDS.cheap_shot),
     garrote         = spell(IDS.garrote),
@@ -158,29 +162,48 @@ local function do_cleave_cooldowns(me)
     return S.blade_flurry:cast_safe(me, "Blade Flurry (cleave)", { skip_gcd = true })
 end
 
+-- find an enemy in melee that has slipped to someone else (taunt candidate)
+local function loose_add(me)
+    for _, e in ipairs(me:get_enemies_in_melee_range(8) or {}) do
+        local et = e:get_target()
+        if et and et ~= me then return e end
+    end
+    return nil
+end
+
 -- ---------------------------------------------------------------------------
 -- TANK THREAT (Just a Flesh Wound / Blade Dance build)
--- Damage = threat, so most of the normal priority still applies; this adds the
--- threat-specific tools on top. All rune pieces are VERIFY (auto-filtered).
+-- Per the Wowhead overview: Just a Flesh Wound makes all hits generate huge
+-- threat (passive), so damage = threat and most of the normal priority still
+-- drives the loop. This layer adds the tank-specific tools: taunt loose adds,
+-- ranged multi-target threat, and Blade Dance as a maintained CP finisher.
 -- ---------------------------------------------------------------------------
-local function do_tank(me, target, cp, energy)
+local function do_tank(me, target, cp)
     if not menu.tank_mode:get() then return false end
 
-    -- Keep Blade Dance up (parry + threat). If the rune is passive this no-ops.
-    if learned(S.blade_dance) and buff_remains(me, IDS.aura_blade_dance) < 2
-       and S.blade_dance:is_usable() then
-        if S.blade_dance:cast_safe(me, "Blade Dance", { skip_gcd = true }) then return true end
+    -- Tease: taunt any add that slipped onto another player
+    if learned(S.tease) and S.tease:cooldown_up() then
+        local add = loose_add(me)
+        if add and S.tease:cast_safe(add, "Tease (taunt)", { skip_gcd = true }) then return true end
     end
 
-    -- Main Gauche: off-hand threat strike on cooldown
-    if learned(S.main_gauche) and S.main_gauche:cooldown_up() and S.main_gauche:is_usable() then
-        if S.main_gauche:cast_safe(target, "Main Gauche") then return true end
+    -- Multi-target threat comes from these (not baseline) — fire on a pack
+    if count_enemies(me, 10) >= 2 then
+        if learned(S.blunderbuss) and S.blunderbuss:cooldown_up()
+           and S.blunderbuss:cast_safe(target, "Blunderbuss (AoE threat)") then return true end
+        if learned(S.shuriken_toss) and S.shuriken_toss:cooldown_up()
+           and S.shuriken_toss:cast_safe(target, "Shuriken Toss (AoE threat)") then return true end
     end
 
-    -- Feint generates threat under Just a Flesh Wound; use as filler while it
-    -- won't starve a builder/finisher (keep an energy buffer).
-    if learned(S.feint) and S.feint:cooldown_up() and cp < 5 and energy >= 40 then
-        if S.feint:cast_safe(target, "Feint (threat)") then return true end
+    -- Blade Dance: CP finisher that grants parry; keep it up. Apply with whatever
+    -- CP when the buff is down, otherwise let it build toward a longer refresh.
+    if learned(S.blade_dance) and cp >= 1 and buff_remains(me, IDS.aura_blade_dance) < 2 then
+        if S.blade_dance:cast_safe(me, "Blade Dance") then return true end
+    end
+
+    -- Riposte: free reactive strike + threat whenever it lights up (post-parry)
+    if learned(S.riposte) and S.riposte:is_usable() and S.riposte:cooldown_up() then
+        if S.riposte:cast_safe(target, "Riposte") then return true end
     end
     return false
 end
@@ -423,8 +446,8 @@ local function tick()
     local n        = count_enemies(me, 8)
     local aoe_mode = menu.aoe:get() and n >= menu.aoe_threshold:get()
 
-    -- Tank threat tools (Blade Dance / Main Gauche / Feint) take priority in tank mode
-    if do_tank(me, target, cp, energy) then return end
+    -- Tank threat tools (taunt / AoE threat / Blade Dance / Riposte) come first in tank mode
+    if do_tank(me, target, cp) then return end
 
     -- Free no-stealth Ambush from the Cutthroat proc
     if me:has_buff(IDS.cutthroat_proc) and learned(S.ambush) then
@@ -479,7 +502,13 @@ local function tick()
     -- In AoE we use the frontal builder (it cleaves through Blade Flurry and has
     -- no positional requirement); single-target prefers Backstab.
     if cp < 5 and energy >= menu.energy_pool:get() then
-        if not aoe_mode and backstab_ready(me, target) then
+        if menu.tank_mode:get() then
+            -- tank builders: Main Gauche (off-hand) then Sinister Strike (frontal)
+            if learned(S.main_gauche) and S.main_gauche:cooldown_up() and S.main_gauche:is_usable()
+               and S.main_gauche:cast_safe(target, "Main Gauche") then return end
+            if learned(S.sinister) and S.sinister:is_usable()
+               and S.sinister:cast_safe(target, "Sinister Strike") then return end
+        elseif not aoe_mode and backstab_ready(me, target) then
             if S.backstab:cast_safe(target, "Backstab") then return end
         else
             local b, name = frontal_builder()

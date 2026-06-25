@@ -55,13 +55,25 @@ IDS.preparation     = { 14185 }
 IDS.evasion         = { 5277 }
 
 -- ---- Tank (SoD) ----------------------------------------------------------
--- !! VERIFY !! Tank-rune IDs are from training knowledge (the SoD tank guide
--- was egress-blocked). Wrong IDs auto-filter out of izi.spell, so they no-op
--- rather than miscast. Confirm in-client before relying on tank mode.
-IDS.feint              = { 1966, 6768, 8637, 11303 }   -- threat tool under Just a Flesh Wound (classic ranks)
-IDS.blade_dance        = { 400012 }                    -- SoD rune (Legs): parry/threat (from DESIGN research table)
-IDS.just_a_flesh_wound = { 400014 }                    -- SoD keystone tank rune (VERIFY id; mostly passive threat)
-IDS.main_gauche        = { 462752 }                    -- SoD off-hand threat strike (VERIFY id; may be Blade-Dance proc only)
+-- Per Wowhead's "Rogue Tank Class Overview" (Simonize): keystone is Just a
+-- Flesh Wound (huge threat + mitigation, mostly passive); rotation builds with
+-- Main Gauche + Sinister Strike, maintains Blade Dance (a CP *finisher* giving
+-- parry) and Slice and Dice, dumps extra CP into Eviscerate; Tease is the
+-- taunt; Shuriken Toss / Blunderbuss are the multi-target threat tools.
+--
+-- !! VERIFY / FILL-IN !!  SoD rune spell IDs below are NOT confirmed (the guide
+-- text has no IDs and live DBs are egress-blocked). Blank (nil) entries simply
+-- no-op via izi.spell + learned() until you paste the real IDs. Blade Dance and
+-- Riposte have higher-confidence values; the rest are left blank on purpose to
+-- avoid a wrong-ID collision with an unrelated known spell.
+IDS.feint              = { 1966, 6768, 8637, 11303 }   -- (not used by tank loop; kept for reference)
+IDS.blade_dance        = { 400012 }                    -- SoD rune (Legs): CP finisher, +parry (from DESIGN research table)
+IDS.just_a_flesh_wound = nil                           -- keystone tank rune (passive threat/mitigation) — FILL IN
+IDS.main_gauche        = nil                           -- off-hand builder strike (SoD) — FILL IN
+IDS.tease              = nil                            -- taunt (SoD) — FILL IN
+IDS.shuriken_toss      = nil                            -- ranged multi-target threat (SoD) — FILL IN
+IDS.blunderbuss        = nil                            -- cone multi-target threat (SoD) — FILL IN
+IDS.riposte            = { 14251 }                     -- Combat talent: reactive strike after a parry
 IDS.aura_blade_dance   = { 400012 }
 IDS.sprint          = { 2983, 8696, 11305 }
 IDS.gouge           = { 1776, 1777, 8629, 11285, 11286 }
