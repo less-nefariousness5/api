@@ -210,7 +210,13 @@ on_update():
 - Rupture/finisher‑heavy logic is value‑gated on TTD so it doesn't waste GCDs on fast‑dying low‑level mobs.
 - Positional fallback to Sinister Strike covers the pre‑Cutthroat window.
 - Defensive auto‑use (Evasion, Major Healing Potion at low HP) for solo survivability while questing.
-- AoE branch (optional, menu‑gated): Blade Flurry + Eviscerate spam, or just tab‑cleave, when multiple enemies in melee.
+- AoE branch (optional, menu‑gated): at 2+ enemies in splash range Blade Flurry fires as the cleave button (independent of the burst key); at `aoe_threshold`+ enemies the finisher swaps to **Crimson Tempest** (SoD AoE bleed rune) and the builder switches to the frontal strike (Saber Slash / Sinister Strike — cleaves through Blade Flurry, no positional requirement). Rupture is suppressed in AoE.
+
+**Automation layer (menu‑gated, runs around the combat list):**
+- *Ensure auto‑attack* — on a fresh/swapped target, if `me:is_auto_attacking()` is false we call `auto_attack_helper:start_attack(target, MELEE)` so white swings always start.
+- *Auto‑stealth* — out of combat with an enemy inside `stealth_range`, cast Stealth to approach for a free opener.
+- *Auto‑loot* — out of combat, `loot_object()` the nearest corpse returned by `get_enemies_in_range_if(loot_range, …, is_lootable)`.
+- *Target cleanup* — once the current target is dead (and looted, if auto‑loot owns it) swap to the next live enemy via `set_target`, or clear the selection so the selector re‑acquires. (Clearing via `set_target(nil)` is **VERIFY** — wrapped in pcall.)
 
 ---
 

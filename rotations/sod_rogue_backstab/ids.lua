@@ -31,6 +31,7 @@ IDS.ghostly_strike  = { 14278 }
 IDS.eviscerate      = { 2098, 6760, 6761, 6762, 8623, 8624, 11299, 11300 }
 IDS.slice_and_dice  = { 5171, 6774 }
 IDS.rupture         = { 1943, 8639, 8640, 11273, 11274, 11275 }
+IDS.crimson_tempest = { 436611 }                 -- SoD rune: AoE bleed finisher (VERIFY id; unknown id is auto-filtered)
 IDS.expose_armor    = { 8647, 8649, 8650, 11197, 11198 }
 IDS.kidney_shot     = { 408, 8643 }
 IDS.envenom_rune    = { 399963 }                 -- SoD Envenom (rune); not baseline in Classic

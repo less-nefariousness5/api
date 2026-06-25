@@ -15,6 +15,7 @@
 local izi  = require("common/izi_sdk")
 local IDS  = require("rotations/sod_rogue_backstab/ids")
 local menu = require("rotations/sod_rogue_backstab/menu")
+local auto_attack = require("common/utility/auto_attack_helper")
 
 local R = {}
 
@@ -31,8 +32,10 @@ local S = {
     saber_slash     = spell(IDS.saber_slash),
     ambush          = spell(IDS.ambush),
     eviscerate      = spell(IDS.eviscerate),
+    crimson_tempest = spell(IDS.crimson_tempest),
     slice_and_dice  = spell(IDS.slice_and_dice),
     rupture         = spell(IDS.rupture),
+    stealth         = spell(IDS.stealth),
     adrenaline_rush = spell(IDS.adrenaline_rush),
     blade_flurry    = spell(IDS.blade_flurry),
     cold_blood      = spell(IDS.cold_blood),
@@ -92,6 +95,11 @@ local function frontal_builder()
     return S.sinister, "Sinister Strike"
 end
 
+-- enemies within `range` yards of us (splash/cleave counting)
+local function count_enemies(me, range)
+    return #(me:get_enemies_in_melee_range(range) or {})
+end
+
 -- ---------------------------------------------------------------------------
 -- COOLDOWNS (only while the burst keybind is held / auto, and not stealthed)
 -- ---------------------------------------------------------------------------
@@ -109,13 +117,18 @@ local function do_cooldowns(me, target, cp)
     if menu.auto_cooldowns:get() then
         if learned(S.adrenaline_rush) and S.adrenaline_rush:cooldown_up()
            and S.adrenaline_rush:cast_safe(me, "Adrenaline Rush", { skip_gcd = true }) then return true end
-
-        local want_bf = learned(S.blade_flurry) and S.blade_flurry:cooldown_up()
-        if want_bf and menu.aoe:get() and (#(me:get_enemies_in_melee_range(8) or {}) >= 2) then
-            if S.blade_flurry:cast_safe(me, "Blade Flurry", { skip_gcd = true }) then return true end
-        end
     end
     return false
+end
+
+-- Blade Flurry is the core cleave button: fire it on 2+ targets independent of
+-- the burst keybind (it is the AoE rotation, not a "save it" cooldown).
+local function do_cleave_cooldowns(me)
+    if not menu.aoe:get() then return false end
+    if me:stealth_up() then return false end
+    if not (learned(S.blade_flurry) and S.blade_flurry:cooldown_up()) then return false end
+    if count_enemies(me, 8) < 2 then return false end
+    return S.blade_flurry:cast_safe(me, "Blade Flurry (cleave)", { skip_gcd = true })
 end
 
 -- ---------------------------------------------------------------------------
@@ -208,6 +221,73 @@ local function do_out_of_combat(me)
 end
 
 -- ---------------------------------------------------------------------------
+-- AUTOMATION: auto-attack, auto-stealth near enemies, auto-loot, target cleanup
+-- ---------------------------------------------------------------------------
+
+-- Make sure white swings are running on the current target. Melee specials
+-- normally enable auto-attack, but on a fresh target (especially after a
+-- stealth opener or a target swap) this guarantees we are actually swinging.
+local function ensure_auto_attack(me, target)
+    if not menu.auto_attack:get() then return end
+    if me:is_auto_attacking() then return end
+    if not me:can_attack(target) then return end
+    auto_attack:start_attack(target, auto_attack.ATTACK_TYPE.MELEE)
+end
+
+-- Stealth up while roaming near enemies so we approach for a free opener.
+local function do_auto_stealth(me)
+    if not menu.auto_stealth:get() then return false end
+    if me:affecting_combat() or me:stealth_up() then return false end
+    if not (learned(S.stealth) and S.stealth:is_usable()) then return false end
+    if count_enemies(me, menu.stealth_range:get()) < 1 then return false end
+    return S.stealth:cast_safe(me, "Stealth (approach)", { skip_gcd = true })
+end
+
+-- corpse-with-loot predicate for get_enemies_in_range_if (which returns dead units)
+local function is_lootable(u)
+    return u and u:is_valid() and u:is_dead() and u:can_be_looted()
+end
+
+-- Loot the nearest lootable corpse while out of combat.
+local function do_auto_loot(me)
+    if not menu.auto_loot:get() then return false end
+    if me:affecting_combat() then return false end
+    local range  = menu.loot_range:get()
+    local corpses = me:get_enemies_in_range_if(range, false, is_lootable) or {}
+    local best, best_d
+    for _, c in ipairs(corpses) do
+        local d = me:distance_to(c)
+        if not best_d or d < best_d then best, best_d = c, d end
+    end
+    if best then
+        core.input.loot_object(best)
+        return true
+    end
+    return false
+end
+
+-- Drop a target once it is dead (and looted, if auto-loot is handling it) so the
+-- target selector can acquire the next enemy and we re-enable auto-attack on it.
+local function do_target_cleanup(me)
+    if not menu.clear_dead:get() then return false end
+    local cur = izi.target()
+    if not (cur and cur:is_valid() and cur:is_dead()) then return false end
+    -- leave a lootable corpse targeted while auto-loot still wants it
+    if menu.auto_loot:get() and cur:can_be_looted()
+       and me:distance_to(cur) <= menu.loot_range:get() then
+        return false
+    end
+    -- prefer swapping straight to the next live enemy; otherwise clear selection
+    local nxt = (menu.use_ts:get() and izi.ts(1)) or nil
+    if nxt and nxt:is_valid_enemy() and nxt ~= cur then
+        return core.input.set_target(nxt)
+    end
+    -- no replacement: clear so we don't stay locked on the corpse (VERIFY nil-clear)
+    pcall(function() core.input.set_target(nil) end)
+    return true
+end
+
+-- ---------------------------------------------------------------------------
 -- MAIN TICK
 -- ---------------------------------------------------------------------------
 local function tick()
@@ -218,19 +298,31 @@ local function tick()
     local me = izi.me()
     if not me or me:is_dead_or_ghost() then return end
 
+    -- housekeeping that does not need a live enemy target
+    if do_target_cleanup(me) then return end     -- drop dead/looted target
+    if do_auto_loot(me) then return end           -- loot nearby corpses (OOC)
+
     local target = get_target()
-    if not target then return end
+    if not target then
+        do_auto_stealth(me)                       -- stay stealthed while roaming
+        return
+    end
 
     -- defensives are allowed even slightly out of melee
     if do_defensives(me, target) then return end
 
-    -- out-of-combat upkeep (elixirs/flask/poison) before we engage
-    if not me:affecting_combat() and me.is_standing_still and me:is_standing_still() then
-        if do_out_of_combat(me) then return end
+    -- out-of-combat approach behaviour before we engage
+    if not me:affecting_combat() then
+        if do_auto_stealth(me) then return end
+        if me.is_standing_still and me:is_standing_still() then
+            if do_out_of_combat(me) then return end   -- elixirs/flask/poison
+        end
     end
 
     if not target:is_in_melee_range(5) then return end
     if not me:can_attack(target) then return end
+
+    ensure_auto_attack(me, target)                -- guarantee white swings on this target
 
     if do_interrupt(me, target) then return end
 
@@ -250,6 +342,12 @@ local function tick()
     end
 
     if do_cooldowns(me, target, cp) then return end
+    if do_cleave_cooldowns(me) then return end
+
+    -- AoE engages once enough enemies are in splash range (2 = cleave via Blade
+    -- Flurry; aoe_threshold+ swaps the finisher to Crimson Tempest)
+    local n        = count_enemies(me, 8)
+    local aoe_mode = menu.aoe:get() and n >= menu.aoe_threshold:get()
 
     -- Free no-stealth Ambush from the Cutthroat proc
     if me:has_buff(IDS.cutthroat_proc) and learned(S.ambush) then
@@ -269,25 +367,33 @@ local function tick()
         end
     end
 
-    -- Rupture for bleed damage + Carnage synergy (value-gated on TTD)
-    if menu.maintain_rup:get() and learned(S.rupture)
+    -- Rupture for bleed damage + Carnage synergy (single-target; skipped in AoE,
+    -- where Crimson Tempest is the bleed of choice)
+    if menu.maintain_rup:get() and not aoe_mode and learned(S.rupture)
        and cp >= 4 and ttd >= menu.rupture_min_ttd:get() then
         if debuff_remains(target, IDS.debuff_rupture) < 2 then
             if S.rupture:cast_safe(target, "Rupture") then return end
         end
     end
 
-    -- Finisher: Eviscerate at the CP threshold, or at 4 CP if energy is about to
+    -- Finisher: in AoE, Crimson Tempest (AoE bleed) takes the slot; otherwise
+    -- Eviscerate. Fire at the CP threshold or at 4 CP if energy is about to
     -- overcap (the dying-target dump is handled higher up).
-    if learned(S.eviscerate) then
-        if cp >= finish_cp or (cp >= 4 and energy >= (emax - 20)) then
+    local finisher_ready = (cp >= finish_cp) or (cp >= 4 and energy >= (emax - 20))
+    if finisher_ready then
+        if aoe_mode and learned(S.crimson_tempest) then
+            if S.crimson_tempest:cast_safe(me, "Crimson Tempest (AoE)") then return end
+        end
+        if learned(S.eviscerate) then
             if S.eviscerate:cast_safe(target, "Eviscerate") then return end
         end
     end
 
     -- Builder: keep a small reactive energy buffer (energy_pool) before pressing.
+    -- In AoE we use the frontal builder (it cleaves through Blade Flurry and has
+    -- no positional requirement); single-target prefers Backstab.
     if cp < 5 and energy >= menu.energy_pool:get() then
-        if backstab_ready(me, target) then
+        if not aoe_mode and backstab_ready(me, target) then
             if S.backstab:cast_safe(target, "Backstab") then return end
         else
             local b, name = frontal_builder()

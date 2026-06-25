@@ -15,6 +15,7 @@ local P = "sod_rogue_bs_"  -- persistence-id prefix (keep unique across plugins)
 M.enabled        = menu_api.new_keybind(true, true, 0x06, P .. "enabled")   -- toggle on/off (default key X2 mouse)
 M.burst          = menu_api.new_keybind(false, false, 0x05, P .. "burst")   -- hold for cooldowns (default key X1 mouse)
 M.aoe            = menu_api.new_checkbox(P .. "aoe", false)                  -- enable AoE/cleave logic
+M.aoe_threshold  = menu_api.new_slider(2, 6, 3, P .. "aoe_threshold")       -- enemies for full AoE finisher (2 = cleave only)
 M.use_ts         = menu_api.new_checkbox(P .. "use_ts", true)               -- pick target via target-selector
 
 -- ---- Core rotation -------------------------------------------------------
@@ -49,6 +50,14 @@ M.potion_hp      = menu_api.new_slider(10, 60, 25, P .. "potion_hp")        -- h
 -- ---- Interrupts ----------------------------------------------------------
 M.auto_kick      = menu_api.new_checkbox(P .. "auto_kick", true)            -- Kick interruptible casts
 
+-- ---- Automation (attack / stealth / loot) --------------------------------
+M.auto_attack    = menu_api.new_checkbox(P .. "auto_attack", true)          -- ensure white swings start on a new target
+M.auto_stealth   = menu_api.new_checkbox(P .. "auto_stealth", false)        -- auto Stealth out of combat near enemies
+M.stealth_range  = menu_api.new_slider(8, 40, 25, P .. "stealth_range")     -- enemy proximity (yd) that triggers auto-stealth
+M.auto_loot      = menu_api.new_checkbox(P .. "auto_loot", false)           -- loot nearby corpses out of combat
+M.loot_range     = menu_api.new_slider(3, 12, 5, P .. "loot_range")         -- corpse interact range (yd)
+M.clear_dead     = menu_api.new_checkbox(P .. "clear_dead", true)           -- drop target once it is dead/looted
+
 function M.render()
     menu_api.begin_frame()
     menu_api.header("SoD Rogue - Backstab/Cutthroat")
@@ -56,6 +65,7 @@ function M.render()
     M.burst:render("Burst cooldowns (hold)")
     M.use_ts:render("Use target selector")
     M.aoe:render("AoE / cleave mode")
+    M.aoe_threshold:render("AoE finisher at N enemies")
 
     menu_api.separator()
     menu_api.header("Core")
@@ -92,6 +102,15 @@ function M.render()
     M.evasion_hp:render("Evasion below HP%")
     M.potion_hp:render("Healing potion below HP%")
     M.auto_kick:render("Auto Kick interrupts")
+
+    menu_api.separator()
+    menu_api.header("Automation")
+    M.auto_attack:render("Ensure auto-attack on new target")
+    M.auto_stealth:render("Auto Stealth near enemies (out of combat)")
+    M.stealth_range:render("Auto-stealth enemy range (yd)")
+    M.auto_loot:render("Auto loot corpses (out of combat)")
+    M.loot_range:render("Loot range (yd)")
+    M.clear_dead:render("Clear target when dead/looted")
 end
 
 return M
