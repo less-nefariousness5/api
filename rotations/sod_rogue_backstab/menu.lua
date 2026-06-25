@@ -1,0 +1,88 @@
+-- =============================================================================
+-- SoD Rogue Backstab/Cutthroat — settings menu (ow_menu_api)
+-- =============================================================================
+-- Elements are created ONCE at load. M.render() is called from the
+-- register_on_render_menu_callback. Getters are read each frame in rotation.lua.
+-- =============================================================================
+
+local menu_api = require("common/ow_menu_api")
+
+local M = {}
+
+local P = "sod_rogue_bs_"  -- persistence-id prefix (keep unique across plugins)
+
+-- ---- General -------------------------------------------------------------
+M.enabled        = menu_api.new_keybind(true, true, 0x06, P .. "enabled")   -- toggle on/off (default key X2 mouse)
+M.burst          = menu_api.new_keybind(false, false, 0x05, P .. "burst")   -- hold for cooldowns (default key X1 mouse)
+M.aoe            = menu_api.new_checkbox(P .. "aoe", false)                  -- enable AoE/cleave logic
+M.use_ts         = menu_api.new_checkbox(P .. "use_ts", true)               -- pick target via target-selector
+
+-- ---- Core rotation -------------------------------------------------------
+M.finisher_cp    = menu_api.new_slider(3, 5, 5, P .. "finisher_cp")         -- combo points before Eviscerate
+M.energy_pool    = menu_api.new_slider(0, 60, 25, P .. "energy_pool")       -- min energy kept before a builder
+M.assume_behind  = menu_api.new_checkbox(P .. "assume_behind", false)       -- treat Backstab as always usable (pre-Cutthroat manual positioning)
+
+-- ---- Maintenance ---------------------------------------------------------
+M.maintain_snd   = menu_api.new_checkbox(P .. "maintain_snd", true)         -- keep Slice and Dice up
+M.cut_to_chase   = menu_api.new_checkbox(P .. "cut_to_chase", false)        -- Cut-to-the-Chase rune equipped (Eviscerate auto-refreshes SnD)
+M.maintain_rup   = menu_api.new_checkbox(P .. "maintain_rup", true)         -- keep Rupture up (Carnage synergy)
+M.rupture_min_ttd= menu_api.new_slider(5, 30, 8, P .. "rup_ttd")            -- only Rupture if target lives >= N s
+
+-- ---- Cooldowns -----------------------------------------------------------
+M.auto_cooldowns = menu_api.new_checkbox(P .. "auto_cd", true)              -- AR / Blade Flurry / Cold Blood
+M.cold_blood     = menu_api.new_checkbox(P .. "cold_blood", true)           -- pair Cold Blood with finisher
+M.thistle_tea    = menu_api.new_checkbox(P .. "thistle", true)              -- Thistle Tea when energy starved
+
+-- ---- Consumables / out of combat ----------------------------------------
+M.auto_consumes  = menu_api.new_checkbox(P .. "auto_consume", false)        -- auto elixirs/sharpening (out of combat)
+M.auto_poison    = menu_api.new_checkbox(P .. "auto_poison", false)         -- re-apply weapon poisons when missing
+
+-- ---- Defensives ----------------------------------------------------------
+M.auto_defensive = menu_api.new_checkbox(P .. "auto_def", true)             -- Evasion / healing potion
+M.evasion_hp     = menu_api.new_slider(10, 60, 35, P .. "evasion_hp")       -- Evasion below this HP%
+M.potion_hp      = menu_api.new_slider(10, 60, 25, P .. "potion_hp")        -- healing potion below this HP%
+
+-- ---- Interrupts ----------------------------------------------------------
+M.auto_kick      = menu_api.new_checkbox(P .. "auto_kick", true)            -- Kick interruptible casts
+
+function M.render()
+    menu_api.begin_frame()
+    menu_api.header("SoD Rogue - Backstab/Cutthroat")
+    M.enabled:render("Enabled (toggle)")
+    M.burst:render("Burst cooldowns (hold)")
+    M.use_ts:render("Use target selector")
+    M.aoe:render("AoE / cleave mode")
+
+    menu_api.separator()
+    menu_api.header("Core")
+    M.finisher_cp:render("Finisher at combo points")
+    M.energy_pool:render("Min energy before builder")
+    M.assume_behind:render("Assume Backstab usable (manual positioning)")
+
+    menu_api.separator()
+    menu_api.header("Maintenance")
+    M.maintain_snd:render("Maintain Slice and Dice")
+    M.cut_to_chase:render("Cut-to-the-Chase rune (auto SnD)")
+    M.maintain_rup:render("Maintain Rupture")
+    M.rupture_min_ttd:render("Rupture min target TTD (s)")
+
+    menu_api.separator()
+    menu_api.header("Cooldowns")
+    M.auto_cooldowns:render("Auto Adrenaline Rush / Blade Flurry")
+    M.cold_blood:render("Cold Blood + finisher")
+    M.thistle_tea:render("Thistle Tea when energy starved")
+
+    menu_api.separator()
+    menu_api.header("Consumables (out of combat)")
+    M.auto_consumes:render("Auto elixirs / sharpening stone")
+    M.auto_poison:render("Auto re-apply poisons")
+
+    menu_api.separator()
+    menu_api.header("Defensives / Utility")
+    M.auto_defensive:render("Auto defensives")
+    M.evasion_hp:render("Evasion below HP%")
+    M.potion_hp:render("Healing potion below HP%")
+    M.auto_kick:render("Auto Kick interrupts")
+end
+
+return M
