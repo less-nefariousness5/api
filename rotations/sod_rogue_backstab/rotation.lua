@@ -45,6 +45,9 @@ local S = {
     evasion         = spell(IDS.evasion),
     gouge           = spell(IDS.gouge),
     kick            = spell(IDS.kick),
+    feint           = spell(IDS.feint),
+    blade_dance     = spell(IDS.blade_dance),
+    main_gauche     = spell(IDS.main_gauche),
     premeditation   = spell(IDS.premeditation),
     cheap_shot      = spell(IDS.cheap_shot),
     garrote         = spell(IDS.garrote),
@@ -131,8 +134,9 @@ local function do_cooldowns(me, target, cp)
     end
 
     -- Vanish -> (next frame, stealthed) Ambush; also refreshes Master of Subtlety.
-    -- Held to the burst window since it sheds threat/combat.
-    if menu.vanish_burst:get() and learned(S.vanish) and S.vanish:cooldown_up() then
+    -- Held to the burst window since it sheds threat/combat (never in tank mode).
+    if menu.vanish_burst:get() and not menu.tank_mode:get()
+       and learned(S.vanish) and S.vanish:cooldown_up() then
         if S.vanish:cast_safe(me, "Vanish (burst)", { skip_gcd = true }) then return true end
     end
 
@@ -155,6 +159,33 @@ local function do_cleave_cooldowns(me)
 end
 
 -- ---------------------------------------------------------------------------
+-- TANK THREAT (Just a Flesh Wound / Blade Dance build)
+-- Damage = threat, so most of the normal priority still applies; this adds the
+-- threat-specific tools on top. All rune pieces are VERIFY (auto-filtered).
+-- ---------------------------------------------------------------------------
+local function do_tank(me, target, cp, energy)
+    if not menu.tank_mode:get() then return false end
+
+    -- Keep Blade Dance up (parry + threat). If the rune is passive this no-ops.
+    if learned(S.blade_dance) and buff_remains(me, IDS.aura_blade_dance) < 2
+       and S.blade_dance:is_usable() then
+        if S.blade_dance:cast_safe(me, "Blade Dance", { skip_gcd = true }) then return true end
+    end
+
+    -- Main Gauche: off-hand threat strike on cooldown
+    if learned(S.main_gauche) and S.main_gauche:cooldown_up() and S.main_gauche:is_usable() then
+        if S.main_gauche:cast_safe(target, "Main Gauche") then return true end
+    end
+
+    -- Feint generates threat under Just a Flesh Wound; use as filler while it
+    -- won't starve a builder/finisher (keep an energy buffer).
+    if learned(S.feint) and S.feint:cooldown_up() and cp < 5 and energy >= 40 then
+        if S.feint:cast_safe(target, "Feint (threat)") then return true end
+    end
+    return false
+end
+
+-- ---------------------------------------------------------------------------
 -- DEFENSIVES / INTERRUPTS
 -- ---------------------------------------------------------------------------
 local function do_defensives(me, target)
@@ -166,6 +197,12 @@ local function do_defensives(me, target)
        and I.free_action:cooldown_up() and me:affecting_combat()
        and (me:is_rooted() or me:is_stunned()) then
         if I.free_action:use_self_safe("Free Action Potion", { skip_gcd = true }) then return true end
+    end
+
+    -- Tank mode: keep Evasion rolling proactively while actively tanking a pack
+    if menu.tank_mode:get() and count_enemies(me, 8) >= 2
+       and learned(S.evasion) and S.evasion:cooldown_up() then
+        if S.evasion:cast_safe(me, "Evasion (tank)", { skip_gcd = true }) then return true end
     end
 
     if hp <= menu.evasion_hp:get() and learned(S.evasion) and S.evasion:cooldown_up() then
@@ -194,6 +231,7 @@ end
 -- STEALTH OPENERS  (Premeditation -> Ambush behind / Cheap Shot / Garrote)
 -- ---------------------------------------------------------------------------
 local function do_stealth_opener(me, target, cp)
+    if menu.tank_mode:get() then return false end          -- tanks don't open from stealth
     -- runs for a normal stealth open and after a Vanish burst re-stealths us
     if not (menu.stealth_openers:get() or menu.vanish_burst:get()) then return false end
     if not me:stealth_up() then return false end
@@ -272,7 +310,7 @@ end
 
 -- Stealth up while roaming near enemies so we approach for a free opener.
 local function do_auto_stealth(me)
-    if not menu.auto_stealth:get() then return false end
+    if not menu.auto_stealth:get() or menu.tank_mode:get() then return false end
     if me:affecting_combat() or me:stealth_up() then return false end
     if not (learned(S.stealth) and S.stealth:is_usable()) then return false end
     if count_enemies(me, menu.stealth_range:get()) < 1 then return false end
@@ -384,6 +422,9 @@ local function tick()
     -- Flurry; aoe_threshold+ swaps the finisher to Crimson Tempest)
     local n        = count_enemies(me, 8)
     local aoe_mode = menu.aoe:get() and n >= menu.aoe_threshold:get()
+
+    -- Tank threat tools (Blade Dance / Main Gauche / Feint) take priority in tank mode
+    if do_tank(me, target, cp, energy) then return end
 
     -- Free no-stealth Ambush from the Cutthroat proc
     if me:has_buff(IDS.cutthroat_proc) and learned(S.ambush) then

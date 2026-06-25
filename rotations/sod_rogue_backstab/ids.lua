@@ -53,6 +53,16 @@ IDS.blade_flurry    = { 13877 }
 IDS.cold_blood      = { 14177 }
 IDS.preparation     = { 14185 }
 IDS.evasion         = { 5277 }
+
+-- ---- Tank (SoD) ----------------------------------------------------------
+-- !! VERIFY !! Tank-rune IDs are from training knowledge (the SoD tank guide
+-- was egress-blocked). Wrong IDs auto-filter out of izi.spell, so they no-op
+-- rather than miscast. Confirm in-client before relying on tank mode.
+IDS.feint              = { 1966, 6768, 8637, 11303 }   -- threat tool under Just a Flesh Wound (classic ranks)
+IDS.blade_dance        = { 400012 }                    -- SoD rune (Legs): parry/threat (from DESIGN research table)
+IDS.just_a_flesh_wound = { 400014 }                    -- SoD keystone tank rune (VERIFY id; mostly passive threat)
+IDS.main_gauche        = { 462752 }                    -- SoD off-hand threat strike (VERIFY id; may be Blade-Dance proc only)
+IDS.aura_blade_dance   = { 400012 }
 IDS.sprint          = { 2983, 8696, 11305 }
 IDS.gouge           = { 1776, 1777, 8629, 11285, 11286 }
 IDS.kick            = { 1766, 1767, 1768, 1769 }

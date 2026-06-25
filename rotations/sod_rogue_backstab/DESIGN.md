@@ -212,6 +212,12 @@ on_update():
 - Defensive auto‑use (Evasion, Major Healing Potion at low HP) for solo survivability while questing.
 - AoE branch (optional, menu‑gated): at 2+ enemies in splash range Blade Flurry fires as the cleave button (independent of the burst key); at `aoe_threshold`+ enemies the finisher swaps to **Crimson Tempest** (SoD AoE bleed rune) and the builder switches to the frontal strike (Saber Slash / Sinister Strike — cleaves through Blade Flurry, no positional requirement). Rupture is suppressed in AoE.
 
+**Tank mode (menu‑gated — Just a Flesh Wound / Blade Dance build):**
+Damage = threat, so the normal priority still drives most of it; tank mode layers threat tools on top and disables threat‑shedding behaviour. **All SoD tank‑rune IDs are VERIFY** (the SoD tank guide was egress‑blocked) and auto‑filter from `izi.spell` if wrong, so they no‑op rather than miscast.
+- *Blade Dance* upkeep (parry + threat; no‑ops if the rune is passive), *Main Gauche* off‑hand threat strike on cooldown, and *Feint* as a threat filler under Just a Flesh Wound (energy‑buffered so it never starves a builder/finisher).
+- Vanish burst, auto‑stealth and stealth openers are all suppressed (they shed threat).
+- Evasion is rolled proactively while tanking 2+ enemies, on top of the HP‑gated defensive use.
+
 **Extra spell/rune logic (menu‑gated):**
 - *Vanish burst* — in the burst window Vanish is used as a damage cooldown; next frame we are stealthed and the opener fires an instant Ambush, and it refreshes the **Master of Subtlety** aura. Sheds threat/combat, so opt‑in (default off).
 - *Preparation* — resets Vanish/Cold Blood once Vanish is on cooldown, for a second burst.

@@ -17,6 +17,7 @@ M.burst          = menu_api.new_keybind(false, false, 0x05, P .. "burst")   -- h
 M.aoe            = menu_api.new_checkbox(P .. "aoe", false)                  -- enable AoE/cleave logic
 M.aoe_threshold  = menu_api.new_slider(2, 6, 3, P .. "aoe_threshold")       -- enemies for full AoE finisher (2 = cleave only)
 M.use_ts         = menu_api.new_checkbox(P .. "use_ts", true)               -- pick target via target-selector
+M.tank_mode      = menu_api.new_checkbox(P .. "tank_mode", false)           -- threat priority (Just a Flesh Wound / Blade Dance build)
 
 -- ---- Core rotation -------------------------------------------------------
 M.finisher_cp    = menu_api.new_slider(3, 5, 5, P .. "finisher_cp")         -- combo points before Eviscerate
@@ -73,6 +74,7 @@ function M.render()
     M.use_ts:render("Use target selector")
     M.aoe:render("AoE / cleave mode")
     M.aoe_threshold:render("AoE finisher at N enemies")
+    M.tank_mode:render("Tank mode (threat priority)")
 
     menu_api.separator()
     menu_api.header("Core")
