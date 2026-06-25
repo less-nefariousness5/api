@@ -39,6 +39,9 @@ local S = {
     adrenaline_rush = spell(IDS.adrenaline_rush),
     blade_flurry    = spell(IDS.blade_flurry),
     cold_blood      = spell(IDS.cold_blood),
+    vanish          = spell(IDS.vanish),
+    preparation     = spell(IDS.preparation),
+    expose_armor    = spell(IDS.expose_armor),
     evasion         = spell(IDS.evasion),
     gouge           = spell(IDS.gouge),
     kick            = spell(IDS.kick),
@@ -53,6 +56,8 @@ local I = {
     elixir_agi  = item(IDS.item_elixir_mongoose),
     elixir_ap   = item(IDS.item_winterfall_firewater),
     flask       = item(IDS.item_flask_nightmares),
+    sapper      = item(IDS.item_goblin_sapper),
+    free_action = item(IDS.item_free_action_potion),
 }
 
 -- ---- small helpers --------------------------------------------------------
@@ -118,6 +123,24 @@ local function do_cooldowns(me, target, cp)
         if learned(S.adrenaline_rush) and S.adrenaline_rush:cooldown_up()
            and S.adrenaline_rush:cast_safe(me, "Adrenaline Rush", { skip_gcd = true }) then return true end
     end
+
+    -- Preparation: reset Vanish/Cold Blood once they are spent, for a second burst
+    if menu.auto_prep:get() and learned(S.preparation) and S.preparation:cooldown_up()
+       and learned(S.vanish) and not S.vanish:cooldown_up() then
+        if S.preparation:cast_safe(me, "Preparation", { skip_gcd = true }) then return true end
+    end
+
+    -- Vanish -> (next frame, stealthed) Ambush; also refreshes Master of Subtlety.
+    -- Held to the burst window since it sheds threat/combat.
+    if menu.vanish_burst:get() and learned(S.vanish) and S.vanish:cooldown_up() then
+        if S.vanish:cast_safe(me, "Vanish (burst)", { skip_gcd = true }) then return true end
+    end
+
+    -- Goblin Sapper Charge: AoE/burst nuke (self-damaging, so opt-in)
+    if menu.use_sapper:get() and I.sapper and I.sapper:in_inventory() and I.sapper:cooldown_up()
+       and count_enemies(me, 8) >= 2 then
+        if I.sapper:use_self_safe("Goblin Sapper", { skip_gcd = true }) then return true end
+    end
     return false
 end
 
@@ -137,6 +160,14 @@ end
 local function do_defensives(me, target)
     if not menu.auto_defensive:get() then return false end
     local hp = me:get_health_percentage()
+
+    -- Free Action Potion: shed a root/snare/stun so we can keep attacking
+    if menu.free_action:get() and I.free_action and I.free_action:in_inventory()
+       and I.free_action:cooldown_up() and me:affecting_combat()
+       and (me:is_rooted() or me:is_stunned()) then
+        if I.free_action:use_self_safe("Free Action Potion", { skip_gcd = true }) then return true end
+    end
+
     if hp <= menu.evasion_hp:get() and learned(S.evasion) and S.evasion:cooldown_up() then
         if S.evasion:cast_safe(me, "Evasion", { skip_gcd = true }) then return true end
     end
@@ -147,10 +178,14 @@ local function do_defensives(me, target)
 end
 
 local function do_interrupt(me, target)
-    if not menu.auto_kick:get() then return false end
     if not target:is_casting() and not target:is_channeling() then return false end
-    if learned(S.kick) and S.kick:cooldown_up() then
-        return S.kick:cast_safe(target, "Kick", { skip_gcd = true })
+    if menu.auto_kick:get() and learned(S.kick) and S.kick:cooldown_up() then
+        if S.kick:cast_safe(target, "Kick", { skip_gcd = true }) then return true end
+    end
+    -- Gouge as a fallback interrupt when Kick is down / on cooldown (faces target,
+    -- costs energy and breaks on damage, so only as a backstop)
+    if menu.gouge_interrupt:get() and learned(S.gouge) and S.gouge:cooldown_up() then
+        if S.gouge:cast_safe(target, "Gouge (interrupt)") then return true end
     end
     return false
 end
@@ -159,7 +194,8 @@ end
 -- STEALTH OPENERS  (Premeditation -> Ambush behind / Cheap Shot / Garrote)
 -- ---------------------------------------------------------------------------
 local function do_stealth_opener(me, target, cp)
-    if not menu.stealth_openers:get() then return false end
+    -- runs for a normal stealth open and after a Vanish burst re-stealths us
+    if not (menu.stealth_openers:get() or menu.vanish_burst:get()) then return false end
     if not me:stealth_up() then return false end
 
     -- Premeditation first: +2 CP, off-GCD, does not break stealth
@@ -364,6 +400,15 @@ local function tick()
        and learned(S.slice_and_dice) and cp >= 1 then
         if buff_remains(me, IDS.aura_slice_and_dice) < 2 then
             if S.slice_and_dice:cast_safe(me, "Slice and Dice") then return end
+        end
+    end
+
+    -- Expose Armor: group armor debuff / Sebacious-seed (single-target, opt-in).
+    -- Maintained as a full 5-CP finisher when the debuff is missing/expiring.
+    if menu.maintain_ea:get() and not aoe_mode and learned(S.expose_armor)
+       and cp >= 5 and ttd >= menu.ea_min_ttd:get() then
+        if debuff_remains(target, IDS.debuff_expose_armor) < 2 then
+            if S.expose_armor:cast_safe(target, "Expose Armor") then return end
         end
     end
 

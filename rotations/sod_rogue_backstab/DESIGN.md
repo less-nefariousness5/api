@@ -212,6 +212,14 @@ on_update():
 - Defensive auto‑use (Evasion, Major Healing Potion at low HP) for solo survivability while questing.
 - AoE branch (optional, menu‑gated): at 2+ enemies in splash range Blade Flurry fires as the cleave button (independent of the burst key); at `aoe_threshold`+ enemies the finisher swaps to **Crimson Tempest** (SoD AoE bleed rune) and the builder switches to the frontal strike (Saber Slash / Sinister Strike — cleaves through Blade Flurry, no positional requirement). Rupture is suppressed in AoE.
 
+**Extra spell/rune logic (menu‑gated):**
+- *Vanish burst* — in the burst window Vanish is used as a damage cooldown; next frame we are stealthed and the opener fires an instant Ambush, and it refreshes the **Master of Subtlety** aura. Sheds threat/combat, so opt‑in (default off).
+- *Preparation* — resets Vanish/Cold Blood once Vanish is on cooldown, for a second burst.
+- *Goblin Sapper Charge* — AoE/burst nuke at 2+ targets (self‑damaging, opt‑in).
+- *Gouge interrupt‑fallback* — interrupts when Kick is on cooldown / the target is Kick‑immune.
+- *Expose Armor* — opt‑in single‑target armor‑debuff maintenance (full 5‑CP application; pairs with Sebacious Poison seeding); suppressed in AoE.
+- *Free Action Potion* — used when `me:is_rooted()`/`is_stunned()` in combat, to keep attacking.
+
 **Automation layer (menu‑gated, runs around the combat list):**
 - *Ensure auto‑attack* — on a fresh/swapped target, if `me:is_auto_attacking()` is false we call `auto_attack_helper:start_attack(target, MELEE)` so white swings always start.
 - *Auto‑stealth* — out of combat with an enemy inside `stealth_range`, cast Stealth to approach for a free opener.

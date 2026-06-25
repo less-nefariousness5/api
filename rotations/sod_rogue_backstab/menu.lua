@@ -28,11 +28,16 @@ M.maintain_snd   = menu_api.new_checkbox(P .. "maintain_snd", true)         -- k
 M.cut_to_chase   = menu_api.new_checkbox(P .. "cut_to_chase", false)        -- Cut-to-the-Chase rune equipped (Eviscerate auto-refreshes SnD)
 M.maintain_rup   = menu_api.new_checkbox(P .. "maintain_rup", true)         -- keep Rupture up (Carnage synergy)
 M.rupture_min_ttd= menu_api.new_slider(5, 30, 8, P .. "rup_ttd")            -- only Rupture if target lives >= N s
+M.maintain_ea    = menu_api.new_checkbox(P .. "maintain_ea", false)         -- keep Expose Armor up (group armor debuff / Sebacious seed)
+M.ea_min_ttd     = menu_api.new_slider(5, 30, 15, P .. "ea_ttd")            -- only Expose Armor if target lives >= N s
 
 -- ---- Cooldowns -----------------------------------------------------------
 M.auto_cooldowns = menu_api.new_checkbox(P .. "auto_cd", true)              -- AR / Blade Flurry / Cold Blood
 M.cold_blood     = menu_api.new_checkbox(P .. "cold_blood", true)           -- pair Cold Blood with finisher
 M.thistle_tea    = menu_api.new_checkbox(P .. "thistle", true)              -- Thistle Tea when energy starved
+M.vanish_burst   = menu_api.new_checkbox(P .. "vanish_burst", false)        -- Vanish -> Ambush burst (refreshes Master of Subtlety); drops threat
+M.auto_prep      = menu_api.new_checkbox(P .. "auto_prep", false)           -- Preparation to reset Vanish/Cold Blood for a second burst
+M.use_sapper     = menu_api.new_checkbox(P .. "use_sapper", false)          -- Goblin Sapper Charge in AoE/burst (self-damaging)
 
 -- ---- Stealth openers -----------------------------------------------------
 M.stealth_openers= menu_api.new_checkbox(P .. "stealth_open", true)         -- Premeditation -> opener when stealthed
@@ -46,9 +51,11 @@ M.reapply_mins   = menu_api.new_slider(5, 60, 25, P .. "reapply_mins")      -- o
 M.auto_defensive = menu_api.new_checkbox(P .. "auto_def", true)             -- Evasion / healing potion
 M.evasion_hp     = menu_api.new_slider(10, 60, 35, P .. "evasion_hp")       -- Evasion below this HP%
 M.potion_hp      = menu_api.new_slider(10, 60, 25, P .. "potion_hp")        -- healing potion below this HP%
+M.free_action    = menu_api.new_checkbox(P .. "free_action", false)         -- Free Action Potion when rooted/stunned
 
 -- ---- Interrupts ----------------------------------------------------------
 M.auto_kick      = menu_api.new_checkbox(P .. "auto_kick", true)            -- Kick interruptible casts
+M.gouge_interrupt= menu_api.new_checkbox(P .. "gouge_int", true)            -- Gouge as a fallback interrupt when Kick is down
 
 -- ---- Automation (attack / stealth / loot) --------------------------------
 M.auto_attack    = menu_api.new_checkbox(P .. "auto_attack", true)          -- ensure white swings start on a new target
@@ -79,12 +86,17 @@ function M.render()
     M.cut_to_chase:render("Cut-to-the-Chase rune (auto SnD)")
     M.maintain_rup:render("Maintain Rupture")
     M.rupture_min_ttd:render("Rupture min target TTD (s)")
+    M.maintain_ea:render("Maintain Expose Armor")
+    M.ea_min_ttd:render("Expose Armor min target TTD (s)")
 
     menu_api.separator()
     menu_api.header("Cooldowns")
     M.auto_cooldowns:render("Auto Adrenaline Rush / Blade Flurry")
     M.cold_blood:render("Cold Blood + finisher")
     M.thistle_tea:render("Thistle Tea when energy starved")
+    M.vanish_burst:render("Vanish -> Ambush burst")
+    M.auto_prep:render("Preparation (reset for 2nd burst)")
+    M.use_sapper:render("Goblin Sapper in AoE/burst")
 
     menu_api.separator()
     menu_api.header("Stealth")
@@ -101,7 +113,9 @@ function M.render()
     M.auto_defensive:render("Auto defensives")
     M.evasion_hp:render("Evasion below HP%")
     M.potion_hp:render("Healing potion below HP%")
+    M.free_action:render("Free Action Potion when rooted/stunned")
     M.auto_kick:render("Auto Kick interrupts")
+    M.gouge_interrupt:render("Gouge fallback interrupt")
 
     menu_api.separator()
     menu_api.header("Automation")
