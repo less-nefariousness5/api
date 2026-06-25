@@ -39,11 +39,17 @@ local S = {
     evasion         = spell(IDS.evasion),
     gouge           = spell(IDS.gouge),
     kick            = spell(IDS.kick),
+    premeditation   = spell(IDS.premeditation),
+    cheap_shot      = spell(IDS.cheap_shot),
+    garrote         = spell(IDS.garrote),
 }
 
 local function item(id) return izi.item(id) end
 local I = {
     thistle_tea = item(IDS.item_thistle_tea),
+    elixir_agi  = item(IDS.item_elixir_mongoose),
+    elixir_ap   = item(IDS.item_winterfall_firewater),
+    flask       = item(IDS.item_flask_nightmares),
 }
 
 -- ---- small helpers --------------------------------------------------------
@@ -68,12 +74,16 @@ local function get_target()
     return t
 end
 
--- can we land Backstab right now? (Cutthroat removes the behind requirement)
-local function backstab_ready(me, target)
-    if not learned(S.backstab) then return false end
+-- can this positional spell land right now? (Cutthroat removes the behind gate)
+local function can_position(sp, me, target)
+    if not learned(sp) then return false end
     if menu.assume_behind:get() then return true end
-    if not S.backstab:requires_back() then return true end   -- Cutthroat (or no positional gate)
+    if not sp:requires_back() then return true end           -- Cutthroat (or no positional gate)
     return me:is_behind(target)
+end
+
+local function backstab_ready(me, target)
+    return can_position(S.backstab, me, target) and S.backstab:is_usable()
 end
 
 -- the frontal builder fallback (Saber Slash rune if present, else Sinister Strike)
@@ -133,6 +143,71 @@ local function do_interrupt(me, target)
 end
 
 -- ---------------------------------------------------------------------------
+-- STEALTH OPENERS  (Premeditation -> Ambush behind / Cheap Shot / Garrote)
+-- ---------------------------------------------------------------------------
+local function do_stealth_opener(me, target, cp)
+    if not menu.stealth_openers:get() then return false end
+    if not me:stealth_up() then return false end
+
+    -- Premeditation first: +2 CP, off-GCD, does not break stealth
+    if learned(S.premeditation) and cp < 2 and S.premeditation:cooldown_up() then
+        if S.premeditation:cast_safe(me, "Premeditation", { skip_gcd = true }) then return true end
+    end
+    -- Opener: Ambush if we can land it (dagger + behind/Cutthroat), else Cheap Shot, else Garrote
+    if can_position(S.ambush, me, target) and S.ambush:is_usable() then
+        if S.ambush:cast_safe(target, "Ambush (opener)") then return true end
+    elseif learned(S.cheap_shot) and S.cheap_shot:is_usable() then
+        if S.cheap_shot:cast_safe(target, "Cheap Shot (opener)") then return true end
+    elseif can_position(S.garrote, me, target) and S.garrote:is_usable() then
+        if S.garrote:cast_safe(target, "Garrote (opener)") then return true end
+    end
+    return false
+end
+
+-- ---------------------------------------------------------------------------
+-- OUT OF COMBAT: elixirs/flask (clean self-use) + poison/sharpening (timer)
+-- !! VERIFY !! Weapon-coat application (poison/sharpening) is not cleanly
+-- exposed by this API, so it is timer-based and assumes use_item auto-applies
+-- to the main hand. Confirm the apply mechanic and off-hand handling in-client.
+-- ---------------------------------------------------------------------------
+local last_apply = {}   -- item/spell id -> izi.now() seconds
+local function now_s() return (izi.now and izi.now()) or 0 end
+
+local function timed(id, interval, fn)
+    if not id then return false end
+    local t = now_s()
+    if last_apply[id] and (t - last_apply[id]) < interval then return false end
+    if fn() then last_apply[id] = t; return true end
+    return false
+end
+
+local function do_out_of_combat(me)
+    local interval = (menu.reapply_mins:get() or 25) * 60
+
+    if menu.auto_consumes:get() then
+        -- self-use consumables; only re-apply when their buff is absent if we can
+        -- detect it, otherwise on the timer.
+        if I.flask and timed(IDS.item_flask_nightmares, interval, function()
+            return I.flask:in_inventory() and I.flask:is_usable()
+               and I.flask:use_self_safe("Flask", { skip_gcd = true }) end) then return true end
+        if I.elixir_agi and timed(IDS.item_elixir_mongoose, interval, function()
+            return I.elixir_agi:in_inventory() and I.elixir_agi:is_usable()
+               and I.elixir_agi:use_self_safe("Agi Elixir", { skip_gcd = true }) end) then return true end
+        if I.elixir_ap and timed(IDS.item_winterfall_firewater, interval, function()
+            return I.elixir_ap:in_inventory() and I.elixir_ap:is_usable()
+               and I.elixir_ap:use_self_safe("AP Elixir", { skip_gcd = true }) end) then return true end
+    end
+
+    if menu.auto_poison:get() then
+        -- main-hand poison re-coat (timer-based; relies on client auto-apply to MH)
+        local mh_poison = IDS.poison_instant[#IDS.poison_instant]   -- highest rank
+        if timed(mh_poison, interval, function()
+            return core.input and core.input.use_item and core.input.use_item(mh_poison) end) then return true end
+    end
+    return false
+end
+
+-- ---------------------------------------------------------------------------
 -- MAIN TICK
 -- ---------------------------------------------------------------------------
 local function tick()
@@ -149,12 +224,20 @@ local function tick()
     -- defensives are allowed even slightly out of melee
     if do_defensives(me, target) then return end
 
+    -- out-of-combat upkeep (elixirs/flask/poison) before we engage
+    if not me:affecting_combat() and me.is_standing_still and me:is_standing_still() then
+        if do_out_of_combat(me) then return end
+    end
+
     if not target:is_in_melee_range(5) then return end
     if not me:can_attack(target) then return end
 
     if do_interrupt(me, target) then return end
 
     local cp     = me:combo_points_current()
+
+    -- stealth opener takes over while stealthed
+    if do_stealth_opener(me, target, cp) then return end
     local energy = me:energy_current()
     local emax   = me:energy_max()
     local ttd    = target:time_to_die() or 999
@@ -204,7 +287,7 @@ local function tick()
 
     -- Builder: keep a small reactive energy buffer (energy_pool) before pressing.
     if cp < 5 and energy >= menu.energy_pool:get() then
-        if backstab_ready(me, target) and S.backstab:is_usable() then
+        if backstab_ready(me, target) then
             if S.backstab:cast_safe(target, "Backstab") then return end
         else
             local b, name = frontal_builder()

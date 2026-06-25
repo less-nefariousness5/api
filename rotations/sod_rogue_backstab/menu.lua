@@ -33,9 +33,13 @@ M.auto_cooldowns = menu_api.new_checkbox(P .. "auto_cd", true)              -- A
 M.cold_blood     = menu_api.new_checkbox(P .. "cold_blood", true)           -- pair Cold Blood with finisher
 M.thistle_tea    = menu_api.new_checkbox(P .. "thistle", true)              -- Thistle Tea when energy starved
 
+-- ---- Stealth openers -----------------------------------------------------
+M.stealth_openers= menu_api.new_checkbox(P .. "stealth_open", true)         -- Premeditation -> opener when stealthed
+
 -- ---- Consumables / out of combat ----------------------------------------
-M.auto_consumes  = menu_api.new_checkbox(P .. "auto_consume", false)        -- auto elixirs/sharpening (out of combat)
-M.auto_poison    = menu_api.new_checkbox(P .. "auto_poison", false)         -- re-apply weapon poisons when missing
+M.auto_consumes  = menu_api.new_checkbox(P .. "auto_consume", false)        -- auto elixirs/flask (out of combat, self-use)
+M.auto_poison    = menu_api.new_checkbox(P .. "auto_poison", false)         -- re-coat main-hand poison/sharpening (timer-based; VERIFY apply)
+M.reapply_mins   = menu_api.new_slider(5, 60, 25, P .. "reapply_mins")      -- out-of-combat re-apply interval (minutes)
 
 -- ---- Defensives ----------------------------------------------------------
 M.auto_defensive = menu_api.new_checkbox(P .. "auto_def", true)             -- Evasion / healing potion
@@ -73,9 +77,14 @@ function M.render()
     M.thistle_tea:render("Thistle Tea when energy starved")
 
     menu_api.separator()
+    menu_api.header("Stealth")
+    M.stealth_openers:render("Auto stealth openers")
+
+    menu_api.separator()
     menu_api.header("Consumables (out of combat)")
-    M.auto_consumes:render("Auto elixirs / sharpening stone")
-    M.auto_poison:render("Auto re-apply poisons")
+    M.auto_consumes:render("Auto elixirs / flask")
+    M.auto_poison:render("Auto re-coat poison / sharpening (VERIFY)")
+    M.reapply_mins:render("Re-apply interval (min)")
 
     menu_api.separator()
     menu_api.header("Defensives / Utility")
