@@ -63,6 +63,22 @@ function core.register_on_legit_spell_cast_callback(callback) end
 ---@param callback fun(data: OnProcessSpellCastData): nil
 function core.register_on_spell_cast_callback(callback) end
 
+--- Registers a callback fired once per buffered WoW game event (drained each tick).
+--- The callback receives the event name and a positional array of that event's arguments,
+--- with original types preserved (string, number, boolean, or nil holes). Complex values
+--- (table/function/userdata) arrive as their tostring() representation.
+---
+--- Registered events include: COMBAT_LOG_EVENT_UNFILTERED, ENCOUNTER_START, ENCOUNTER_END,
+--- SPELLS_CHANGED, PLAYER_REGEN_ENABLED, PLAYER_REGEN_DISABLED, PLAYER_STARTED_MOVING,
+--- PLAYER_STOPPED_MOVING, PLAYER_EQUIPMENT_CHANGED, PLAYER_FLAGS_CHANGED, PLAYER_LOGOUT,
+--- GROUP_ROSTER_UPDATE, GROUP_JOINED, GROUP_LEFT, START_PLAYER_COUNTDOWN,
+--- CANCEL_PLAYER_COUNTDOWN, CHAT_MSG_ADDON, UI_ERROR_MESSAGE and the AUCTION_HOUSE_* family.
+---
+--- For COMBAT_LOG_EVENT_UNFILTERED the args are the flattened CombatLogGetCurrentEventInfo()
+--- payload (timestamp, sub_event, hide_caster, source_guid, ...), not the raw event varargs.
+---@param callback fun(event_name: string, args: (string|number|boolean|nil)[]): nil
+function core.register_on_game_event_callback(callback) end
+
 --- Get the current ping.
 ---@return number The current ping.
 function core.get_ping()
@@ -744,6 +760,105 @@ end
 --- @return number|nil
 --- NIL NONE | 0 Horde | 1 Ally | 2 Tie
 function core.game_ui.get_battlefield_winner()
+    return nil
+end
+
+--- Returns the faction index of the team that won the active PvP match (C_PvP.GetActiveMatchWinner).
+--- 0 = Horde, 1 = Alliance. Returns nil while the match is still in progress (no
+--- winner yet) or when the C_PvP API is unavailable.
+---@return integer|nil winner The winning faction index, or nil if undecided/unavailable.
+function core.game_ui.get_active_match_winner()
+    return nil
+end
+
+--- Returns the current PvP match state (Enum.PvPMatchState, via C_PvP.GetActiveMatchState).
+--- 0 = Inactive, 1 = Waiting, 2 = StartUp, 3 = Engaged, 4 = PostRound, 5 = Complete.
+--- Mirrors get_battlefield_state but kept under the C_PvP-style name for new logic.
+--- Returns 0 when the API is unavailable on supported clients.
+---@return integer state The current PvP match state.
+function core.game_ui.get_active_match_state()
+    return 0
+end
+
+---@class pvp_stat_column
+---@field pvp_stat_id integer The PvP stat ID this column reports.
+---@field column_header_id integer The column header ID.
+---@field order_index integer The display order index of the column.
+---@field name string The localized column name.
+---@field tooltip_title string The tooltip title shown for the column header.
+---@field tooltip string The tooltip body text shown for the column header.
+
+--- Returns a single PvP scoreboard stat column by its PvP stat ID (C_PvP.GetMatchPVPStatColumn).
+---@param pvp_stat_id integer The PvP stat ID of the column to fetch.
+---@return pvp_stat_column|nil column The column info, or nil if not found/unavailable.
+function core.game_ui.get_match_pvp_stat_column(pvp_stat_id)
+    return nil
+end
+
+--- Returns every PvP scoreboard stat column for the active match (C_PvP.GetMatchPVPStatColumns).
+---@return pvp_stat_column[] columns Array of column info tables (empty if none/unavailable).
+function core.game_ui.get_match_pvp_stat_columns()
+    return {}
+end
+
+--- Returns the player's arena/battleground team faction (GetBattlefieldArenaFaction).
+---@return integer|nil faction 0 = Horde, 1 = Alliance, or nil if unavailable / not in a match.
+function core.game_ui.get_battlefield_arena_faction()
+    return nil
+end
+
+---@class pvp_personal_rated_info
+---@field personal_rating integer Current personal rating for the active bracket.
+---@field best_season_rating integer Best rating achieved this season.
+---@field best_weekly_rating integer Best rating achieved this week.
+---@field season_played integer Matches played this season.
+---@field season_won integer Matches won this season.
+---@field weekly_played integer Matches played this week.
+---@field weekly_won integer Matches won this week.
+---@field last_weeks_best_rating integer Best rating from last week.
+---@field has_won_bracket_today boolean Whether a match in this bracket was won today.
+---@field tier integer Current tier ID.
+---@field ranking integer Ladder ranking.
+---@field rounds_season_played integer Solo-shuffle rounds played this season (0 before patch 10.0).
+---@field rounds_season_won integer Solo-shuffle rounds won this season (0 before patch 10.0).
+---@field rounds_weekly_played integer Solo-shuffle rounds played this week (0 before patch 10.0).
+---@field rounds_weekly_won integer Solo-shuffle rounds won this week (0 before patch 10.0).
+
+--- Returns the player's rated info for the active match (C_PvP.GetPVPActiveMatchPersonalRatedInfo).
+---@return pvp_personal_rated_info|nil info The rated info, or nil outside a rated match.
+function core.game_ui.get_active_match_personal_rated_info()
+    return nil
+end
+
+---@class pvp_score_info
+---@field name string Player name (may include realm).
+---@field guid string Player GUID.
+---@field killing_blows integer Killing blows.
+---@field honorable_kills integer Honorable kills.
+---@field deaths integer Deaths.
+---@field honor_gained integer Honor gained this match.
+---@field faction integer Faction index (0 = Horde, 1 = Alliance).
+---@field race_name string Localized race name.
+---@field class_name string Localized class name.
+---@field class_token string Locale-independent class token (e.g. "MAGE").
+---@field damage_done integer Total damage done.
+---@field healing_done integer Total healing done.
+---@field rating integer Current rating.
+---@field rating_change integer Rating change from this match.
+---@field prematch_mmr integer Matchmaking rating before the match.
+---@field mmr_change integer Matchmaking rating change from this match.
+---@field postmatch_mmr integer Matchmaking rating after the match.
+---@field talent_spec string Localized talent specialization name.
+---@field honor_level integer Honor level.
+---@field role_assigned integer Assigned role ID.
+---@field num_stats integer Number of entries in the (unmarshalled) per-row stats array.
+
+--- Returns a scoreboard row for the active match by index (C_PvP.GetScoreInfo).
+--- The nested per-row `stats` (PVPStatInfo[]) array is not marshalled; only its length is
+--- exposed via `num_stats`.
+---@param index integer 1-based scoreboard row index.
+---@return pvp_score_info|nil info The scoreboard row, or nil if not found / unavailable.
+function core.game_ui.get_score_info(index)
     return nil
 end
 
@@ -1571,6 +1686,13 @@ function core.object_manager.get_visible_objects()
     return {}
 end
 
+--- Retrieves the game object matching a GUID string, or nil if it is not currently present.
+---@param guid string The unit GUID, as returned by game_object:get_guid().
+---@return game_object | nil object The matching game object, or nil if not found.
+function core.object_manager.get_object_from_guid(guid)
+    return nil
+end
+
 --- Retrieves a list of game objects with all the arena frames.
 ---@return game_objects_table
 function core.object_manager.get_arena_frames()
@@ -1802,7 +1924,7 @@ end
 ---@field required_buff_id number Spell ID of the aura that must be up for this entry to apply; 0 if unconditional.
 
 --- Returns the list of power costs for a spell. A single spell can return multiple
---- entries — one per resource (e.g. a spell that costs both Mana and Energy) or one
+--- entries - one per resource (e.g. a spell that costs both Mana and Energy) or one
 --- per gated variant (e.g. Monk abilities that cost different resources depending on
 --- which stance aura is active).
 ---@param spell_id integer The ID of the spell.
@@ -1938,7 +2060,7 @@ end
 
 ---@return totem_info
 ---@param index integer
----Returns a table with totem info for the given index (1–4).  
+---Returns a table with totem info for the given index (1-4).  
 ---Index corresponds to the totem slot (e.g., Fire, Earth, Water, Air).
 function core.spell_book.get_totem_info(index)
     return {}
@@ -2092,12 +2214,62 @@ function core.spell_book.get_shapeshift_form_id()
     return 0
 end
 
+--- Returns the 1-based index of the active shapeshift/stance/aspect form on the
+--- shapeshift bar, or 0 if no form is active. Wraps the Blizzard GetShapeshiftForm.
+--- Unlike get_shapeshift_form_id (a class-global form ID), this returns the bar
+--- index used by the other shapeshift APIs (e.g. cast_shapeshift_form) and is
+--- available across more game versions and class layouts (warrior stances,
+--- druid/rogue forms, etc.), so prefer it for new logic.
+---@param show_all_forms boolean|nil When true, also counts forms that are not currently usable. Defaults to false.
+---@return integer form_index The 1-based active form index, or 0 if none.
+function core.spell_book.get_shapeshift_form(show_all_forms)
+    return 0
+end
+
 --- Casts the shapeshift form at the given 1-based shapeshift/stance bar index.
 --- The actual form change is observed asynchronously via UPDATE_SHAPESHIFT_FORM.
 ---@param index integer The 1-based shapeshift/stance bar index to cast.
 ---@return boolean success True if the cast call was issued without a Lua error.
 function core.spell_book.cast_shapeshift_form(index)
     return false
+end
+
+---@class profession_slots
+--- Spell-tab indices returned by core.spell_book.get_professions(). Only slots the player
+--- actually has are present; absent professions are nil (safe to test with `if profs.cooking then`).
+---@field prof1? integer Spell-tab index of the player's first primary profession.
+---@field prof2? integer Spell-tab index of the player's second primary profession.
+---@field archaeology? integer Spell-tab index of Archaeology.
+---@field fishing? integer Spell-tab index of Fishing.
+---@field cooking? integer Spell-tab index of Cooking.
+
+--- Returns the player's profession spell-tab indices (GetProfessions).
+--- Only professions the player actually has are set; absent slots are nil, so the result is
+--- safe to test with `if profs.cooking then`. Returns an empty table where GetProfessions is
+--- unavailable (e.g. clients without the API).
+---@return profession_slots professions Table of spell-tab indices keyed by profession slot.
+function core.spell_book.get_professions()
+    return {}
+end
+
+---@class profession_info
+---@field name string Localized profession name.
+---@field icon integer FileDataID of the profession icon texture.
+---@field skill_level integer Current skill level.
+---@field max_skill_level integer Maximum skill level at the current rank.
+---@field num_abilities integer Number of abilities in this profession's spell-book tab.
+---@field spell_offset integer Spell-book offset of the profession's first ability.
+---@field skill_line integer Skill-line ID of the profession.
+---@field skill_modifier integer Bonus skill from gear/buffs.
+---@field specialization_index integer Chosen specialization index (0 if none).
+---@field specialization_offset integer Spell-book offset of the specialization (0 if none).
+---@field skill_line_name string Localized skill-line name.
+
+--- Returns detailed info for a profession spell-tab index (GetProfessionInfo).
+---@param index integer A spell-tab index obtained from core.spell_book.get_professions().
+---@return profession_info|nil info The profession info table, or nil if unavailable.
+function core.spell_book.get_profession_info(index)
+    return nil
 end
 
 ---@class graphics
@@ -2827,7 +2999,7 @@ function core.graphics.load_gif(gif_data)
 end
 
 --- Draws the current frame of a loaded GIF. Frame selection is automatic
---- based on elapsed time — the animation loops continuously.
+--- based on elapsed time - the animation loops continuously.
 ---@param gif_id integer The GIF identifier returned by load_gif.
 ---@param top_left vec2 Screen position (top-left corner).
 ---@param width number Draw width in pixels.
@@ -5155,6 +5327,598 @@ end
 --- Returns whether the Blizzard LFG search panel is currently visible.
 ---@return boolean is_visible True if the search panel is visible.
 function core.lfg_list.search_panel_is_visible()
+    return false
+end
+
+-- =============================================================================
+-- Professions: core.profession (enum + opener), core.trade_skill, core.craft,
+-- core.skill. The trade_skill / craft / skill functions wrap native Blizzard
+-- profession globals that exist since Vanilla and were largely superseded on
+-- retail by C_TradeSkillUI (also exposed under core.trade_skill). On clients
+-- where a given global is absent, the binding returns a safe default.
+-- =============================================================================
+
+---@class profession
+--- Profession enum plus the window opener. Enum values are opaque ordinals - always use the
+--- named constants (e.g. core.profession.ALCHEMY), never the raw number.
+---@field ALCHEMY integer
+---@field BLACKSMITHING integer
+---@field COOKING integer
+---@field ENCHANTING integer
+---@field ENGINEERING integer
+---@field FIRST_AID integer
+---@field FISHING integer
+---@field INSCRIPTION integer
+---@field JEWELCRAFTING integer
+---@field LEATHERWORKING integer
+---@field MINING integer
+---@field SKINNING integer
+---@field TAILORING integer
+core.profession = {}
+
+--- Opens the given profession's window by casting its stable Apprentice-rank spell (locale-
+--- independent, works across every expansion). Notes: Mining opens its Smelting window;
+--- Skinning has no window; Fishing starts the fishing cast rather than opening a window.
+---@param profession integer A core.profession.* enum value.
+---@return boolean success True if the open/cast was issued; false for an unknown enum or no local player.
+function core.profession.open_profession(profession)
+    return false
+end
+
+--------------------------------------------------------------------------------
+-- Shared profession return structures
+--------------------------------------------------------------------------------
+
+---@class profession_reagent_info
+---@field name string Reagent item name.
+---@field texture string Reagent icon texture path.
+---@field count integer Quantity required for one craft.
+---@field player_count integer Quantity the player currently owns.
+
+---@class profession_num_made
+---@field min_made integer Minimum quantity produced per craft.
+---@field max_made integer Maximum quantity produced per craft.
+
+---@class trade_skill_profession_info
+---@field profession_name string Localized profession name.
+---@field profession_id integer Profession ID.
+---@field skill_level integer Current skill level.
+---@field max_skill_level integer Maximum skill level at the current rank.
+---@field skill_modifier integer Bonus skill from gear/buffs.
+---@field skill_line_name string Localized skill-line name.
+
+---@class trade_skill
+core.trade_skill = {}
+
+--------------------------------------------------------------------------------
+-- core.trade_skill - classic index-based TradeSkill API
+--------------------------------------------------------------------------------
+
+--- Crafts `repeat_count` copies of the trade-skill at `index` (DoTradeSkill).
+---@param index integer Trade-skill list index.
+---@param repeat_count? integer Number of copies to craft (default 1).
+function core.trade_skill.do_trade_skill(index, repeat_count) end
+
+--- Returns the number of entries in the open trade-skill window (GetNumTradeSkills).
+---@return integer count Number of trade-skill list rows (0 if the window is closed).
+function core.trade_skill.get_num_trade_skills()
+    return 0
+end
+
+---@class trade_skill_info
+---@field name string Recipe/header name.
+---@field type string Row type ("header", "optimal", "medium", "easy", "trivial", ...).
+---@field num_available integer Number of crafts the player can currently make.
+---@field is_expanded boolean Whether this header row is expanded.
+---@field alt_verb string Alternate action verb (e.g. "Enchant"), empty if none.
+---@field num_skill_ups integer Skill points gained per craft.
+---@field indent_level integer Tree indent level of the row.
+---@field show_progress_bar boolean Whether the row shows a rank progress bar (MoP cooking).
+---@field current_rank integer Current specialization rank (0 on older clients).
+---@field max_rank integer Maximum specialization rank (0 on older clients).
+---@field starting_rank integer Starting specialization rank (0 on older clients).
+
+--- Returns info for a trade-skill list row (GetTradeSkillInfo).
+---@param index integer Trade-skill list index.
+---@return trade_skill_info|nil info The row info, or nil if unavailable.
+function core.trade_skill.get_trade_skill_info(index)
+    return nil
+end
+
+--- Returns the number of reagents for a trade-skill (GetTradeSkillNumReagents).
+---@param index integer Trade-skill list index.
+---@return integer count Number of reagents.
+function core.trade_skill.get_trade_skill_num_reagents(index)
+    return 0
+end
+
+--- Returns reagent info for a trade-skill (GetTradeSkillReagentInfo).
+---@param index integer Trade-skill list index.
+---@param reagent_index integer 1-based reagent index.
+---@return profession_reagent_info|nil info The reagent info, or nil if unavailable.
+function core.trade_skill.get_trade_skill_reagent_info(index, reagent_index)
+    return nil
+end
+
+---@class trade_skill_line
+---@field name string Skill-line (profession) name.
+---@field rank integer Current skill rank.
+---@field max_rank integer Maximum skill rank.
+---@field skill_line_modifier integer Bonus skill from gear/buffs.
+
+--- Returns the current trade-skill line (GetTradeSkillLine).
+---@return trade_skill_line|nil line The skill-line info, or nil if unavailable.
+function core.trade_skill.get_trade_skill_line()
+    return nil
+end
+
+--- Closes the trade-skill window (CloseTradeSkill).
+function core.trade_skill.close() end
+
+--- Returns the min/max quantity a trade-skill produces (GetTradeSkillNumMade).
+---@param index integer Trade-skill list index.
+---@return profession_num_made made Quantity produced per craft.
+function core.trade_skill.get_trade_skill_num_made(index)
+    return {}
+end
+
+--- Returns the remaining cooldown of a trade-skill in seconds (GetTradeSkillCooldown).
+---@param index integer Trade-skill list index.
+---@return integer seconds Seconds remaining (0 if none / no cooldown).
+function core.trade_skill.get_trade_skill_cooldown(index)
+    return 0
+end
+
+--- Selects a trade-skill list row (SelectTradeSkill).
+---@param index integer Trade-skill list index.
+function core.trade_skill.select_trade_skill(index) end
+
+--- Returns the currently selected trade-skill index (GetTradeSkillSelectionIndex).
+---@return integer index Selected index (0 if none).
+function core.trade_skill.get_trade_skill_selection_index()
+    return 0
+end
+
+--- Returns how many repeat crafts are queued (GetTradeskillRepeatCount).
+---@return integer count Remaining queued crafts.
+function core.trade_skill.get_tradeskill_repeat_count()
+    return 0
+end
+
+--- Returns the index of the first non-header trade-skill (GetFirstTradeSkill).
+---@return integer index First craftable index (0 if none).
+function core.trade_skill.get_first_trade_skill()
+    return 0
+end
+
+--- Returns the max number of primary professions, always 2 (GetNumPrimaryProfessions).
+---@return integer count Maximum primary professions (0 if the API is unavailable).
+function core.trade_skill.get_num_primary_professions()
+    return 0
+end
+
+--- Expands a trade-skill sub-class header (ExpandTradeSkillSubClass).
+---@param index integer Sub-class header index.
+function core.trade_skill.expand_trade_skill_sub_class(index) end
+
+--- Collapses a trade-skill sub-class header (CollapseTradeSkillSubClass).
+---@param index integer Sub-class header index.
+function core.trade_skill.collapse_trade_skill_sub_class(index) end
+
+--- Returns the recipe item link for a trade-skill (GetTradeSkillRecipeLink).
+---@param index integer Trade-skill list index.
+---@return string|nil link The recipe item link, or nil if unavailable.
+function core.trade_skill.get_trade_skill_recipe_link(index)
+    return nil
+end
+
+--- Returns the crafted item link for a trade-skill (GetTradeSkillItemLink).
+---@param index integer Trade-skill list index.
+---@return string|nil link The crafted item link, or nil if unavailable.
+function core.trade_skill.get_trade_skill_item_link(index)
+    return nil
+end
+
+--- Returns the crafted item icon texture path for a trade-skill (GetTradeSkillIcon).
+---@param index integer Trade-skill list index.
+---@return string|nil texture The icon texture path, or nil if unavailable.
+function core.trade_skill.get_trade_skill_icon(index)
+    return nil
+end
+
+--- Returns the required tools for a trade-skill (GetTradeSkillTools).
+---@param index integer Trade-skill list index.
+---@return string[] tools Array of required tool names (empty if none).
+function core.trade_skill.get_trade_skill_tools(index)
+    return {}
+end
+
+--- Returns the crafted item's stat strings for a trade-skill (GetTradeSkillItemStats).
+---@param index integer Trade-skill list index.
+---@return string[] stats Array of stat strings (empty if none).
+function core.trade_skill.get_trade_skill_item_stats(index)
+    return {}
+end
+
+--- Returns the trade-skill sub-class filter names (GetTradeSkillSubClasses).
+---@return string[] sub_classes Array of sub-class filter names.
+function core.trade_skill.get_trade_skill_sub_classes()
+    return {}
+end
+
+--- Returns whether a sub-class filter is enabled (GetTradeSkillSubClassFilter).
+---@param index integer Sub-class filter index.
+---@return boolean enabled True if the filter is enabled.
+function core.trade_skill.get_trade_skill_sub_class_filter(index)
+    return false
+end
+
+--- Sets a sub-class filter (SetTradeSkillSubClassFilter).
+---@param index integer Sub-class filter index.
+---@param on_off? boolean Whether the filter is enabled (default true).
+---@param exclusive? boolean Whether to make this the only active filter (default false).
+function core.trade_skill.set_trade_skill_sub_class_filter(index, on_off, exclusive) end
+
+--- Returns the inventory-slot filter names (GetTradeSkillInvSlots).
+---@return string[] inv_slots Array of inventory-slot filter names.
+function core.trade_skill.get_trade_skill_inv_slots()
+    return {}
+end
+
+--- Returns whether an inventory-slot filter is enabled (GetTradeSkillInvSlotFilter).
+---@param index integer Inventory-slot filter index.
+---@return boolean enabled True if the filter is enabled.
+function core.trade_skill.get_trade_skill_inv_slot_filter(index)
+    return false
+end
+
+--- Sets an inventory-slot filter (SetTradeSkillInvSlotFilter).
+---@param index integer Inventory-slot filter index.
+---@param on_off? boolean Whether the filter is enabled (default true).
+---@param exclusive? boolean Whether to make this the only active filter (default false).
+function core.trade_skill.set_trade_skill_inv_slot_filter(index, on_off, exclusive) end
+
+--- Returns a reagent's item link for a trade-skill (GetTradeSkillReagentItemLink).
+---@param index integer Trade-skill list index.
+---@param reagent_index integer 1-based reagent index.
+---@return string|nil link The reagent item link, or nil if unavailable.
+function core.trade_skill.get_trade_skill_reagent_item_link(index, reagent_index)
+    return nil
+end
+
+--------------------------------------------------------------------------------
+-- core.trade_skill - retail C_TradeSkillUI (recipe spell IDs, not window indices)
+--------------------------------------------------------------------------------
+
+--- Crafts a recipe by spell ID (C_TradeSkillUI.CraftRecipe).
+---@param recipe_spell_id integer Recipe spell ID.
+---@param num_casts? integer Number of crafts to queue (default 1).
+---@param apply_concentration? boolean Whether to spend concentration (default false).
+function core.trade_skill.craft_recipe(recipe_spell_id, num_casts, apply_concentration) end
+
+--- Closes the retail trade-skill window (C_TradeSkillUI.CloseTradeSkill).
+function core.trade_skill.close_trade_skill() end
+
+--- Opens the profession window for a skill line (C_TradeSkillUI.OpenTradeSkill).
+---@param skill_line_id integer Skill-line ID.
+---@return boolean opened True if the window was opened.
+function core.trade_skill.open_trade_skill(skill_line_id)
+    return false
+end
+
+--- Opens a specific recipe in the profession window (C_TradeSkillUI.OpenRecipe).
+---@param recipe_id integer Recipe spell ID.
+function core.trade_skill.open_recipe(recipe_id) end
+
+---@class recipe_info
+---@field recipe_id integer Recipe spell ID.
+---@field name string Recipe name.
+---@field icon integer FileDataID of the recipe icon.
+---@field num_available integer Number of crafts the player can currently make.
+---@field num_skill_ups integer Skill points gained per craft.
+---@field learned boolean Whether the recipe is learned.
+---@field category_id integer Recipe category ID.
+---@field is_recraft boolean Whether the recipe supports recrafting.
+---@field is_enchant boolean Whether the recipe is an enchant.
+---@field relative_difficulty integer Relative difficulty enum value.
+---@field skill_line_ability_id integer Skill-line ability ID.
+
+--- Returns a curated scalar subset of a recipe's info (C_TradeSkillUI.GetRecipeInfo).
+---@param recipe_spell_id integer Recipe spell ID.
+---@param recipe_level? integer Recipe level (omit or <=0 for none).
+---@return recipe_info|nil info The recipe info, or nil if unavailable.
+function core.trade_skill.get_recipe_info(recipe_spell_id, recipe_level)
+    return nil
+end
+
+--- Returns all learned recipe spell IDs for the open profession (C_TradeSkillUI.GetAllRecipeIDs).
+---@return integer[] recipe_ids Array of recipe spell IDs (empty if none).
+function core.trade_skill.get_all_recipe_ids()
+    return {}
+end
+
+---@class recipe_schematic
+---@field recipe_id integer Recipe spell ID.
+---@field name string Recipe name.
+---@field quantity_min integer Minimum quantity produced.
+---@field quantity_max integer Maximum quantity produced.
+---@field item_id integer Produced item ID.
+---@field has_crafting_operation_info boolean Whether crafting-operation info is present.
+---@field num_reagent_slots integer Number of reagent slots (the slot array itself is not marshalled).
+
+--- Returns a curated scalar subset of a recipe schematic (C_TradeSkillUI.GetRecipeSchematic).
+---@param recipe_spell_id integer Recipe spell ID.
+---@param is_recraft boolean Whether to fetch the recraft schematic.
+---@param recipe_level? integer Recipe level (omit or <=0 for none).
+---@return recipe_schematic|nil schematic The schematic, or nil if unavailable.
+function core.trade_skill.get_recipe_schematic(recipe_spell_id, is_recraft, recipe_level)
+    return nil
+end
+
+--- Returns how many copies of a recipe the player can craft (C_TradeSkillUI.GetCraftableCount).
+---@param recipe_spell_id integer Recipe spell ID.
+---@param recipe_level? integer Recipe level (omit or <=0 for none).
+---@return integer count Number of craftable copies.
+function core.trade_skill.get_craftable_count(recipe_spell_id, recipe_level)
+    return 0
+end
+
+--- Returns the produced item link for a recipe (C_TradeSkillUI.GetRecipeItemLink).
+---@param recipe_spell_id integer Recipe spell ID.
+---@return string|nil link The item link, or nil if unavailable.
+function core.trade_skill.get_recipe_item_link(recipe_spell_id)
+    return nil
+end
+
+--- Returns the recipe link for a recipe (C_TradeSkillUI.GetRecipeLink).
+---@param recipe_spell_id integer Recipe spell ID.
+---@return string|nil link The recipe link, or nil if unavailable.
+function core.trade_skill.get_recipe_link(recipe_spell_id)
+    return nil
+end
+
+--- Returns the min/max quantity a recipe produces (C_TradeSkillUI.GetRecipeNumItemsProduced).
+---@param recipe_spell_id integer Recipe spell ID.
+---@return profession_num_made made Quantity produced per craft.
+function core.trade_skill.get_recipe_num_items_produced(recipe_spell_id)
+    return {}
+end
+
+--- Returns the required tools for a recipe (C_TradeSkillUI.GetRecipeTools).
+---@param recipe_spell_id integer Recipe spell ID.
+---@return string[] tools Array of required tool names (empty if none).
+function core.trade_skill.get_recipe_tools(recipe_spell_id)
+    return {}
+end
+
+--- Returns the remaining cooldown of a recipe in seconds (C_TradeSkillUI.GetRecipeCooldown).
+---@param recipe_spell_id integer Recipe spell ID.
+---@return integer seconds Seconds remaining (0 if none).
+function core.trade_skill.get_recipe_cooldown(recipe_spell_id)
+    return 0
+end
+
+--- Returns how many queued recasts remain (C_TradeSkillUI.GetRemainingRecasts).
+---@return integer count Remaining queued crafts.
+function core.trade_skill.get_remaining_recasts()
+    return 0
+end
+
+--- Returns the base profession info for the open profession (C_TradeSkillUI.GetBaseProfessionInfo).
+---@return trade_skill_profession_info|nil info The profession info, or nil if unavailable.
+function core.trade_skill.get_base_profession_info()
+    return nil
+end
+
+--- Returns profession info for a skill line (C_TradeSkillUI.GetProfessionInfoBySkillLineID).
+---@param skill_line_id integer Skill-line ID.
+---@return trade_skill_profession_info|nil info The profession info, or nil if unavailable.
+function core.trade_skill.get_profession_info_by_skill_line_id(skill_line_id)
+    return nil
+end
+
+--- Returns all trade-skill line IDs for the player's professions
+--- (C_TradeSkillUI.GetAllProfessionTradeSkillLines).
+---@return integer[] skill_line_ids Array of skill-line IDs (empty if none).
+function core.trade_skill.get_all_profession_trade_skill_lines()
+    return {}
+end
+
+--------------------------------------------------------------------------------
+-- core.craft - classic Craft API (enchanting/beast training on older clients)
+--------------------------------------------------------------------------------
+
+---@class craft
+core.craft = {}
+
+--- Performs the craft at the given index (DoCraft).
+---@param index integer Craft list index.
+function core.craft.do_craft(index) end
+
+--- Returns the number of entries in the open craft window (GetNumCrafts).
+---@return integer count Number of craft rows (0 if the window is closed).
+function core.craft.get_num_crafts()
+    return 0
+end
+
+---@class craft_info
+---@field name string Craft/header name.
+---@field sub_spell_name string Sub-spell (rank) name, empty if none.
+---@field type string Row type ("header", "optimal", "medium", "easy", "trivial", ...).
+---@field num_available integer Number of crafts the player can currently make.
+---@field is_expanded boolean Whether this header row is expanded.
+---@field training_point_cost integer Training-point cost (0 if not applicable).
+---@field required_level integer Required level (0 if none).
+
+--- Returns info for a craft list row (GetCraftInfo).
+---@param index integer Craft list index.
+---@return craft_info|nil info The row info, or nil if unavailable.
+function core.craft.get_craft_info(index)
+    return nil
+end
+
+--- Returns the number of reagents for a craft (GetCraftNumReagents).
+---@param index integer Craft list index.
+---@return integer count Number of reagents.
+function core.craft.get_craft_num_reagents(index)
+    return 0
+end
+
+--- Returns reagent info for a craft (GetCraftReagentInfo).
+---@param index integer Craft list index.
+---@param reagent_index integer 1-based reagent index.
+---@return profession_reagent_info|nil info The reagent info, or nil if unavailable.
+function core.craft.get_craft_reagent_info(index, reagent_index)
+    return nil
+end
+
+--- Closes the craft window (CloseCraft).
+function core.craft.close() end
+
+--- Returns the crafted item link for a craft (GetCraftItemLink).
+---@param index integer Craft list index.
+---@return string|nil link The crafted item link, or nil if unavailable.
+function core.craft.get_craft_item_link(index)
+    return nil
+end
+
+--- Returns the description text for a craft (GetCraftDescription).
+---@param index integer Craft list index.
+---@return string|nil description The description, or nil if unavailable.
+function core.craft.get_craft_description(index)
+    return nil
+end
+
+--- Returns the name of the open craft window (GetCraftName).
+---@return string|nil name The craft window name, or nil if unavailable.
+function core.craft.get_craft_name()
+    return nil
+end
+
+--- Returns the display skill line of the open craft window (GetCraftDisplaySkillLine).
+---@return string|nil skill_line The display skill line, or nil if unavailable.
+function core.craft.get_craft_display_skill_line()
+    return nil
+end
+
+--- Returns the skill line for a craft row (GetCraftSkillLine).
+---@param index integer Craft list index.
+---@return string|nil skill_line The skill line, or nil if unavailable.
+function core.craft.get_craft_skill_line(index)
+    return nil
+end
+
+--- Returns the required focus/tool for a craft (GetCraftSpellFocus).
+---@param index integer Craft list index.
+---@return string|nil focus The required focus/tool name, or nil if unavailable.
+function core.craft.get_craft_spell_focus(index)
+    return nil
+end
+
+--- Returns the currently selected craft index (GetCraftSelectionIndex).
+---@return integer index Selected index (0 if none).
+function core.craft.get_craft_selection_index()
+    return 0
+end
+
+--- Selects a craft list row (SelectCraft).
+---@param index integer Craft list index.
+function core.craft.select_craft(index) end
+
+--- Returns a reagent's item link for a craft (GetCraftReagentItemLink).
+---@param index integer Craft list index.
+---@param reagent_index integer 1-based reagent index.
+---@return string|nil link The reagent item link, or nil if unavailable.
+function core.craft.get_craft_reagent_item_link(index, reagent_index)
+    return nil
+end
+
+--- Returns the icon texture path for a craft (GetCraftIcon).
+---@param index integer Craft list index.
+---@return string|nil texture The icon texture path, or nil if unavailable.
+function core.craft.get_craft_icon(index)
+    return nil
+end
+
+--- Expands a craft skill-line header (ExpandCraftSkillLine).
+---@param index integer Skill-line header index.
+function core.craft.expand_craft_skill_line(index) end
+
+--- Collapses a craft skill-line header (CollapseCraftSkillLine).
+---@param index integer Skill-line header index.
+function core.craft.collapse_craft_skill_line(index) end
+
+--- Returns the craft button token (GetCraftButtonToken).
+---@return string|nil token The button token, or nil if unavailable.
+function core.craft.get_craft_button_token()
+    return nil
+end
+
+--------------------------------------------------------------------------------
+-- core.skill - classic Skill window API
+--------------------------------------------------------------------------------
+
+---@class skill
+core.skill = {}
+
+--- Returns the number of skill lines (GetNumSkillLines).
+---@return integer count Number of skill lines (0 if unavailable).
+function core.skill.get_num_skill_lines()
+    return 0
+end
+
+---@class skill_line_info
+---@field name string Skill-line or header name.
+---@field is_header boolean Whether this row is a header.
+---@field is_expanded boolean Whether the header is expanded.
+---@field skill_rank integer Current skill rank.
+---@field num_temp_points integer Temporary bonus points.
+---@field skill_modifier integer Bonus skill from gear/buffs.
+---@field skill_max_rank integer Maximum skill rank.
+---@field is_abandonable boolean Whether the skill can be unlearned.
+---@field step_cost integer Cost per skill-up step.
+---@field rank_cost integer Cost per rank.
+---@field min_level integer Minimum level required.
+---@field skill_cost_type integer Skill cost type enum value.
+---@field skill_description string Skill description text.
+
+--- Returns info for a skill line (GetSkillLineInfo).
+---@param index integer Skill-line index.
+---@return skill_line_info|nil info The skill-line info, or nil if unavailable.
+function core.skill.get_skill_line_info(index)
+    return nil
+end
+
+--- Returns the currently selected skill index (GetSelectedSkill).
+---@return integer index Selected skill index (0 if none).
+function core.skill.get_selected_skill()
+    return 0
+end
+
+--- Selects a skill line (SetSelectedSkill).
+---@param index integer Skill-line index.
+function core.skill.set_selected_skill(index) end
+
+--- Expands a skill header (ExpandSkillHeader).
+---@param index integer Skill header index.
+function core.skill.expand_skill_header(index) end
+
+--- Collapses a skill header (CollapseSkillHeader).
+---@param index integer Skill header index.
+function core.skill.collapse_skill_header(index) end
+
+--- Expands a trainer skill line (ExpandTrainerSkillLine).
+---@param index integer Trainer skill-line index.
+function core.skill.expand_trainer_skill_line(index) end
+
+--- Collapses a trainer skill line (CollapseTrainerSkillLine).
+---@param index integer Trainer skill-line index.
+function core.skill.collapse_trainer_skill_line(index) end
+
+--- Returns whether a trainer service teaches a spell (IsTrainerServiceLearnSpell).
+---@param index integer Trainer service index.
+---@return boolean is_learn_spell True if the service learns a spell.
+function core.skill.is_trainer_service_learn_spell(index)
     return false
 end
 

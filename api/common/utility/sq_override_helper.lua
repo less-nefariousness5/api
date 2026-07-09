@@ -144,7 +144,7 @@
 -- SESSION EXAMPLES (generic)
 --========================
 
--- EXAMPLE 1: Session override — disable a feature you don't want (RECOMMENDED)
+-- EXAMPLE 1: Session override - disable a feature you don't want (RECOMMENDED)
 --
 -- Overrides are volatile. User settings are NEVER touched. When your plugin is
 -- disabled/unloaded, overrides vanish within 500ms. The spell queue menu shows:
@@ -158,7 +158,7 @@
 --       session:set_multi_charge_throttle(false)
 --   end
 
--- EXAMPLE 2: Session override — force fast-cast skillshots + shorter retry
+-- EXAMPLE 2: Session override - force fast-cast skillshots + shorter retry
 --
 --   local sq = require("common/utility/sq_override_helper")
 --   local session = sq:create_session("My Skillshot Rotation")
@@ -169,7 +169,7 @@
 --       session:set_persistent_queue_seconds(2.0)
 --   end
 
--- EXAMPLE 3: Session override — opt into the [PORTED-RISK] behaviour
+-- EXAMPLE 3: Session override - opt into the [PORTED-RISK] behaviour
 --
 -- The proxy ships these changes OFF (priority-9 latency zeroing, fast-queue
 -- preservation). A dev who tested them and wants them can enable them just for

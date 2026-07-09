@@ -95,7 +95,7 @@
 
 ---@class ts_weight
 ---@field THREAT string                 Less threat = more weight (float-based).
----@field ANGLE string                  Is inside angle cone (bool) — flat weight on/off.
+---@field ANGLE string                  Is inside angle cone (bool) - flat weight on/off.
 ---@field ANGLE_F string                Less angle = more weight (float-based). Use set_weight_angle_f().
 ---@field CLOSE string                  Less distance = more weight (float-based).
 ---@field HEALTH_DECREASE string        Less HP % = more weight (float-based).
@@ -212,7 +212,7 @@
 -- SESSION EXAMPLES
 --========================
 
--- EXAMPLE 1: Session override — damage rotation (RECOMMENDED)
+-- EXAMPLE 1: Session override - damage rotation (RECOMMENDED)
 --
 -- Overrides are volatile. User settings are NEVER touched.
 -- When your plugin is disabled or unloaded, overrides vanish within 500ms.
@@ -237,7 +237,7 @@
 --       -- ... rotation logic using target_selector:get_targets() ...
 --   end
 
--- EXAMPLE 2: Session override — healer with custom weights
+-- EXAMPLE 2: Session override - healer with custom weights
 --
 --   local ts = require("common/utility/ts_override_helper")
 --   local session = ts:create_session("Holy Paladin")
@@ -250,7 +250,7 @@
 --       session:set_weight("heal", "tank", true, 2)
 --   end
 
--- EXAMPLE 3: Session override — temporarily disable TS (custom targeting)
+-- EXAMPLE 3: Session override - temporarily disable TS (custom targeting)
 --
 -- Your plugin does its own targeting. While active, TS is disabled.
 -- When your plugin stops, TS goes back to whatever the user had before.
@@ -265,7 +265,7 @@
 --   -- User had SILENT_AUTO before. When this plugin is disabled,
 --   -- TS goes back to SILENT_AUTO automatically. No settings damaged.
 
--- EXAMPLE 4: Session override — stop overriding explicitly
+-- EXAMPLE 4: Session override - stop overriding explicitly
 --
 --   local ts = require("common/utility/ts_override_helper")
 --   local session = ts:create_session("Arms Warrior")

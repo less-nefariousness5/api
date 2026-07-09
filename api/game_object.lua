@@ -35,6 +35,13 @@
 ---@field neg_buff integer
 ---@field percent number
 
+---@class nameplate_info
+---@field is_shown boolean Whether the nameplate frame is currently shown on screen.
+---@field left number The x coordinate of the nameplate's bottom-left corner, in scaled screen pixels.
+---@field bottom number The y coordinate of the nameplate's bottom-left corner, in scaled screen pixels.
+---@field width number The nameplate width in scaled screen pixels.
+---@field height number The nameplate height in scaled screen pixels.
+
 ---@class game_object
 ---Returns whether the game_object is valid.
 ---@field is_valid fun(self: game_object): boolean
@@ -156,6 +163,8 @@
 ---@field get_position fun(self: game_object): vec3
 ---Returns the name of the game object.
 ---@field get_name fun(self: game_object): string
+---Returns the unit's globally-unique GUID string (e.g. "Player-970-0002FD41", "Creature-0-...").
+---@field get_guid fun(self: game_object): string
 ---Returns the current health of the game object.
 ---@field get_health fun(self: game_object): number
 ---Returns the unit's money in copper (local player only; may be absent on other builds).
@@ -318,4 +327,13 @@
 ---@field get_state_flags fun(self: game_object): integer
 ---Returns whatever the npc is tap denied for the localplayer (grey healthbar)
 ---@field is_tap_denied fun(self: game_object): number
+---Returns this unit's nameplate visibility and on-screen rectangle (bottom-left
+---origin, in scaled screen pixels), or nil when the unit has no nameplate frame
+---(out of range, nameplates disabled, or the C_NamePlate API is unavailable on
+---older clients).
+---@field get_nameplate fun(self: game_object): nameplate_info|nil
+---Returns the world position of the unit's name attachment point (the anchor above the model where the name/nameplate text sits, roughly the top of the head). Returns a zero vector when the model is not loaded.
+---@field get_attachment_name_position fun(self: game_object): vec3
+---Returns the world position of a specific model attachment point, identified by its numeric id (e.g. hands, chest, base, overhead). Returns a zero vector when the model is not loaded or does not have the requested attachment.
+---@field get_attachment_position fun(self: game_object, attachment_id: integer): vec3
 

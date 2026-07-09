@@ -1,5 +1,5 @@
 ---@meta simple_ui
---- simple_ui v2.0.0 — LuaLS type annotations
+--- simple_ui v2.0.0 - LuaLS type annotations
 --- Place this file in your workspace for IDE autocompletion.
 
 ------------------------------------------------------------------------

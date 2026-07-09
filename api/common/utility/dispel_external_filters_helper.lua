@@ -12,7 +12,7 @@
 -- function(local_player: game_object, target: game_object, data_packet: table): boolean, string|nil
 --
 -- Return false + reason to block, or true to allow.
--- You never call apply yourself — the dispel system calls it during its decision pass.
+-- You never call apply yourself - the dispel system calls it during its decision pass.
 
 -- ─────────────────────────────────────────────────
 -- Filter options (opts parameter)
@@ -116,7 +116,7 @@
 --     )
 -- end
 
--- Example 8: class form — druid cat form disable (register on enter, unregister on exit)
+-- Example 8: class form - druid cat form disable (register on enter, unregister on exit)
 -- local dispels = require("common/utility/dispel_external_filters_helper")
 -- if is_cat_form then
 --     dispels:register("druid_no_dispel",

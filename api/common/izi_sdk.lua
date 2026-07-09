@@ -69,8 +69,8 @@
 ---@field is_valid_ally               fun(self: game_object): boolean                          -- Ally of local player
 ---@field get_incoming_damage         fun(self: game_object, deadline_time_in_seconds: number, is_exception?: boolean): number -- Heuristic incoming damage
 ---@field get_incoming_damage_types   fun(self: game_object, deadline_time_in_seconds?: number, is_exception?: boolean): damage_types_table   -- Recent+predicted dmg profile | note: params are optional if you dont understand them, dont fill them
----@field get_physical_damage_taken_percentage fun(self: game_object, deadline_time_in_seconds?: number, is_exception?: boolean): number  -- 0–100%% of incoming dmg that is PHYSICAL | note: params are optional if you dont understand them, dont fill them
----@field get_magical_damage_taken_percentage  fun(self: game_object, deadline_time_in_seconds?: number, is_exception?: boolean): number  -- 0–100%% of incoming dmg that is MAGICAL | note: params are optional if you dont understand them, dont fill them
+---@field get_physical_damage_taken_percentage fun(self: game_object, deadline_time_in_seconds?: number, is_exception?: boolean): number  -- 0-100%% of incoming dmg that is PHYSICAL | note: params are optional if you dont understand them, dont fill them
+---@field get_magical_damage_taken_percentage  fun(self: game_object, deadline_time_in_seconds?: number, is_exception?: boolean): number  -- 0-100%% of incoming dmg that is MAGICAL | note: params are optional if you dont understand them, dont fill them
 ---@field get_health_percentage_inc   fun(self: game_object, deadline_time_in_seconds?: number): (number, number, number, number) -- Future HP% (1..100), incoming, current HP%, incoming%
 ---@field is_damage_immune            fun(self: game_object, type_flags?: integer, min_remaining_ms?: number): (boolean, number, number) -- PvP immunity: (is, rem_ms, expire_time)
 ---@field is_cc_immune                fun(self: game_object, type_flags?: integer, min_remaining_ms?: number, ignore_dot?: boolean, dot_blacklist?: number[]): (boolean, number, number) -- PvP CC immunity
@@ -125,7 +125,7 @@
 ---@field get_enemies_in_splash_range       fun(self: game_object, meters: number): game_object[] -- Enemies within meters (+radius), PvP-aware
 ---@field get_enemies_in_splash_range_count fun(self: game_object, meters: number): number        -- Count enemies within meters (+radius)
 ---@field level                       fun(self: game_object): number                             -- Unit level
----@field get_guid                    fun(self: game_object): game_object                        -- Underlying game_object reference
+---@field guid                       fun(self: game_object): string                             -- Alias of get_guid() (native); the unit's GUID string
 ---@field npc_id                      fun(self: game_object): integer                            -- NPC id (0 for players)
 ---@field is_dead_or_ghost            fun(self: game_object): boolean                            -- True if dead or ghost
 
@@ -997,7 +997,7 @@
 
 -- -- CC immunity / reduction (by type)
 -- local immune_cc = enemy:is_cc_immune()                -- any CC
--- local cc_pct = select(1, enemy:get_cc_reduction())    -- % reduction (0–100)
+-- local cc_pct = select(1, enemy:get_cc_reduction())    -- % reduction (0-100)
 
 -- -- burst windows (offensive cooldowns)
 -- if enemy:has_burst() then ... end
