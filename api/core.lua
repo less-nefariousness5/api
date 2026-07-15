@@ -1149,6 +1149,19 @@ function core.character.get_combat_rating_bonus_for_combat_rating_value(rating_i
     return 0
 end
 
+--- Returns the connected realm's display name.
+---@return string realm_name The realm display name, or an empty string when unavailable.
+function core.character.get_realm_name()
+    return ""
+end
+
+--- Returns the normalized realm name, without spaces or punctuation.
+--- Falls back to the display name on clients without a normalized realm API.
+---@return string realm_name The normalized realm name, or an empty string when unavailable.
+function core.character.get_normalized_realm_name()
+    return ""
+end
+
 ---@class world
 core.world = {}
 
@@ -1187,6 +1200,22 @@ end
 ---@return active_keystone_info info The active keystone info table.
 function core.world.get_active_keystone_info()
     return {}
+end
+
+---@class party
+core.party = {}
+
+--- Returns whether the local player can invite another player to the group.
+---@return boolean can_invite True if the player can invite others.
+function core.party.can_invite()
+    return false
+end
+
+--- Invites a player by name using the active party invite API.
+---@param name string The player name to invite.
+---@return boolean success True if an invite API was available and called.
+function core.party.invite_unit(name)
+    return false
 end
 
 ---@class input
@@ -4733,6 +4762,143 @@ function core.addons.questie.get_quest_npc_ids()
     return {}
 end
 
+--- Returns every quest ID present in Questie's compiled quest database.
+---@return integer[] quest_ids An array of Questie quest IDs, or an empty array when Questie is not ready.
+function core.addons.questie.get_quest_ids()
+    return {}
+end
+
+---@alias questie_query_value nil|number|string|boolean|table<integer|string, questie_query_value>
+
+--- Returns whether Questie's API and database are ready for query calls.
+---@return boolean is_ready True if Questie is loaded and its API is ready.
+function core.addons.questie.is_ready()
+    return false
+end
+
+--- Queries one field from Questie's quest database.
+---@param quest_id integer The Questie quest ID.
+---@param key string The QuestieDB field key to read.
+---@return questie_query_value value The field value, or nil if Questie is not ready or the key is missing.
+function core.addons.questie.query_quest_single(quest_id, key)
+    return nil
+end
+
+--- Queries one field from Questie's NPC database.
+---@param npc_id integer The NPC ID.
+---@param key string The QuestieDB field key to read.
+---@return questie_query_value value The field value, or nil if Questie is not ready or the key is missing.
+function core.addons.questie.query_npc_single(npc_id, key)
+    return nil
+end
+
+--- Queries one field from Questie's object database.
+---@param object_id integer The object ID.
+---@param key string The QuestieDB field key to read.
+---@return questie_query_value value The field value, or nil if Questie is not ready or the key is missing.
+function core.addons.questie.query_object_single(object_id, key)
+    return nil
+end
+
+--- Queries one field from Questie's item database.
+---@param item_id integer The item ID.
+---@param key string The QuestieDB field key to read.
+---@return questie_query_value value The field value, or nil if Questie is not ready or the key is missing.
+function core.addons.questie.query_item_single(item_id, key)
+    return nil
+end
+
+--- Returns whether Questie considers a quest doable.
+---@param quest_id integer The Questie quest ID.
+---@return boolean|nil is_doable True if doable, false if not doable, or nil if Questie is not ready.
+function core.addons.questie.is_quest_doable(quest_id)
+    return nil
+end
+
+--- Returns Questie's completion status for a quest.
+---@param quest_id integer The Questie quest ID.
+---@return integer|nil status 1 for complete, 0 for incomplete, -1 for failed, or nil if Questie is not ready.
+function core.addons.questie.is_quest_complete(quest_id)
+    return nil
+end
+
+---@class rested_xp_goal_info
+---@field action string The RestedXP goal action, such as accept, turnin, complete, goto, or collect.
+---@field quest_id integer The quest ID associated with this goal.
+---@field text string The goal text.
+---@field is_complete boolean Whether RestedXP marks the goal as complete or skipped.
+---@field text_only boolean Whether the goal is informational and does not gate step completion.
+---@field ids integer[] Quest IDs associated with a multi-quest goal.
+
+---@class rested_xp_step_info
+---@field num integer The current or sticky RestedXP step index.
+---@field is_complete boolean Whether RestedXP marks the step as complete or skipped.
+---@field goals rested_xp_goal_info[] The goals in this step.
+
+---@class rested_xp_objective_info
+---@field text string The objective text.
+---@field type string The RestedXP objective type.
+---@field num_required integer The required objective count.
+---@field num_fulfilled integer The current objective count.
+---@field finished boolean Whether the objective is finished.
+
+---@class rested_xp_waypoint_info
+---@field map_id integer The waypoint UiMapID.
+---@field x number The normalized map X coordinate.
+---@field y number The normalized map Y coordinate.
+---@field dist number The distance to the waypoint, or 0 when unavailable.
+---@field title string The waypoint title.
+---@field type string The RestedXP goal action associated with the waypoint.
+---@field goal_num integer The associated RestedXP step index.
+---@field is_manual boolean Whether the waypoint was placed manually. RestedXP always returns false.
+---@field wrong_continent boolean Whether the waypoint is on another continent and its distance is not meaningful.
+
+---@class addons_rested_xp
+core.addons.rested_xp = {}
+
+--- Returns whether the RestedXP Guides addon is loaded and available.
+---@return boolean is_loaded True if RestedXP Guides is loaded.
+function core.addons.rested_xp.is_loaded()
+    return false
+end
+
+--- Returns whether RestedXP has an active current step.
+---@return boolean has_step True if a current guide step exists.
+function core.addons.rested_xp.has_current_step()
+    return false
+end
+
+--- Returns the current RestedXP guide step.
+---@return rested_xp_step_info step The current step, or a zero-valued step when none is active.
+function core.addons.rested_xp.get_current_step()
+    return {}
+end
+
+--- Returns RestedXP sticky steps that are visible alongside the current step.
+---@return rested_xp_step_info[] stickies An array of sticky step tables.
+function core.addons.rested_xp.get_current_stickies()
+    return {}
+end
+
+--- Returns RestedXP objectives for a quest.
+---@param quest_id integer The quest ID to inspect.
+---@return rested_xp_objective_info[] objectives An array of quest objective tables.
+function core.addons.rested_xp.get_objectives(quest_id)
+    return {}
+end
+
+--- Returns RestedXP's current navigation waypoint.
+---@return rested_xp_waypoint_info waypoint The current waypoint, or a zero-valued waypoint when none is active.
+function core.addons.rested_xp.get_current_waypoint()
+    return {}
+end
+
+--- Returns the active RestedXP waypoints for the current step.
+---@return rested_xp_waypoint_info[] waypoints An array of active waypoint tables.
+function core.addons.rested_xp.get_step_waypoints()
+    return {}
+end
+
 ---@class tsm_item_prices
 ---@field market_value number The current market value in copper.
 ---@field min_buyout number The minimum buyout price in copper.
@@ -4926,6 +5092,7 @@ end
 
 -- ========================================
 -- core.addons.swing_timer
+-- https://www.curseforge.com/wow/addons/libstub
 -- ========================================
 
 ---@class addons_swing_timer
