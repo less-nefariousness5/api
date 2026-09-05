@@ -4,6 +4,17 @@
 ---@field status integer -- 0, 1, 2, 3
 ---@field threat_percent number -- 0 to 100
 
+--- A single aura on a unit, as game_object:get_buffs() and get_debuffs() report it.
+---
+--- WHY impl AND buff_index ARE DOCUMENTED 2026-08-11: this class is not read-only. It is also the
+--- argument type of core.input.cancel_buff, and the C++ side of that call (check_buff in
+--- lua_type_buff.cpp) does a luaL_checkinteger on BOTH of these two fields. A table built by hand
+--- from the seven fields this class used to list therefore throws inside cancel_buff, and the class
+--- was the only place a caller could have learned otherwise. They arrived together with the call
+--- that needs them, "add input.cancel_buff" (f6a71c33 in wow_core, 2025-03-09).
+---
+--- The rule that follows: pass back the SAME table get_buffs() handed you. Do not synthesize one,
+--- and do not carry one across ticks, because impl is a native address whose aura may be gone.
 ---@class buff
 ---@field buff_name string
 ---@field buff_id integer
@@ -12,6 +23,8 @@
 ---@field duration number
 ---@field type integer
 ---@field caster game_object
+---@field impl integer Opaque native handle for the aura. Do NOT interpret it or do arithmetic on it; its only supported use is being passed straight back in core.input.cancel_buff.
+---@field buff_index integer The aura's slot on the unit. Reused as soon as an aura fades, so it identifies the aura only within the tick that read it. Also required by core.input.cancel_buff.
 ---@field points number[]                              -- variable values from aura data (e.g. absorb remaining for shields)
 
 ---@class loss_of_control_info
@@ -34,6 +47,22 @@
 ---@field pos_buff integer
 ---@field neg_buff integer
 ---@field percent number
+
+--- The four armor values game_object:get_armor() returns, straight from WoW's UnitArmor(unit).
+---
+--- Every field is an integer and every field is always present. The binding zero-initializes all
+--- four and only overwrites the ones UnitArmor actually answered, so a unit the call could not
+--- resolve reads as four zeros rather than nil, and there is no separate failure signal. Treat
+--- effective_armor of 0 on a live unit as "not answered", not as "no armor".
+---
+--- UnitArmor returns baseArmor, effectiveArmor, armor, posBuff, negBuff. The core reads the first
+--- four and DISCARDS negBuff, which is why bonus_armor is the positive component only and a
+--- debuffed unit's reduction shows up in effective_armor without a field of its own.
+---@class armor_data
+---@field base integer Armor before buffs and debuffs.
+---@field effective_armor integer Armor actually applied to damage taken. This is the one mitigation math wants.
+---@field armor integer The client's displayed armor value.
+---@field bonus_armor integer The positive buff component only. UnitArmor's negBuff is not read by the core.
 
 ---@class nameplate_info
 ---@field is_shown boolean Whether the nameplate frame is currently shown on screen.
@@ -78,7 +107,8 @@
 --- 7 = Red "X" Cross  
 --- 8 = White Skull  
 ---@field get_target_marker_index fun(self: game_object): number
----Sets the target marker (raid icon) on the game object.
+---Sets the target marker (raid icon) on the game object. Pass 0 to clear the icon.
+---This is the icon that rides on the unit; the ground flares are core.world.place_raid_marker.
 ---@field set_target_marker_index fun(self: game_object, index: integer)
 ---Returns the race id of the game object.
 ---@field get_race_id fun(self: game_object): integer
@@ -163,7 +193,16 @@
 ---@field get_position fun(self: game_object): vec3
 ---Returns the name of the game object.
 ---@field get_name fun(self: game_object): string
----Returns the unit's globally-unique GUID string (e.g. "Player-970-0002FD41", "Creature-0-...").
+---Returns the object's globally-unique GUID string (e.g. "Player-1-000011A6",
+---"Creature-0-1-0-0-3124-00000019EB", "Item-1-0-00000000000C4E5C", "GameObject-0-...").
+---Since core commit "Fixed lua_get_object_from_guid" (2026-09-01) this is printed natively
+---and answers for EVERY object type, not just units: items and game objects used to return
+---"" because the old implementation asked the client's UnitGUID, which only names units.
+---The string is byte-identical to UnitGUID's for the types the client prints (verified on
+---wow_tbc_ps 2.5.3 and wow_vanilla_ps 1.14.2, sessions 01_09_2026_02_33_33_1066 and
+---01_09_2026_03_02_57_176034), so it compares equal against combat-log guids and feeds
+---core.object_manager.get_object_from_guid for a lossless round trip. "" still appears for
+---the handful of guid types with no printable form (e.g. ClientActor).
 ---@field get_guid fun(self: game_object): string
 ---Returns the current health of the game object.
 ---@field get_health fun(self: game_object): number
@@ -321,8 +360,12 @@
 ---@field get_empower_current_stage fun(self: game_object): number
 ---Returns the unit's ranged damage information including speed, damage range, buffs, and percentage modifier.
 ---@field get_unit_ranged_damage fun(self: game_object): unit_ranged_damage_data
----Returns the armor value of the game object.
----@field get_armor fun(self: game_object): number
+---Returns the game object's armor as a TABLE of four integers, not a single value.
+---This stub said `number` from the day the binding landed ("Added get_armor to lua", 085e19ed in
+---wow_core, 2026-03-16) until 2026-08-11, so anything written against it was doing arithmetic on a
+---table. lua_game_object_get_armor builds the table with lua_newtable and four lua_pushinteger
+---calls; there is no scalar return path anywhere in it. See armor_data for which field to use.
+---@field get_armor fun(self: game_object): armor_data
 ---Returns the current state flags bitfield of the game object.
 ---@field get_state_flags fun(self: game_object): integer
 ---Returns whatever the npc is tap denied for the localplayer (grey healthbar)

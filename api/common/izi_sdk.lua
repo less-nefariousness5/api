@@ -1052,8 +1052,64 @@
 ---@field set_pvp_queue_provider fun(fn: fun(): queue_pvp_slot[]|nil): nil
 ---@field queue_popup_info fun(): (boolean, queue_popup_info)    -- has_popup, info
 ---@field queue_has_popup fun(): boolean
+---@class gossip_option_view
+---@field index integer 1-based row in the open frame. Always valid on every build.
+---@field name string
+---@field gossip_type string "gossip", "vendor", "taxi", "trainer", "healer", "binder", "banker", "petition", "tabard", "battlemaster", "auctioneer".
+---@field icon integer|nil Normalized icon. Native where the build reports one, derived from gossip_type otherwise, so it is the same number on every build. nil for a type the mapping does not know.
+---@field icon_source string "native" or "derived".
+---@field id integer OPAQUE selector token, valid for this frame on this build only. Pass to :select() and nothing else. Never persist it, never compare it against an id from elsewhere.
+---@field status integer|nil Retail only; nil on the private-server builds.
+---@field spell_id integer|nil Retail only; nil on the private-server builds.
+---@field flags integer|nil Retail only; nil on the private-server builds.
+---@field rewards gossip_reward[]|nil Retail only; nil on the private-server builds.
+---@field select fun(self: gossip_option_view) Select this option. Correct on every build.
+
+---@class gossip_quest_view
+---@field index integer 1-based row in the open frame.
+---@field id integer Real quest id when has_real_id is true, otherwise the row index.
+---@field has_real_id boolean False on the private-server builds, where the legacy Lua API exposes no quest id. Check this before comparing, persisting, or looking up id.
+---@field title string The portable identifier on every build.
+---@field level integer|nil
+---@field is_complete boolean
+---@field is_repeatable boolean
+---@field is_trivial boolean
+---@field is_active boolean True for the turn-in list, false for the available list.
+---@field select fun(self: gossip_quest_view) Routes to the active or available selector automatically.
+
+---@class izi_gossip_icons
+---@field GOSSIP integer
+---@field VENDOR integer
+---@field TAXI integer
+---@field TRAINER integer
+---@field HEALER integer
+---@field BINDER integer
+---@field BANKER integer
+---@field PETITION integer
+---@field TABARD integer
+---@field BATTLEMASTER integer
+---@field AUCTIONEER integer
+
+--- One gossip contract across retail and the private-server builds. See
+--- common/izi_sdk/izi_gossip.lua for why the raw bindings differ, and .api/core.lua's
+--- "GOSSIP ACROSS GAME VERSIONS" block for the field-by-field table and a worked example.
+---
+--- Address options by NAME or through the view's own :select(). Both are portable on every
+--- build; a stored id is portable on none.
+---@class izi_gossip
+---@field ICON izi_gossip_icons
+---@field is_open fun(): boolean
+---@field close fun()
+---@field options fun(): gossip_option_view[]
+---@field available_quests fun(): gossip_quest_view[]
+---@field active_quests fun(): gossip_quest_view[]
+---@field find_option fun(pattern: string): gossip_option_view|nil
+---@field find_option_by_icon fun(icon: integer): gossip_option_view|nil
+---@field find_quest fun(pattern: string, include_active?: boolean): gossip_quest_view|nil
+
 ---@field queue_accept fun(kind?: queue_kind, idx?: integer): boolean
 ---@field queue_decline fun(kind?: queue_kind, idx?: integer): boolean
+---@field gossip izi_gossip
 
 ---@class izi_api
 --- Cancel matching buffs on the local player.

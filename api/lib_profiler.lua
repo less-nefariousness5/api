@@ -1,0 +1,78 @@
+---@meta
+
+---@class profiler_create_options
+---@field mode? integer
+---@field display_name? string
+---@field report_interval? number
+---@field slow_frame_ms? number
+---@field warn_timer_ms? number
+---@field top_n? integer
+---@field accounting? string
+---@field counter_names? string[]
+---@field counters? string[]
+
+---@class profiler_timer_snapshot
+---@field name string
+---@field per_sample_ms number
+---@field per_call_ms number
+---@field peak_ms number
+---@field calls integer
+---@field pct number
+
+---@class profiler_snapshot
+---@field name string
+---@field display_name string
+---@field mode integer
+---@field samples integer
+---@field frame_avg_ms number
+---@field frame_p95_ms number
+---@field frame_p99_ms number
+---@field frame_peak_ms number
+---@field timers profiler_timer_snapshot[]
+---@field counters table<string, number>
+---@field report_time number
+
+---@class profiler_instance
+---@field name string
+---@field display_name string
+---@field mode integer
+---@field registered boolean
+---@field _profiler_registered boolean
+---@field last_snapshot? profiler_snapshot
+--- Schema stamps written by the owner of an instance so it can detect a stale
+--- instance left behind by a Lua reload and rebuild it. Each owner uses its own
+--- key and never reads another's.
+---@field _menu_profiler_schema? integer Written by common/menu/profiler.lua.
+---@field _core_monitor_schema? integer Written by common/menu/plugin_monitor.lua.
+
+---@class profiler_library
+---@field MODE_DISABLED integer
+---@field MODE_PASSIVE integer
+---@field MODE_ACTIVE integer
+---@field config table
+---@field create fun(name: string, timer_names?: string[], opts?: profiler_create_options): profiler_instance
+---@field register fun(instance: profiler_instance): profiler_instance
+---@field unregister fun(instance: profiler_instance)
+---@field set_global_enabled_provider fun(fn: fun(): boolean)
+---@field set_global_active_provider fun(fn: fun(): boolean)
+---@field set_global_enabled fun(enabled: boolean)
+---@field sync_global fun()
+---@field set_mode fun(instance: profiler_instance, mode: integer)
+---@field get_mode fun(instance: profiler_instance): integer
+---@field set_enabled fun(instance: profiler_instance, enabled: boolean)
+---@field is_enabled fun(instance: profiler_instance): boolean
+---@field has_running_instances fun(): boolean
+---@field has_active_instances fun(): boolean
+---@field set_context_provider fun(instance: profiler_instance, fn: fun(): table|string|nil)
+---@field frame_start fun(instance: profiler_instance, callback_type?: string): integer
+---@field frame_end fun(instance: profiler_instance, frame_token: integer): integer
+---@field start fun(instance: profiler_instance, timer_name: string): integer
+---@field stop fun(instance: profiler_instance, timer_name: string, start_token: integer): integer
+---@field count fun(instance: profiler_instance, counter_name: string, amount?: number)
+---@field measure fun(instance: profiler_instance, timer_name: string, fn: function, ...): any
+---@field get_instances fun(): profiler_instance[]
+---@field get_snapshot fun(instance: profiler_instance): profiler_snapshot|nil
+---@field render_ui fun()
+
+---@type profiler_library
+profiler_lib = nil

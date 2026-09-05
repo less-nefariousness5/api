@@ -1,8 +1,33 @@
+-- ============================================================================
+-- NATIVE MENU ELEMENT TYPES
+-- ============================================================================
+-- These classes describe the low-level objects returned by `core.menu.*`.
+-- They exist for old plugins and advanced custom-window code. For ordinary
+-- plugin settings choose one of these higher-level surfaces:
+--
+-- * Recommended: `_G.menu` from .api/common/menu/api.lua. It owns rendering,
+--   persistence, search, layout, modifier chords, permashow, and keybind modes.
+-- * Compatibility: `require("common/menu/menu_api")` from
+--   .api/common/menu/menu_api.lua. It keeps old imperative modules working and
+--   translates their trees/elements into the modern retained menu.
+--
+-- Native elements are immediate-mode: create them once, render the same object
+-- from a menu callback, and read it with get/get_state. Their constructor value
+-- is the first-run/reset default and their id is the persistence key. Keep ids
+-- stable and plugin-prefixed; labels may change.
+--
+-- The native keybind classes below expose their historical integer/boolean mode
+-- model. They do not expose the modern exact `modes = {...}` whitelist or
+-- `default_mods` chord declaration. Use `_G.menu` when users need configurable
+-- hold/toggle/release choices, double-click mode switching, or WoW modifiers.
+-- ============================================================================
 
 ---@class tree_node
 ---@field is_open fun():boolean
 ---@field get_type fun(self:tree_node):integer
----@field render fun(self:tree_node, header:string, callback:function):nil
+-- [WOW ONLY] The recovered C++ binding returns the open/body-run boolean.
+---@field render fun(self:tree_node, header:string, callback:function):boolean
+-- [/WOW ONLY]
 ---@field get_widget_bounds fun(self:tree_node):table -- Returns a table with 2 elements, min and max. get_widget_bounds().min is the left border of the widget, and .max is the right border.
 ---@field set_open_state fun(self:tree_node, state:boolean):nil
 ---@field just_issued_state_change fun(self:tree_node):boolean -- Returns whether the open/close state just changed.
@@ -15,7 +40,9 @@
 ---@field get_state fun():boolean
 ---@field get_type fun(self:checkbox)
 ---@field set fun(self: checkbox, new_state:boolean):nil
----@field render fun(self:checkbox, label:string, tooltip:string|nil):nil
+-- [WOW ONLY] The native fourth stack slot is the optional post-row separator.
+---@field render fun(self:checkbox, label:string, tooltip:string|nil, add_separator:boolean|nil):nil
+-- [/WOW ONLY]
 ---@field get_widget_bounds fun(self:checkbox):table -- Returns a table with 2 elements, min and max. get_widget_bounds().min is the left border of the widget, and .max is the right border.
 ---@field set fun(self:checkbox, val:boolean):nil
 ---@field get_default fun(self:checkbox):boolean
@@ -79,7 +106,9 @@
 ---@class combobox_reorderable
 ---@field get fun():number
 ---@field get_type fun(self:combobox_reorderable)
----@field render fun(self:combobox_reorderable, label:string, options:table, tooltip:string|nil):nil
+-- [WOW ONLY] Items are supplied by set_items; render takes label and tooltip.
+---@field render fun(self:combobox_reorderable, label:string, tooltip:string|nil):nil
+-- [/WOW ONLY]
 ---@field set fun(self:combobox_reorderable, val:integer):nil
 ---@field get fun(self:combobox_reorderable):integer
 ---@field get_item_at_index fun(self:combobox_reorderable, index:integer):string -- Gets the item name at a 1-based index.
@@ -118,7 +147,9 @@
 ---@field get_type fun(self:button)
 ---@field is_clicked fun(self:button):boolean
 ---@field get_widget_bounds fun(self:button):table -- Returns a table with 2 elements, min and max. get_widget_bounds().min is the left border of the widget, and .max is the right border.
----@field render fun(self:button, label:string, tooltip:string|nil):nil
+-- [WOW ONLY] Native button render returns the same frame-local click pulse.
+---@field render fun(self:button, label:string, tooltip:string|nil):boolean
+-- [/WOW ONLY]
 ---@field get_label fun(self:button):string -- The menu element needs to be rendered for this to return a string different than ""
 ---@field set fun(self:checkbox, nil):nil -- Dummy function. Do not use. This is for you to be able to loop menu elements and set them all to default without any LUA errors.
 ---@field get fun(self:checkbox):nil
@@ -315,3 +346,85 @@ end
 ---@field add_separator fun(self:window, right_sep_offset:number, left_sep_offset:number, y_offset:number, width_offset:number, custom_color:color):nil
 ---@field animate_widget fun(self:window, animation_id:integer, start_pos:vec2, end_pos:vec2, starting_alpha:integer, max_alpha:integer, alpha_speed:number, movement_speed:number, only_once:boolean):table
 ---@field make_loading_circle_animation fun(self:window, id:integer, center:vec2, radius:number, color:color, thickness:number, animation_type:integer)
+
+-- ============================================================================
+-- SDF paint pack (shader-driven primitives, League-core port).
+-- All positions are WINDOW-LOCAL offsets (added to the window's position).
+-- `time` is an absolute clock in seconds (pass core.time()); `speed` scales it.
+-- Animated effects are resolution-independent and draw as a single quad each.
+-- ============================================================================
+
+---@class window
+---Soft radial fog puff centered on `center`. `density` (default 3.0) controls falloff steepness — lower = wider, softer halo.
+---@field render_fog fun(self:window, center:vec2, radius:number, col:color, density:number|nil):nil
+---Rounded rect, soft-edged (alias of render_smooth_rect under the League name). rounding default 4, softness default 1.
+---@field render_sdf_rect fun(self:window, p_min:vec2, p_max:vec2, col:color, rounding:number|nil, softness:number|nil):nil
+---Soft anti-aliased filled circle (League name). softness default 1.
+---@field render_sdf_circle fun(self:window, center:vec2, radius:number, col:color, softness:number|nil):nil
+---Filled circle with optional border ring. border defaults to none; border_width default 0; softness default 1.
+---@field render_filled_circle fun(self:window, center:vec2, radius:number, fill:color, border:color|nil, border_width:number|nil, softness:number|nil):nil
+---Outer glow halo around a (rounded) rect. glow_size default 10 px, glow_intensity default 1.
+---@field render_rect_glow fun(self:window, p_min:vec2, p_max:vec2, glow_col:color, rounding:number|nil, glow_size:number|nil, glow_intensity:number|nil):nil
+---Complete animated button face (base plate + elevation + accent sheen). hover/press are 0..1 blend factors; border_in insets the border.
+---@field render_button_face fun(self:window, p_min:vec2, p_max:vec2, base:color, elevated:color, accent:color, rounding:number|nil, hover:number|nil, press:number|nil, time:number|nil, speed:number|nil, border_in:number|nil):nil
+---Page-title plate with accent underline + halo. rounding default 8.
+---@field render_page_title fun(self:window, p_min:vec2, p_max:vec2, plate:color, accent:color, halo:color, rounding:number|nil, hover:number|nil, time:number|nil, speed:number|nil):nil
+---Toast/notification card: base plate, accent strip (strip_w, default 3) and lifetime progress bar (prog_h, default 2). alpha_env is the fade envelope 0..1; life_t is remaining-life 0..1.
+---@field render_toast_card fun(self:window, p_min:vec2, p_max:vec2, base:color, elevated:color, accent:color, rounding:number|nil, alpha_env:number|nil, life_t:number|nil, strip_w:number|nil, prog_h:number|nil, time:number|nil, speed:number|nil):nil
+---Animated aurora ribbon between two colors. intensity default 1.8.
+---@field render_aurora fun(self:window, p_min:vec2, p_max:vec2, primary:color, secondary:color, intensity:number|nil, rounding:number|nil, softness:number|nil, time:number|nil, speed:number|nil):nil
+---Animated layered dark fog (the menu's background weather). zoom/warp default 0.
+---@field render_vanta_fog fun(self:window, p_min:vec2, p_max:vec2, base:color, highlight:color, secondary:color, density:number|nil, time:number|nil, speed:number|nil, zoom:number|nil, warp:number|nil):nil
+---One-shot radial burst. Drive `progress` 0..1 yourself; `seed` varies the pattern.
+---@field render_explosion fun(self:window, p_min:vec2, p_max:vec2, core_col:color, accent:color, progress:number|nil, seed:number|nil):nil
+---Film-grain noise overlay. noise_scale default 2, intensity default 0.1.
+---@field render_noise fun(self:window, p_min:vec2, p_max:vec2, base:color, noise_scale:number|nil, intensity:number|nil, rounding:number|nil, time:number|nil):nil
+---Animated diagonal flame wash (three-color ramp). density default 1.5.
+---@field render_diagonal_fire fun(self:window, p_min:vec2, p_max:vec2, core_col:color, mid:color, edge:color, density:number|nil, time:number|nil, speed:number|nil):nil
+---Keybind pill in its ACTIVE state. hover/active are 0..1 blends; border_in insets the border.
+---@field render_keybind_active fun(self:window, p_min:vec2, p_max:vec2, base:color, elevated:color, accent:color, rounding:number|nil, hover:number|nil, active:number|nil, time:number|nil, speed:number|nil, border_in:number|nil):nil
+---Keybind pill in its LISTENING (press-a-key) state. listening is a 0..1 blend.
+---@field render_keybind_listening fun(self:window, p_min:vec2, p_max:vec2, base:color, elevated:color, accent:color, rounding:number|nil, hover:number|nil, listening:number|nil, time:number|nil, speed:number|nil, border_in:number|nil):nil
+---Search/tutorial highlight ring, reticle style (corner brackets + pulse). pulse 0..1, brightness default 1.
+---@field render_widget_highlight_reticle fun(self:window, p_min:vec2, p_max:vec2, body:color, accent:color, halo:color, rounding:number|nil, pulse:number|nil, time:number|nil, speed:number|nil, brightness:number|nil):nil
+---Search/tutorial highlight, scanline sweep style. Same parameters as the reticle variant.
+---@field render_widget_highlight_scanline fun(self:window, p_min:vec2, p_max:vec2, body:color, accent:color, halo:color, rounding:number|nil, pulse:number|nil, time:number|nil, speed:number|nil, brightness:number|nil):nil
+---Search/tutorial highlight, sigil style. Same parameters as the reticle variant.
+---@field render_widget_highlight_sigil fun(self:window, p_min:vec2, p_max:vec2, body:color, accent:color, halo:color, rounding:number|nil, pulse:number|nil, time:number|nil, speed:number|nil, brightness:number|nil):nil
+---Soft anti-aliased line. thickness default 2, softness default 1.5.
+---@field render_smooth_line fun(self:window, p1:vec2, p2:vec2, col:color, thickness:number|nil, softness:number|nil):nil
+---Soft arc stroke between two angles (radians). thickness default 2, softness default 1.
+---@field render_arc fun(self:window, center:vec2, radius:number, start_angle_rad:number, end_angle_rad:number, col:color, thickness:number|nil, softness:number|nil):nil
+---Frosted-glass blur of whatever is behind the quad, masked to a rounded rect whose corner radius is the WINDOW's set_corner_rounding (there is no per-call radius).
+---EXPENSIVE: every render_blur call copies the full backbuffer (one CopyResource + barriers), so use at most one per window per frame and never try to
+---compose a non-rectangular frosted shape out of strips. The kernel is clamped inside the quad, so blur_radius must suit the quad size (large radii on
+---small quads collapse into a directional smear — ~14/4.5 works for a ~36 px plate, 40/4.0 for full panels). tint (optional) is blended over the blur.
+---@field render_blur fun(self:window, p_min:vec2, p_max:vec2, blur_radius:number|nil, sigma:number|nil, opacity:number|nil, tint:color|nil):nil
+
+-- ============================================================================
+-- Text measurement + custom scrollbar override.
+-- ============================================================================
+
+---@class scrollbar_state
+---@field x_min number Track left edge (screen space)
+---@field x_max number Track right edge (screen space)
+---@field y_min number Track top edge (screen space)
+---@field y_max number Track bottom edge (screen space)
+---@field thumb_y_min number Thumb top edge (screen space)
+---@field thumb_y_max number Thumb bottom edge (screen space)
+---@field thumb_t number Scroll progress 0..1
+---@field thumb_h_norm number Thumb height as a fraction of the track
+---@field hov number Eased hover animation 0..1
+---@field drag number Eased drag animation 0..1
+
+---@class window
+---Measures `text` in the given font at an explicit pixel size (unlike get_text_size, which uses the font's baked size).
+---@field get_text_size_custom fun(self:window, font_id:integer, font_size:number, text:string):vec2
+---One-shot: suppress the built-in scrollbar on the NEXT begin_navbar/begin_navbar_at (content still scrolls via wheel).
+---@field set_next_no_scrollbar fun(self:window, flag:boolean):nil
+---One-shot: arm a C++-managed custom scrollbar on the next navbar (NoScrollbar flag + thumb geometry + click/drag interaction).
+---Pass nil for any color / 0 for any dimension to use built-in defaults. skip_paint=true suppresses the C++ paint so Lua can draw its own
+---visual from get_scrollbar_state() while keeping the interaction.
+---@field enable_next_scrollbar fun(self:window, enable:boolean, track_col:color|nil, thumb_col:color|nil, accent_col:color|nil, width:integer|nil, inset:integer|nil, min_thumb_h:integer|nil, skip_paint:boolean|nil, bottom_inset:integer|nil):nil
+---Geometry + eased animation state of the most recent end-of-navbar scrollbar pass, or nil when there is no overflow / no override armed.
+---@field get_scrollbar_state fun(self:window):scrollbar_state|nil

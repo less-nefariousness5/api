@@ -68,14 +68,153 @@ function core.register_on_spell_cast_callback(callback) end
 --- with original types preserved (string, number, boolean, or nil holes). Complex values
 --- (table/function/userdata) arrive as their tostring() representation.
 ---
---- Registered events include: COMBAT_LOG_EVENT_UNFILTERED, ENCOUNTER_START, ENCOUNTER_END,
---- SPELLS_CHANGED, PLAYER_REGEN_ENABLED, PLAYER_REGEN_DISABLED, PLAYER_STARTED_MOVING,
---- PLAYER_STOPPED_MOVING, PLAYER_EQUIPMENT_CHANGED, PLAYER_FLAGS_CHANGED, PLAYER_LOGOUT,
---- GROUP_ROSTER_UPDATE, GROUP_JOINED, GROUP_LEFT, START_PLAYER_COUNTDOWN,
---- CANCEL_PLAYER_COUNTDOWN, CHAT_MSG_ADDON, UI_ERROR_MESSAGE and the AUCTION_HOUSE_* family.
+--- A nil argument leaves a HOLE in args rather than an entry, so the length operator is not a
+--- reliable count for any payload with optional fields. Index positionally, never with ipairs.
 ---
---- For COMBAT_LOG_EVENT_UNFILTERED the args are the flattened CombatLogGetCurrentEventInfo()
---- payload (timestamp, sub_event, hide_caster, source_guid, ...), not the raw event varargs.
+--- The registration list is build_events_literal() in wow_core/src/core/game/event_pump.cpp
+--- and that function is its only source of truth. As of 2026-09-01 it is:
+---   combat log  COMBAT_LOG_EVENT_UNFILTERED
+---   countdown   START_PLAYER_COUNTDOWN, CANCEL_PLAYER_COUNTDOWN
+---   spells      SPELLS_CHANGED
+---   spellcast   UNIT_SPELLCAST_SENT, UNIT_SPELLCAST_START, UNIT_SPELLCAST_STOP,
+---               UNIT_SPELLCAST_SUCCEEDED, UNIT_SPELLCAST_DELAYED, UNIT_SPELLCAST_FAILED,
+---               UNIT_SPELLCAST_FAILED_QUIET, UNIT_SPELLCAST_INTERRUPTED,
+---               UNIT_SPELLCAST_INTERRUPTIBLE, UNIT_SPELLCAST_NOT_INTERRUPTIBLE,
+---               UNIT_SPELLCAST_CHANNEL_START, UNIT_SPELLCAST_CHANNEL_STOP,
+---               UNIT_SPELLCAST_CHANNEL_UPDATE, UNIT_SPELLCAST_EMPOWER_START,
+---               UNIT_SPELLCAST_EMPOWER_STOP, UNIT_SPELLCAST_EMPOWER_UPDATE,
+---               UNIT_SPELLCAST_RETICLE_TARGET, UNIT_SPELLCAST_RETICLE_CLEAR,
+---               UNIT_SPELLMISS, UNIT_SPELL_DIMINISH_CATEGORY_STATE_UPDATED
+---   player      PLAYER_EQUIPMENT_CHANGED, PLAYER_REGEN_ENABLED, PLAYER_REGEN_DISABLED,
+---               PLAYER_STARTED_MOVING, PLAYER_STOPPED_MOVING, PLAYER_FLAGS_CHANGED,
+---               PLAYER_LOGOUT
+---   auras       UNIT_AURA
+---   confirms    AUTOEQUIP_BIND_CONFIRM, EQUIP_BIND_CONFIRM, CONFIRM_BINDER, LOOT_BIND_CONFIRM
+---   group       GROUP_ROSTER_UPDATE, GROUP_JOINED, GROUP_LEFT
+---   encounters  ENCOUNTER_START, ENCOUNTER_END
+---   gossip      GOSSIP_SHOW, GOSSIP_CLOSED
+---   quests      QUEST_GREETING, QUEST_DETAIL, QUEST_PROGRESS, QUEST_COMPLETE,
+---               QUEST_FINISHED, QUEST_ACCEPTED, QUEST_TURNED_IN, QUEST_LOG_UPDATE,
+---               QUEST_ITEM_UPDATE
+---   chat        CHAT_MSG_ADDON
+---   ui          UI_ERROR_MESSAGE
+---   auction     AUCTION_HOUSE_SHOW, AUCTION_HOUSE_CLOSED, AUCTION_HOUSE_DISABLED,
+---               AUCTION_HOUSE_NEW_RESULTS_RECEIVED, AUCTION_HOUSE_BROWSE_RESULTS_UPDATED,
+---               AUCTION_HOUSE_BROWSE_RESULTS_ADDED, AUCTION_HOUSE_BROWSE_FAILURE,
+---               AUCTION_HOUSE_FAVORITES_UPDATED, AUCTION_HOUSE_AUCTIONS_EXPIRED,
+---               AUCTION_HOUSE_AUCTION_CREATED, AUCTION_HOUSE_THROTTLED_SYSTEM_READY,
+---               AUCTION_CANCELED, OWNED_AUCTIONS_UPDATED, BIDS_UPDATED,
+---               COMMODITY_SEARCH_RESULTS_UPDATED, COMMODITY_SEARCH_RESULTS_RECEIVED,
+---               COMMODITY_PRICE_UPDATED, COMMODITY_PRICE_UNAVAILABLE,
+---               COMMODITY_PURCHASE_SUCCEEDED, COMMODITY_PURCHASE_FAILED, COMMODITY_PURCHASED,
+---               ITEM_SEARCH_RESULTS_UPDATED, ITEM_SEARCH_RESULTS_ADDED,
+---               REPLICATE_ITEM_LIST_UPDATE, AUCTION_MULTISELL_START,
+---               AUCTION_MULTISELL_UPDATE, AUCTION_MULTISELL_FAILURE
+--- A name that does not exist on the current client is harmless, registration is pcall'd per
+--- event, which is why the one list serves every game version.
+---
+--- Two events do not carry the WoW event's own arguments, because their real payload is either
+--- unserializable or unreachable from a plugin:
+---
+--- COMBAT_LOG_EVENT_UNFILTERED: args are the flattened CombatLogGetCurrentEventInfo() payload
+--- (timestamp, sub_event, hide_caster, source_guid, ...), not the raw event varargs.
+---
+--- UNIT_AURA: retail 9.0+ fires (unit, update_info) where update_info is a table, and aura data
+--- is readable only inside WoW's secure environment. The core unpacks it there and emits ONE
+--- RECORD PER AURA, so this callback runs many times per game event, tagged in args[1]:
+---   "full"     { "full", unit }
+---              The unit's entire aura set was resent. Drop what you hold for that unit; a
+---              burst of "added" records for it follows immediately in the same drain.
+---   "added"    { "added", unit, instance_id, spell_id, name, stacks, duration,
+---                expiration_time, source_unit, is_helpful, is_harmful, dispel_name }
+---   "updated"  the same 12 fields, already re-queried by aura instance id
+---   "removed"  { "removed", unit, instance_id }
+--- instance_id is the client's stable aura handle: it survives while the aura lives and is the
+--- only thing "updated" and "removed" name, unlike the per-unit slot index which is reused as
+--- soon as an aura fades. unit and source_unit are WoW unit TOKENS, not GUIDs; resolve them
+--- with core.object_manager.get_object_from_guid, which accepts a token. source_unit is nil
+--- when the client does not know the caster. duration and expiration_time are seconds on WoW's
+--- GetTime() clock, NOT the core.game_time() milliseconds that game_object:get_buffs() uses.
+--- Pre-9.0 clients have no update_info table, so args is just { unit }: no sub-type, no aura
+--- fields, no instance id anywhere. playground_events/main.lua is a worked example of all of it.
+---
+--- The UNIT_SPELLCAST_* family, added 2026-09-01, is twenty events with one shape and several
+--- traps. args[1] is always the CASTER'S unit token, despite Blizzard naming that parameter
+--- unitTarget, and the common payload after it is { cast_guid, spell_id }:
+---   { unit, cast_guid, spell_id }            START, STOP, SUCCEEDED, DELAYED, FAILED,
+---                                            FAILED_QUIET, INTERRUPTED, CHANNEL_START,
+---                                            CHANNEL_STOP, CHANNEL_UPDATE, EMPOWER_START,
+---                                            EMPOWER_UPDATE
+---   { unit, cast_guid, spell_id, complete }  EMPOWER_STOP
+---   { unit }                                 INTERRUPTIBLE, NOT_INTERRUPTIBLE
+---   { unit, target_name, cast_guid, spell_id }   SENT
+--- SENT is the odd one twice over. Its second arg is the target's NAME, a plain string and not
+--- a token, which pushes cast_guid and spell_id to 3 and 4; and it only ever fires for units
+--- you control (player, pet, vehicle), because it reports the request your own client sent
+--- rather than something it observed. Every other name in the family fires for any unit.
+---
+--- What will cost you an hour:
+---   - unit is a TOKEN ("target", "arena2", "nameplate7"), never a GUID, and tokens are
+---     recycled. Resolve with core.object_manager.get_object_from_guid, which accepts a token,
+---     and store the GUID. Same rule and same reason as UNIT_AURA above.
+---   - cast_guid is nil on the three CHANNEL_ events, so args[2] is a HOLE there and spell_id
+---     is still at args[3]. #args lies. Key channels by unit plus spell_id.
+---   - STOP does not mean the cast worked. It fires on completion, on self-cancel and on a
+---     kick alike. SUCCEEDED is the completion signal. INTERRUPTED is caster-side and covers
+---     moving and cancelling as well as being kicked, so for kick ATTRIBUTION use the combat
+---     log SPELL_INTERRUPT sub-event, which names both sides.
+---   - INTERRUPTIBLE and NOT_INTERRUPTIBLE carry only the unit. They say the flag on that
+---     unit's current cast changed; they do not say which cast, so they are useless unless
+---     you are already holding it.
+---   - A channel reports SUCCEEDED BEFORE CHANNEL_START. The usual orders are
+---       hard cast  SENT -> START -> (DELAYED) -> SUCCEEDED -> STOP
+---       channel    SENT -> SUCCEEDED -> CHANNEL_START -> CHANNEL_UPDATE* -> CHANNEL_STOP
+---     and an instant is SENT -> SUCCEEDED with no START at all. Records go into one buffer
+---     and drain front to back, so the order you receive is the order they fired.
+---   - Volume. These register with RegisterEvent, not RegisterUnitEvent, so every unit the
+---     client has a frame for reports: target, focus, party, raid, arena, boss and every
+---     nameplate. SUCCEEDED and START are the busy ones in a raid. Filter on the first line
+---     of the handler, not after the work.
+---
+--- The EMPOWER_ and RETICLE_ names are retail only and UNIT_SPELL_DIMINISH_CATEGORY_STATE_UPDATED
+--- is newer than both, so on the classic branches they simply never bind and never fire.
+--- UNVERIFIED on this core, past args[1]: both RETICLE_ events, UNIT_SPELLMISS (believed
+--- { unit, cast_guid, spell_id, miss_type }) and the DIMINISH event. The spellcast probe in
+--- playground_events/main.lua dumps raw args for the whole family; run it and read the log
+--- before trusting those positions.
+---
+--- You often do not need these events at all. game_object polls the same state:
+--- is_casting_spell, get_active_spell_id, get_active_spell_target,
+--- get_active_spell_cast_start_time/end_time, is_active_spell_interruptable,
+--- is_channelling_spell, get_active_channel_spell_id and the empower stage accessors. Those
+--- answer "what is this unit casting right now" on the core.game_time() millisecond clock and
+--- are what a rotation should use. The events are for what polling cannot give you: the exact
+--- frame of an edge, cast_guid identity tying START to SUCCEEDED or INTERRUPTED, and units you
+--- are not already iterating.
+---
+--- The four confirms are a different kind of event and worth reading as a group. They are not
+--- notifications of something that happened, they report an action the engine has WITHHELD and is
+--- holding open until it is answered. Each has exactly one call that releases it, and until that
+--- call arrives the client sits there:
+---   AUTOEQUIP_BIND_CONFIRM  { inventory_slot }  -> core.input.equip_pending_item(inventory_slot)
+---   EQUIP_BIND_CONFIRM      { inventory_slot }  -> core.input.equip_pending_item(inventory_slot)
+---   CONFIRM_BINDER          { binder_name }     -> core.input.confirm_binder()
+---   LOOT_BIND_CONFIRM       { loot_slot }       -> core.input.confirm_loot_slot(loot_slot - 1)
+--- Blizzard's default UI answers all four from popup accept buttons, which is why they look like
+--- UI concerns. LOOT_BIND_CONFIRM reports WoW's 1 based loot slot while confirm_loot_slot takes
+--- the 0 based one the rest of the loot API uses, hence the subtraction. The two equip confirms
+--- are also latched by the core, so core.game_ui.get_pending_equip_slot answers the same slot
+--- outside the callback. playground_items/main.lua is the worked example.
+---
+--- The gossip and quest names were added 2026-08-30. A plugin cannot ask for an event the pump
+--- does not register: this callback delivers the list above and nothing else, and there is no
+--- Lua-side subscribe to fail loudly, so before that commit the whole pick-up/turn-in sequence
+--- had to be polled. GOSSIP_SHOW and GOSSIP_CLOSED bracket the frame
+--- the gossip readers see; QUEST_DETAIL, QUEST_PROGRESS and QUEST_COMPLETE are the three panel
+--- states; QUEST_GREETING is the classic multi-quest picker with no retail equivalent. Read
+--- the GOSSIP ACROSS GAME VERSIONS block further down this file before using any of it, and
+--- prefer common/izi_sdk/izi_gossip.lua, which normalizes the retail and private-server
+--- shapes.
 ---@param callback fun(event_name: string, args: (string|number|boolean|nil)[]): nil
 function core.register_on_game_event_callback(callback) end
 
@@ -175,6 +314,11 @@ function core.get_height_for_position(pos)
     return 0
 end
 
+--- True while the menu is actually on screen: shown and not minimized. Same
+--- answer as core.graphics.is_menu_open() - core_lua repoints both at the Lua
+--- menu's `menu:is_surface_open()` at boot, and the same caching caveat applies.
+--- Note the name: this one is `is_main_menu_open` on the core table, NOT
+--- `is_menu_open`; `core.is_menu_open` does not exist.
 ---@return boolean
 function core.is_main_menu_open()
     return false
@@ -244,6 +388,15 @@ end
 ---@return string data The file contents as a Lua string.
 function core.read_file(filename)
     return ""
+end
+
+--- Reads a core-packaged asset using a safe path relative to the asset root.
+--- Development builds read the plain asset directory; production builds read
+--- the encrypted asset store. Absolute paths and traversal are rejected.
+---@param relative_path string
+---@return string|nil data
+function core.read_asset_file(relative_path)
+    return nil
 end
 
 --- Reads a portion of a sandboxed game file, starting at a byte offset.
@@ -627,6 +780,30 @@ function core.delete_data_file(filename)
     return false
 end
 
+--- Returns the name of the plugin that owns the calling code, resolved from the
+--- Lua stack. This is the plugin's DISPLAY name (the `name` its `header.lua`
+--- returns), which is the same identity the native menu salts persistence with.
+--- Falls back to the plugin's root folder name when the display name is empty.
+---
+--- Resolution walks the stack, so a cross-required shared module reports the
+--- plugin that called into it, not the module's own package.
+---
+---@return string|nil plugin_name Owning plugin name, or nil when no plugin owns the frame.
+function core.get_owning_plugin_name()
+    return nil
+end
+
+--- Wipes the entire persisted menu settings database (`settings.dat`).
+---
+--- Scope:
+--- - Clears every stored widget value of every plugin, loaded or not.
+--- - Backs the menu "factory reset all settings" action.
+---
+---@return boolean success True if the settings database was cleared.
+function core.reset_menu_settings()
+    return false
+end
+
 --- Plays a sound by sound kit ID.
 ---@param id integer The sound kit ID to play.
 ---@return boolean will_play Whether the sound will play.
@@ -675,6 +852,33 @@ function core.inventory.get_total_repair_cost()
     return 0
 end
 
+--- Returns whether the merchant currently open offers a repair service.
+--- Only meaningful while a merchant window is open, between MERCHANT_SHOW and MERCHANT_CLOSED.
+--- It answers false when no merchant is open, so it is not a substitute for a vendor-open check.
+--- Read it before trusting a zero from get_total_repair_cost: that function wraps GetRepairAllCost,
+--- which also needs a repair-capable merchant, so a zero cost means either "nothing is damaged" or
+--- "this vendor cannot repair" and only can_merchant_repair separates the two.
+--- The core normalizes the result to a boolean on every client, including the classic builds
+--- where the game answers 1 or nil.
+---@return boolean can_repair True when the open merchant can repair.
+function core.inventory.can_merchant_repair()
+    return false
+end
+
+---@class inventory_item_durability
+---@field current integer Current durability points. Zero with a positive max means the item is broken.
+---@field max integer Maximum durability points. Zero means the slot is empty or the item has no durability.
+
+--- Returns the durability of the item in one equipment slot.
+--- The slot is an INVSLOT_* equipment slot id in the 1 to 19 range, not a bag slot.
+--- Both fields are 0 when the slot is empty or the item does not track durability, so test
+--- max > 0 before dividing, otherwise a tabard or a shirt divides by zero.
+---@param slot integer Equipment slot id (INVSLOT_*, 1 to 19).
+---@return inventory_item_durability durability Current and maximum durability points.
+function core.inventory.get_item_durability(slot)
+    return {}
+end
+
 --- Returns the local player's current gold in copper.
 --- @return integer copper Total money in copper
 function core.inventory.get_gold()
@@ -684,29 +888,71 @@ end
 ---@class game_ui
 core.game_ui = {}
 
---- Get the count of lootable items.
----@return number The number of lootable items.
+--- The inventory slot of the bind-on-equip prompt the client is currently holding open, or nil
+--- when nothing is pending.
+---
+--- WHY YOU NEED THIS. core.input.use_container_item on a bind-on-equip item does not equip it and
+--- does not fail either: the engine withholds the equip, fires AUTOEQUIP_BIND_CONFIRM (auto-equip
+--- from the bags) or EQUIP_BIND_CONFIRM (a named destination slot) carrying the inventory slot,
+--- and then waits. Only core.input.equip_pending_item releases it. A plugin watching its own bags
+--- sees nothing but "the item did not move", which reads identically to a refused equip, and the
+--- usual reaction is to discard the upgrade for good. This is the read that separates the two:
+--- a number means the client is still waiting for an answer, nil means it is not.
+---
+--- The slot is latched from the drained events before that same batch reaches your
+--- on_game_event callback, so it is already set when you handle AUTOEQUIP_BIND_CONFIRM.
+--- It is cleared by core.input.equip_pending_item and core.input.cancel_pending_equip on
+--- success, and by a PLAYER_EQUIPMENT_CHANGED naming the SAME slot, which is how a prompt the
+--- player answered by hand stops being reported. A UI reload while a prompt is open leaves the
+--- latch behind with nothing to answer; equip_pending_item on a slot with no pending equip is a
+--- harmless no-op on the client, so a stale read costs a wasted call and nothing else.
+---@return integer|nil inventory_slot The pending equipment slot (INVSLOT_* id), or nil.
+function core.game_ui.get_pending_equip_slot()
+    return nil
+end
+
+--- Whether the mouse cursor is currently carrying an item.
+--- The check that makes core.input.pickup_container_item verifiable, and the guard that keeps
+--- core.input.delete_cursor_item from being fired at an empty cursor. core.input.destroy_container_item
+--- already performs both checks internally, so you do not need this when using that one call.
+---@return boolean has_item True when something is on the cursor.
+function core.game_ui.has_cursor_item()
+    return false
+end
+
+--- Get the count of slots in the currently open loot window.
+--- Zero when no loot window is open. The window is NOT populated on the frame that opens it, so a
+--- read taken immediately after core.input.loot_object or core.input.use_object normally answers 0
+--- and the caller has to retry on a later frame.
+--- Every loot index below is 0 based, running 0 to this count minus 1.
+---@return integer count The number of loot slots, 0 when no loot window is open.
 function core.game_ui.get_loot_item_count()
     return 0
 end
 
---- Check if a loot item is gold.
----@param index integer The index of the loot item.
----@return boolean True if the loot item is gold, false otherwise.
+--- Check if a loot slot holds gold rather than an item.
+--- Out of range indices answer false, so this never distinguishes "not gold" from "no such slot".
+---@param index integer The 0 based loot slot index.
+---@return boolean is_gold True when the slot holds gold.
 function core.game_ui.get_loot_is_gold(index)
     return false
 end
 
---- Get the item ID of a lootable item.
----@param index integer The index of the loot item.
----@return number The item ID of the lootable item.
+--- Get the item id in a loot slot.
+--- Returns nil when the index is out of range, and there is no item id for a gold slot, so test
+--- get_loot_is_gold first and treat a nil or 0 result as "nothing to match against".
+---@param index integer The 0 based loot slot index.
+---@return integer|nil item_id The item id, or nil when the index is out of range.
 function core.game_ui.get_loot_item_id(index)
     return 0
 end
 
---- Get the name of a lootable item.
----@param index integer The index of the loot item.
----@return string The name of the lootable item.
+--- Get the item name in a loot slot.
+--- Resolved from the slot's item id, so it is nil for an out of range index and empty for a slot
+--- whose item id does not resolve. Match on the item id rather than this string wherever you can:
+--- the name is localized and changes with the client language.
+---@param index integer The 0 based loot slot index.
+---@return string|nil item_name The item name, or nil when the index is out of range.
 function core.game_ui.get_loot_item_name(index)
     return ""
 end
@@ -1162,6 +1408,47 @@ function core.character.get_normalized_realm_name()
     return ""
 end
 
+--- Returns whether the local player is resting.
+--- The player rests inside an inn or a major city, which is the state that accumulates rested XP.
+--- Local player only: the underlying game function takes no unit token, so there is no
+--- game_object equivalent. The core normalizes the result to a boolean on every client,
+--- including the classic builds where the game answers 1 or nil.
+---@return boolean is_resting True while the local player is in a rest area.
+function core.character.is_resting()
+    return false
+end
+
+--- Returns whether the local player is swimming, meaning submerged in water and moving under
+--- swim physics. Standing in shallow water is not swimming.
+--- Local player only, for the same reason as is_resting: the underlying game function takes no
+--- unit token, so there is no game_object equivalent and it cannot be asked about another unit.
+--- The core normalizes the result to a boolean on every client, including the classic builds
+--- where the game answers 1 or nil.
+---@return boolean is_swimming True while the local player is swimming.
+function core.character.is_swimming()
+    return false
+end
+
+---@class character_breath_info
+---@field active boolean True only while a breath timer is running, so while the player is drowning.
+---@field value number Remaining breath in milliseconds.
+---@field max number Full breath bar in milliseconds.
+---@field scale number Change per second. Negative while the bar depletes, positive while it refills.
+---@field paused boolean True while the timer is held, for example during a loading screen.
+
+--- Returns the state of the swimming breath bar, which the game calls a mirror timer.
+--- active is false whenever no breath timer is running, and the other fields are 0 or false then,
+--- so gate on active rather than on value. Use is_swimming for "in the water" and this for
+--- "running out of air": a player can swim on the surface forever without a breath timer.
+--- value and max are milliseconds, not seconds, so divide by 1000 before showing a countdown.
+--- The core finds the BREATH timer by scanning the mirror timer slots instead of assuming a fixed
+--- index, and reads the interpolated live value where the client provides one, so value moves
+--- smoothly between the game's own timer events rather than stepping.
+---@return character_breath_info breath The breath timer state.
+function core.character.get_breath()
+    return {}
+end
+
 ---@class world
 core.world = {}
 
@@ -1200,6 +1487,69 @@ end
 ---@return active_keystone_info info The active keystone info table.
 function core.world.get_active_keystone_info()
     return {}
+end
+
+--- Places a raid world marker (the ground flare, indices 1-8).
+--- Without a position the client places it wherever the player's cursor points at the
+--- terrain, exactly like clicking the marker button. Pass a vec3 to place it at that world
+--- position instead, with no cursor involved.
+--- World markers need raid/party lead or assist, and only exist from MoP onward; the call
+--- returns false when the client refuses it or the API is missing.
+--- To put an icon on a unit instead of the ground, use game_object:set_target_marker_index.
+---@param index integer World marker index, 1-8.
+---@param position vec3|nil World position to place the marker at. Omitted = cursor position.
+---@return boolean placed True when the client accepted the placement.
+function core.world.place_raid_marker(index, position)
+    return false
+end
+
+--- Removes a raid world marker placed with core.world.place_raid_marker.
+--- Omit the index (or pass 0) to clear every world marker at once.
+--- To clear an icon on a unit instead, call game_object:set_target_marker_index(0).
+---@param index integer|nil World marker index 1-8, or nil/0 for all markers.
+---@return boolean cleared True when the client accepted the call.
+function core.world.clear_raid_marker(index)
+    return false
+end
+
+--- Returns whether a raid world marker is currently placed in the world.
+---@param index integer World marker index, 1-8.
+---@return boolean active True when that world marker is placed.
+function core.world.is_raid_marker_active(index)
+    return false
+end
+
+---@class taxi
+core.taxi = {}
+
+--- Returns the number of flight points on the taxi map that is currently open.
+--- The whole taxi namespace only answers while the flight master's map is open, which is the
+--- window between the TAXIMAP_OPENED and TAXIMAP_CLOSED events. Outside it this returns 0, so
+--- treat a zero as "no map open" rather than as "this flight master serves nowhere".
+--- Node indices are 1 based and run from 1 to this value.
+---@return integer num_nodes Flight point count, 0 when no taxi map is open.
+function core.taxi.num_nodes()
+    return 0
+end
+
+--- Returns the name of one flight point on the open taxi map.
+--- Returns an empty string when no taxi map is open. An out of range index is passed through as
+--- the game's own "INVALID" string rather than being flattened to an empty string, so the two
+--- failures stay distinguishable: "" means closed map, "INVALID" means bad index.
+---@param index integer Flight point index, 1 to num_nodes().
+---@return string node_name The flight point name, "" when no taxi map is open.
+function core.taxi.node_name(index)
+    return ""
+end
+
+--- Starts travelling to a flight point on the open taxi map.
+--- Only valid while the taxi map is open and with an index in 1 to num_nodes(); it is a no-op
+--- otherwise. Resolve the index by matching node_name, never by caching an index across visits,
+--- because the ordering is per flight master and changes as flight points are discovered.
+---@param index integer Flight point index, 1 to num_nodes().
+---@return nil
+function core.taxi.take_node(index)
+    return nil
 end
 
 ---@class party
@@ -1259,9 +1609,116 @@ function core.input.use_item_position(item_id, position)
 end
 
 --- Use a container item by container (bag) and slot index.
----@param container_id integer The container (bag) index.
----@param slot_id integer The slot index within the container.
+---
+--- container_id and slot_id are the bag_id and bag_slot that
+--- common/utility/inventory_helper.lua hands you; that module owns the shift from the raw
+--- core.inventory.get_items_in_bag slot_id and is the supported way to get this pair. Passing a
+--- raw slot_id straight from get_items_in_bag targets the item NEXT to the one you meant.
+---
+--- Every container function below takes the SAME pair, so use_container_item,
+--- pickup_container_item and destroy_container_item all name the same item for the same arguments.
+---
+--- On a bind-on-equip item this does not equip anything. The engine holds the equip and raises a
+--- bind prompt instead; see core.game_ui.get_pending_equip_slot and core.input.equip_pending_item.
+---@param container_id integer The bag id: 0 = backpack, 1 to 4 = the equipped bags.
+---@param slot_id integer The slot within that bag, as inventory_helper reports it.
 function core.input.use_container_item(container_id, slot_id)
+end
+
+--- Put a bag item on the mouse cursor, which is how you select an item before destroying it.
+--- Same (container_id, slot_id) convention as use_container_item.
+---
+--- Prefer destroy_container_item when destroying is all you want: it runs the whole
+--- select-then-delete sequence inside one call, which this cannot do (see delete_cursor_item).
+---
+--- A true result means the pick-up call ran, NOT that the cursor now holds the item: the client
+--- refuses locked slots and items in transit without erroring. Confirm with
+--- core.game_ui.has_cursor_item.
+---@param container_id integer The bag id: 0 = backpack, 1 to 4 = the equipped bags.
+---@param slot_id integer The slot within that bag, as inventory_helper reports it.
+---@return boolean ran True when the client's pick-up call was reached.
+function core.input.pickup_container_item(container_id, slot_id)
+    return false
+end
+
+--- Destroy a bag item outright. Same (container_id, slot_id) convention as use_container_item.
+---
+--- Selling to a vendor used to be the only way anything left the bags, so full bags with no vendor
+--- in reach was a dead end. This is the way out of it, and it is IRREVERSIBLE: the item is gone,
+--- there is no confirmation step and nothing to undo.
+---
+--- THERE IS NO DIALOG IN THIS PATH. Blizzard's "type DELETE to confirm" box belongs to the default
+--- bag UI, raised by that UI's own click handler, and its accept button calls the same engine
+--- function this does. Going straight to the engine skips the UI, so there is no popup to accept.
+---
+--- Runs clear cursor, pick up, delete as ONE call for a reason: the delete step destroys whatever
+--- the cursor holds and does not name its target, so anything that reached the cursor between the
+--- steps would be destroyed instead. It refuses, leaving the bags untouched, if the cursor cannot
+--- be emptied first or if the pick-up did not land, which are the two ways that could go wrong.
+---@param container_id integer The bag id: 0 = backpack, 1 to 4 = the equipped bags.
+---@param slot_id integer The slot within that bag, as inventory_helper reports it.
+---@return boolean destroyed True only when the item was picked up and deleted.
+function core.input.destroy_container_item(container_id, slot_id)
+    return false
+end
+
+--- Destroy whatever item is on the mouse cursor, and answer false when there is nothing on it.
+---
+--- The separate half of destroy_container_item, for a cursor you already loaded yourself. It does
+--- not name a target, so it destroys whatever is there, including an item the player picked up by
+--- hand a frame ago. destroy_container_item is the safe form of this and should be your default.
+---@return boolean deleted True when an item was on the cursor and was destroyed.
+function core.input.delete_cursor_item()
+    return false
+end
+
+--- Release whatever is on the mouse cursor.
+---@return boolean empty True when the cursor is empty afterwards.
+function core.input.clear_cursor()
+    return false
+end
+
+--- Answer the client's pending bind-on-equip prompt with yes, completing the equip.
+---
+--- This is the only thing that completes it. Equipping a bind-on-equip item leaves the engine
+--- holding the action and firing AUTOEQUIP_BIND_CONFIRM or EQUIP_BIND_CONFIRM with the inventory
+--- slot; Blizzard's default UI turns that into a popup whose accept button calls exactly this,
+--- which is the only reason it looks like a UI feature rather than engine state.
+---
+--- Take inventory_slot from core.game_ui.get_pending_equip_slot rather than from your own idea of
+--- where the item should go: the slot the engine is holding is the one it will accept.
+--- A successful call clears that latch. Calling it with nothing pending is a harmless no-op.
+---@param inventory_slot integer The pending equipment slot (INVSLOT_* id).
+---@return boolean ran True when the client's confirm call was reached.
+function core.input.equip_pending_item(inventory_slot)
+    return false
+end
+
+--- Refuse the client's pending bind-on-equip prompt, leaving the item unbound and unequipped.
+--- A successful call clears core.game_ui.get_pending_equip_slot.
+---@param inventory_slot integer The pending equipment slot (INVSLOT_* id).
+---@return boolean ran True when the client's cancel call was reached.
+function core.input.cancel_pending_equip(inventory_slot)
+    return false
+end
+
+--- Accept an innkeeper's "make this your home" prompt, the one raised by CONFIRM_BINDER.
+--- Fires after using a hearthstone bind gossip option; the event's arg1 is the innkeeper's name.
+---@return boolean ran True when the client's confirm call was reached.
+function core.input.confirm_binder()
+    return false
+end
+
+--- Accept a bind-on-pickup loot prompt, the one raised by LOOT_BIND_CONFIRM when you loot a BoP
+--- item in a group.
+---
+--- loot_slot is 0 BASED, matching core.input.loot_item and every core.game_ui.get_loot_* reader.
+--- WoW's own LOOT_BIND_CONFIRM event reports the 1 BASED slot, so forwarding args[1] straight from
+--- that event confirms the wrong slot: subtract one first.
+---@param loot_slot integer The 0 based loot slot index.
+---@return boolean ran True when the client's confirm call was reached.
+function core.input.confirm_loot_slot(loot_slot)
+    return false
 end
 
 --- Buy an item from a vendor.
@@ -1524,31 +1981,50 @@ function core.input.quick_cat()
 end
 
 --- Loots a specified game object.
----@param target game_object The game object to loot.
----@return nil
-function core.input.loot_object(target)
-    return nil
+--- UNITS AND CORPSES ONLY. The native path rejects anything that is not a unit and answers false
+--- straight away, so a fishing bobber, chest, herb node or ore node cannot be looted through this.
+--- Use use_object for those.
+--- is_auto_loot defaults to true, which empties the whole window in one call. Pass false to open
+--- the loot window and leave the contents alone, then read core.game_ui.get_loot_item_count and
+--- take individual slots with core.input.loot_item. Loot slots are 0 based, the window is not
+--- populated on the frame that opens it, and common/utility/fish_helper.lua already implements the
+--- whole selective-loot loop (whitelist, blacklist and custom filter).
+--- The flag is sticky. The core writes the game's auto-loot state from it and never restores it, so
+--- it stays where the last call left it. Pass it explicitly every time if you mix selective looting
+--- with ordinary farming, rather than relying on the default.
+---@param target game_object The unit or corpse to loot.
+---@param is_auto_loot? boolean Take everything immediately. Defaults to true.
+---@return boolean success True when the native loot request was accepted.
+function core.input.loot_object(target, is_auto_loot)
+    return false
 end
 
 --- Skins a specified game object.
 ---@param target game_object The game object to skin.
----@return nil
+---@return boolean success True when the native skinning request was accepted.
 function core.input.skin_object(target)
-    return nil
+    return false
 end
 
 --- Uses a specified game object.
+--- This is the entry point for world objects rather than units: fishing bobbers, chests, herb and
+--- ore nodes, mailboxes. loot_object refuses all of them because they are not units, so for a
+--- gathering or fishing loop this is the call that opens the loot window.
 ---@param target game_object The game object to use.
----@return nil
+---@return boolean success True when the native use request was accepted.
 function core.input.use_object(target)
-    return nil
+    return false
 end
 
 --- Interacts with a specified game object.
+--- The result only reports that the request was dispatched, NOT that the interaction happened: the
+--- core discards the native interaction result and answers true whenever the target and the local
+--- player are both valid. Do not write success handling against it.
+--- It also does not cover everything use_object does. A mailbox needs use_object.
 ---@param target game_object The game object to interact with.
----@return nil
+---@return boolean dispatched True when the request was dispatched to the game.
 function core.input.interact_with_object(target)
-    return nil
+    return false
 end
 
 --- Releases the player's spirit after death.
@@ -1588,8 +2064,35 @@ function core.input.move_down_stop()
 end
 
 --- Makes the player character jump.
+--- Also the ascend start while flying or gliding: this is the game's JumpOrAscendStart action,
+--- which jumps on the ground and climbs in the air, so there is deliberately no ascend_start.
+--- Pair it with ascend_stop to end a climb.
 --- @return nil
 function core.input.jump()
+    return nil
+end
+
+--- Stops an ascent started by jump().
+--- Ascend and descend drive the game's own flight actions, unlike move_up_start and
+--- move_down_start which toggle raw movement input bits. Prefer this pair for flying and
+--- gliding, and the move_up/move_down pair when you want the raw input flag.
+---@return nil
+function core.input.ascend_stop()
+    return nil
+end
+
+--- Starts descending while flying or gliding.
+--- This is the game's SitStandOrDescendStart action, so on the ground it sits or stands the
+--- character instead of descending. Check that the player is airborne before calling it if an
+--- accidental sit would matter. Pair it with descend_stop.
+---@return nil
+function core.input.descend_start()
+    return nil
+end
+
+--- Stops a descent started by descend_start().
+---@return nil
+function core.input.descend_stop()
     return nil
 end
 
@@ -1715,9 +2218,38 @@ function core.object_manager.get_visible_objects()
     return {}
 end
 
---- Retrieves the game object matching a GUID string, or nil if it is not currently present.
----@param guid string The unit GUID, as returned by game_object:get_guid().
----@return game_object | nil object The matching game object, or nil if not found.
+--- Retrieves the game object for a guid string OR a WoW unit token, or nil when the object
+--- manager does not currently have it.
+---
+--- CONTRACT WIDENED 2026-09-01 by core commit "Fixed lua_get_object_from_guid". Until that
+--- commit this binding resolved a unit TOKEN only, and a game_object:get_guid() string
+--- answered nil on every build, which misled two people (the 2026-08-31 correction that
+--- stood here documented exactly that). It now accepts both inputs:
+---
+--- 1. A guid string, the thing game_object:get_guid() and the client's UnitGUID hand back:
+---    "Player-1-000011A6", "Creature-0-1-0-0-3124-00000019EB", "Item-1-0-00000000000C4E5C",
+---    "GameObject-0-1-0-0-176404-000000BF64". The string is unpacked NATIVELY
+---    (object_manager::get_guid_from_string, the exact inverse of the printer behind
+---    get_guid) and looked up in the object manager, so it reaches every object the client
+---    holds, tokened or not -- a mob you merely saw in the visible list resolves, which the
+---    old UnitTokenFromGUID-style path could never do. No client Lua runs for this leg.
+--- 2. A WoW unit token: "player", "target", "focus", "pet", "party1", "raid23", "boss2",
+---    "arena1", "nameplate7". A string that does not parse as a guid falls back to the old
+---    token resolver (object_manager::get_object_from_unit_token), so this leg is unchanged;
+---    it is the same native call the core drives itself for get_mouse_over_object,
+---    core.input.get_focus and get_arena_target. Event payloads speak in tokens (see the
+---    UNIT_AURA notes on core.register_on_game_event_callback) and this stays the only
+---    public entry point that takes an arbitrary one.
+---
+--- A token is only true for the instant it is read: the client recycles nameplate, party and
+--- raid tokens onto different units. So resolve a token to its object, store
+--- object:get_guid(), and re-resolve through THIS function later -- that round trip is now
+--- lossless, verified byte for byte against UnitGUID on wow_tbc_ps 2.5.3 and
+--- wow_vanilla_ps 1.14.2 (sessions 01_09_2026_02_33_33_1066 and 01_09_2026_03_02_57_176034,
+--- Player/Creature/Item/GameObject all round-tripping equal). Garbage input answers nil
+--- through the token fallback, never an error.
+---@param guid string A guid string from game_object:get_guid() / UnitGUID, or a WoW unit token such as "player", "party1", "nameplate7".
+---@return game_object | nil object The matching game object, or nil when neither a guid nor a token names one.
 function core.object_manager.get_object_from_guid(guid)
     return nil
 end
@@ -1729,8 +2261,35 @@ function core.object_manager.get_arena_frames()
 end
 
 --- Retrieves a list of game objects with all the party frames, excluding the local player.
+--- Only party members the client currently holds an object for can appear here, so a member
+--- who is out of object range - typically anyone not near you out in the world - is missing
+--- from this array entirely, and the array is compact rather than indexed by party slot.
+--- Use core.object_manager.get_party_members when you need the full roster or the slot number.
 ---@return game_objects_table party_members An array of party frame game objects.
 function core.object_manager.get_party_frames()
+    return {}
+end
+
+---@class party_member
+---@field index integer Party slot, 1-4, matching the party1..party4 unit tokens.
+---@field unit_token string The unit token for this slot, e.g. "party2".
+---@field name string Member name, without the realm suffix.
+---@field realm string Realm name for a cross-realm member, empty string when same realm.
+---@field is_online boolean False while the member is disconnected.
+---@field is_visible boolean Whether the client considers the member within visible range.
+---@field role string Assigned group role: "TANK", "HEALER", "DAMAGER" or "NONE".
+---@field class_name string Localized class name, e.g. "Paladin" on an English client.
+---@field class_file string Locale-independent class token, e.g. "PALADIN". Use this to branch on class.
+---@field class_id integer Numeric class id.
+---@field object game_object|nil The member's game object, nil when out of object range.
+
+--- Retrieves the full party roster, excluding the local player, one entry per occupied slot.
+--- Unlike get_party_frames this answers for members the client holds no object for: index,
+--- name and the flags come from the unit token, so they are available for a member an entire
+--- zone away. Only the `object` field requires the member to be in object range, and it is
+--- nil otherwise. Inside a dungeon the whole group is in range and every entry has an object.
+---@return party_member[] party_members An array of party member entries, in slot order.
+function core.object_manager.get_party_members()
     return {}
 end
 
@@ -1819,6 +2378,20 @@ end
 ---@return number The cooldown duration of the specified spell in seconds.
 function core.spell_book.get_spell_cooldown(spell_id)
     return 0
+end
+
+---@class spell_base_cooldown
+---@field cooldown_ms number The spell's unmodified base cooldown, in milliseconds.
+---@field gcd_ms number The spell's base global cooldown, in milliseconds.
+
+--- Retrieves the base cooldown of a spell, before haste, talents and other modifiers.
+--- Note the units: both fields are milliseconds, while get_spell_cooldown answers seconds.
+--- Wraps the game's GetSpellBaseCooldown. Both fields are 0 when the spell has no cooldown
+--- and when the client does not expose that function.
+---@param spell_id integer The ID of the spell.
+---@return spell_base_cooldown info A table with cooldown_ms and gcd_ms.
+function core.spell_book.get_spell_base_cooldown(spell_id)
+    return { cooldown_ms = 0, gcd_ms = 0 }
 end
 
 -- core.spell_book.is_usable_spell is declared as a ---@field on the class above
@@ -2353,6 +2926,15 @@ function core.graphics.get_notifications_menu_position()
     return {}
 end
 
+--- Sets the notification position offset (normalized 0.0-1.0 range, screen-relative).
+--- Takes the two components separately, not a vec2.
+---@param x number Normalized horizontal offset.
+---@param y number Normalized vertical offset.
+---@return nil
+function core.graphics.set_notifications_menu_position(x, y)
+    return nil
+end
+
 --- Retrieves the base notification size in pixels (before text content expansion).
 --- Scaled from 275x80 at 1920x1080. Actual rendered notification may be larger
 --- depending on text length and line count.
@@ -2458,7 +3040,19 @@ function core.graphics.get_cursor_world_position()
     return {}
 end
 
---- Returns true when the main menu is open
+--- True while the menu is actually on screen: shown and not minimized.
+---
+--- Read it live, as `core.graphics.is_menu_open()`. core_lua REPLACES this
+--- binding at boot (common/menu/core_bootstrap.lua) with the Lua menu's own
+--- `menu:is_surface_open()`, so a plugin that caches the function at module
+--- scope - before core_lua installs - keeps the native one and gets the wrong
+--- answer for the whole session.
+---
+--- What the native one answers, and why it is wrong: the toggle latch of the
+--- RETIRED C++ menu window (main_plugin.menu_key_bind.get_toggle_state()). It is
+--- seeded true, moves only on a key-up of the C++ keybind's own key, and never
+--- on what the menu did - so it reports the inverse, or stays true for the whole
+--- session. See the reasoning block in core_bootstrap.lua.
 ---@return boolean
 function core.graphics.is_menu_open()
     return false
@@ -2557,7 +3151,11 @@ function core.graphics.rect_3d_filled(p1, p2, p3, p4, color) end
 function core.graphics.render_rect_3d_filled_new(start_pos, end_pos, width, color) end
 
 --- Draws a 3D polygon from world-space vertices.
----@param points vec3[] Array of polygon vertices in ring order. Maximum 64 points.
+--- The points must form one closed ring with no self-intersections and no holes: the fill
+--- is ear-clipped, so several disjoint loops concatenated into a single list triangulate to
+--- garbage. Draw those as separate calls. Convex and concave rings both work, either winding.
+--- Passing more than the maximum raises an error rather than silently drawing a truncated ring.
+---@param points vec3[] Array of polygon vertices in ring order. Maximum 256 points.
 ---@param color color The polygon fill or outline color.
 ---@param filled boolean True to draw a filled polygon, false to draw an outline.
 ---@param thickness? number Outline width in pixels when filled is false. Default is 2.
@@ -2770,6 +3368,59 @@ function core.graphics.draw_texture_rect(texture_id, top_left, width, height, uv
     return nil
 end
 
+--- Draws a previously loaded texture with a per-edge alpha ramp baked into the
+--- vertex colors, so the image dissolves into whatever it sits on instead of
+--- ending on a hard rectangular seam.
+---
+--- Use this when the SOURCE art is not a clean cut-out, e.g. a character
+--- render exported over its own opaque backdrop. The tint alpha of a plain
+--- draw_texture call is uniform across the quad, so it can only make such an
+--- image fainter, never edgeless.
+---
+--- Each fade is a FRACTION of the drawn width/height over which alpha ramps
+--- from 0 at that edge up to full; 0 leaves that edge hard. Opposing pairs are
+--- clamped so they can't cross. The quad is emitted as a 4x4 vertex grid and
+--- the GPU interpolates the ramp, so it costs one texture bind and up to 9
+--- quads regardless of the fade sizes.
+---
+--- Example (dissolve the sides + bottom, leave the top alone):
+--- ```lua
+--- core.graphics.draw_texture_faded(tex_id, vec2.new(100, 100), 64, 64,
+---     0.25, 0.0, 0.25, 0.30, color.white(220), true)
+--- ```
+---
+---@param texture_id integer The texture handle returned by core.graphics.load_texture.
+---@param top_left vec2 The screen position of the top-left corner.
+---@param width number The draw width in pixels.
+---@param height number The draw height in pixels.
+---@param fade_l? number Left fade width as a fraction of `width` (0..0.49). Defaults to 0.
+---@param fade_t? number Top fade height as a fraction of `height` (0..0.49). Defaults to 0.
+---@param fade_r? number Right fade width as a fraction of `width` (0..0.49). Defaults to 0.
+---@param fade_b? number Bottom fade height as a fraction of `height` (0..0.49). Defaults to 0.
+---@param color? color Optional tint color; its alpha is the ramp's full value. Defaults to white.
+---@param is_for_window? boolean Optional. If true, draws to the current window draw list. Defaults to false (background).
+---@return nil
+function core.graphics.draw_texture_faded(texture_id, top_left, width, height, fade_l, fade_t, fade_r, fade_b, color, is_for_window)
+    return nil
+end
+
+-- ============================================================================
+-- LOW-LEVEL NATIVE MENU FACTORIES (`core.menu`)
+-- ============================================================================
+-- Kept for legacy/native plugins and custom windows. New settings pages should
+-- use `_G.menu` (see .api/common/menu/api.lua); old portable imperative modules
+-- should use the translating compatibility layer at
+-- `require("common/menu/menu_api")`.
+--
+-- If this native layer is required, construct each object exactly once and
+-- render that same object from the menu callback. Every `id` is a persisted
+-- identity: prefix it with the plugin name and never derive it from a translated
+-- label. The constructor default is also the user's reset value.
+--
+-- Native keybind factories preserve the historical mode model and do not offer
+-- the declarative API's exact mode whitelist, double-click mode badge contract,
+-- or `default_mods` chord declaration. Use `_G.menu` for those features.
+-- ============================================================================
 ---@class menu
 core.menu = {}
 
@@ -2889,6 +3540,47 @@ end
 function core.menu.window(window_id)
     return {} -- Empty return statement to implicitly return nil
 end
+
+-- [WOW ONLY] Corpus compatibility aliases installed by core_lua's native-menu
+-- bridge. They are not part of the historical C++ constructor table.
+---@param default_color color
+---@param id string
+---@return color_picker
+function core.menu.color_picker(default_color, id) return {} end
+
+---@param default_color color
+---@param id string
+---@return color_picker
+function core.menu.new_colorpicker(default_color, id) return {} end
+
+---@param label string
+---@return boolean
+function core.menu.begin_tree(label) return false end
+
+---@return boolean
+function core.menu.end_tree() return false end
+
+function core.menu.separator() end
+---@param text string
+function core.menu.text(text) end
+core.menu.label = core.menu.text
+core.menu.add_label = core.menu.text
+
+---@param default_text string
+---@param id? string
+---@return text_input
+function core.menu.input_text(default_text, id) return {} end
+core.menu.input_string = core.menu.input_text
+
+---@param id string
+---@param opts? table
+---@return text_input
+function core.menu.new_text_input(id, opts) return {} end
+
+---@param callback function
+---@return boolean
+function core.menu.register_on_render_menu_callback(callback) return true end
+-- [/WOW ONLY]
 
 --------------------------------------------------------------------------------
 -- HTTP
@@ -3027,16 +3719,37 @@ function core.graphics.load_gif(gif_data)
     return 0, 0, 0, 0, 0
 end
 
---- Draws the current frame of a loaded GIF. Frame selection is automatic
---- based on elapsed time - the animation loops continuously.
----@param gif_id integer The GIF identifier returned by load_gif.
+--- Loads an animated sequence from a numerically indexed table of raw PNG byte
+--- strings. Every frame must share the dimensions of frame 1; a mismatched or
+--- undecodable frame aborts the whole load. The returned id plays through
+--- `draw_gif` exactly like a `load_gif` id.
+---@param frames string[] Array of raw PNG byte strings, one per frame.
+---@param frame_ms? integer Per-frame duration in milliseconds. Defaults to 33.
+---@return integer|nil sequence_id Sequence identifier, or nil on failure.
+---@return integer|nil width Width in pixels.
+---@return integer|nil height Height in pixels.
+---@return integer|nil frame_count The total number of frames.
+---@return integer|nil total_duration_ms The total animation duration in milliseconds.
+function core.graphics.load_png_sequence(frames, frame_ms)
+    return nil
+end
+
+--- Draws the current frame of a loaded GIF or PNG sequence. Frame selection is
+--- automatic based on elapsed time - the animation loops continuously.
+---@param gif_id integer The identifier returned by load_gif or load_png_sequence.
 ---@param top_left vec2 Screen position (top-left corner).
 ---@param width number Draw width in pixels.
 ---@param height number Draw height in pixels.
 ---@param color color|nil Optional tint color (defaults to white).
 ---@param is_for_window boolean|nil If true, draws into the current window draw list.
 ---@param speed number|nil Playback speed multiplier (defaults to 1.0).
-function core.graphics.draw_gif(gif_id, top_left, width, height, color, is_for_window, speed) end
+---@param time_offset_s number|nil Playback offset in real seconds, added before speed scaling. Defaults to 0.
+---@param uv0_x number|nil Left UV coordinate of the sampled sub-rect. Defaults to 0.
+---@param uv0_y number|nil Top UV coordinate of the sampled sub-rect. Defaults to 0.
+---@param uv1_x number|nil Right UV coordinate of the sampled sub-rect. Defaults to 1.
+---@param uv1_y number|nil Bottom UV coordinate of the sampled sub-rect. Defaults to 1.
+function core.graphics.draw_gif(gif_id, top_left, width, height, color, is_for_window, speed,
+                                time_offset_s, uv0_x, uv0_y, uv1_x, uv1_y) end
 
 -- ========================================
 -- SDF Shader Rendering (GPU-accelerated)
@@ -3435,6 +4148,62 @@ end
 ---@field objective_type string The type of objective.
 ---@field is_completed boolean Whether this objective is completed.
 
+--- GOSSIP ACROSS GAME VERSIONS -- read this before using any core.quests.*gossip* function.
+---
+--- Nothing here is "stripped" on the private-server builds. Retail GAINED these fields:
+--- Blizzard reworked gossip in 10.0.2 into a database-driven system where each option carries
+--- a persistent gossipOptionID plus status, flags and rewards. On a 1.12 / 2.4.3 server an
+--- option's identity IS its position in the list and those fields do not exist in the packet.
+--- "Retail has it" is therefore not evidence a binding is broken here; it usually means the
+--- feature postdates the client by fifteen years.
+---
+--- | field                        | retail        | wow_tbc_ps / wow_vanilla_ps |
+--- |------------------------------|---------------|------------------------------|
+--- | gossip_option_id             | real id       | 1-based ROW INDEX            |
+--- | quest_id                     | real quest id | 1-based ROW INDEX            |
+--- | icon                         | real          | 0, recover from gossip_type  |
+--- | status / spell_id / flags    | real          | 0                            |
+--- | rewards                      | populated     | empty                        |
+---
+--- Both id columns still round trip getter -> selector correctly on every build, which is
+--- what makes misuse easy: the value looks like an id and behaves like one until it is
+--- persisted or compared against an id from another source, at which point it collides with a
+--- real quest about one time in a hundred thousand.
+---
+--- PREFER common/izi_sdk/izi_gossip.lua. It normalizes all of the above into one shape, and
+--- it is the supported way to write gossip code that runs unchanged on every game version:
+---
+--- ```lua
+--- local izi = require("common/izi_sdk")
+---
+--- if izi.gossip.is_open() then
+---     -- Address options by NAME. Portable on every build; a stored id is portable on none.
+---     local train = izi.gossip.find_option("Train available spells")
+---     if train then train:select() end
+---
+---     -- Or by icon. izi_gossip derives it from gossip_type where the build reports 0,
+---     -- so this is the same number everywhere.
+---     local vendor = izi.gossip.find_option_by_icon(izi.gossip.ICON.VENDOR)
+---     if vendor then vendor:select() end
+---
+---     -- Quest ids are honest about themselves.
+---     for _, q in ipairs(izi.gossip.available_quests()) do
+---         if q.has_real_id then
+---             -- Safe to compare, persist, or feed to a quest database.
+---             core.log("quest " .. q.id .. " " .. q.title)
+---         else
+---             -- Legacy build: q.id is a row index. Match on title instead.
+---             core.log("row " .. q.index .. " " .. q.title)
+---         end
+---         q:select()
+---     end
+--- end
+--- ```
+---
+--- If you must use the raw bindings, the two rules are: pass gossip_option_id straight back
+--- to select_gossip_option in the same frame and never store it, and never treat quest_id as
+--- a real id without checking the game version first.
+---
 ---@class gossip_reward
 ---@field id integer The reward item ID.
 ---@field quantity integer The reward quantity.
@@ -3443,7 +4212,12 @@ end
 ---@class gossip_option
 ---@field name string The gossip option name.
 ---@field gossip_type string The gossip type.
----@field gossip_option_id integer The gossip option ID.
+---@field gossip_option_id integer The gossip option ID on retail. On the private-server
+--- builds (wow_tbc_ps / wow_vanilla_ps) the legacy gossip protocol carries no option ids
+--- at all -- the frame is addressed purely by position -- so this is the 1-BASED ROW
+--- INDEX there. Either way it is the value core.quests.select_gossip_option expects, so
+--- round tripping getter -> selector is correct on every build; do not persist it across
+--- a gossip frame or compare it to an id from another source.
 ---@field icon integer The gossip icon.
 ---@field status integer The gossip status.
 ---@field spell_id integer The associated spell ID.
@@ -3460,7 +4234,11 @@ end
 ---@field is_complete boolean Whether the quest is complete.
 ---@field is_legendary boolean Whether the quest is legendary.
 ---@field is_ignored boolean Whether the quest is ignored.
----@field quest_id integer The unique quest ID.
+---@field quest_id integer The unique quest ID on retail. On the private-server builds
+--- this is the 1-BASED ROW INDEX in the gossip frame, not a real quest id -- the legacy
+--- protocol has none. It is what core.quests.select_gossip_available_quest and
+--- select_gossip_active_quest take, so selection round trips; it is NOT usable with
+--- core.quests.is_quest_flagged_completed or anything else keyed by a real quest id.
 ---@field is_important boolean Whether the quest is important.
 ---@field is_meta boolean Whether the quest is a meta quest.
 
@@ -3542,6 +4320,18 @@ function core.quests.is_on_quest(quest_id) return false end
 --- Selects a quest log entry (sets it as the active quest).
 ---@param index integer The quest log index.
 function core.quests.select_quest_log_entry(index) end
+
+--- Expands a quest log header, revealing the quests grouped under it.
+--- An index of 0, or any index that is not a header, expands every header.
+---@param index? integer The quest log index of the header (default 0, meaning all headers).
+---@param is_auto? boolean True when resetting the quest log to its default state (default false).
+function core.quests.expand_quest_header(index, is_auto) end
+
+--- Collapses a quest log header, hiding the quests grouped under it.
+--- An index of 0, or any index that is not a header, collapses every header.
+---@param index? integer The quest log index of the header (default 0, meaning all headers).
+---@param is_auto? boolean True when resetting the quest log to its default state (default false).
+function core.quests.collapse_quest_header(index, is_auto) end
 
 --- Returns the number of objectives for a quest.
 ---@param quest_log_index integer The quest log index.
@@ -3876,8 +4666,10 @@ function core.auction_house.get_owned_auction_info(index)
 end
 
 --- Posts a commodity item on the auction house.
----@param bag integer The bag index containing the item.
----@param slot integer The slot index within the bag.
+--- Same (bag, slot) pair as core.auction_house.pickup_container_item, including the classic and
+--- retail shift difference documented there.
+---@param bag integer The bag id: 0 = backpack, 1 to 4 = the equipped bags.
+---@param slot integer The slot within that bag, as inventory_helper reports it.
 ---@param duration integer The auction duration (1 = 12h, 2 = 24h, 3 = 48h).
 ---@param quantity integer The quantity to post.
 ---@param unit_price number The price per unit in copper.
@@ -3887,8 +4679,10 @@ function core.auction_house.post_commodity(bag, slot, duration, quantity, unit_p
 end
 
 --- Posts a non-commodity item on the auction house.
----@param bag integer The bag index containing the item.
----@param slot integer The slot index within the bag.
+--- Same (bag, slot) pair as core.auction_house.pickup_container_item, including the classic and
+--- retail shift difference documented there.
+---@param bag integer The bag id: 0 = backpack, 1 to 4 = the equipped bags.
+---@param slot integer The slot within that bag, as inventory_helper reports it.
 ---@param duration integer The auction duration (1 = 12h, 2 = 24h, 3 = 48h).
 ---@param quantity integer The quantity to post.
 ---@param bid number The starting bid in copper.
@@ -4005,8 +4799,19 @@ function core.auction_house.get_item_tooltip(item_id, link_fragment)
 end
 
 --- Picks up an item from a bag slot onto the cursor (for placing into the AH sell slot).
----@param bag integer The bag index.
----@param slot integer The slot index within the bag.
+---
+--- bag and slot are the bag_id and bag_slot that common/utility/inventory_helper.lua reports, the
+--- same pair core.input.use_container_item and core.input.destroy_container_item take.
+---
+--- One caveat you cannot see from here, recorded 2026-08-09. The classic and retail builds shift
+--- this slot differently before it reaches the client: classic spends a -1, retail passes it
+--- through. The classic side was provably wrong before that change (it called the two spellings of
+--- one API with two different slots), the retail side has no such proof either way and ships
+--- working, so they were deliberately left disagreeing rather than made to match on a guess. Full
+--- reasoning is at the retail pickup_container_item in wow_core game_auction_house.cpp. If you are
+--- chasing an off by one in an auction plugin, start there.
+---@param bag integer The bag id: 0 = backpack, 1 to 4 = the equipped bags.
+---@param slot integer The slot within that bag, as inventory_helper reports it.
 ---@return nil
 function core.auction_house.pickup_container_item(bag, slot) end
 
@@ -4718,6 +5523,47 @@ end
 --- Returns all active BigWigs timer bars.
 ---@return bigwigs_bar_info[] bars An array of bar info tables.
 function core.addons.bigwigs.get_bars()
+    return {}
+end
+
+---@class exboss_bar_info
+---@field key integer Spell id of the timed ability, 0 when ExBoss did not record one. Not a bar handle.
+---@field text string Bar label, the ability's timer bar name or its display name.
+---@field remaining number Seconds until the ability fires. Clamped at 0, never negative.
+---@field duration number Full bar duration in seconds.
+---@field expire_time number Absolute GetTime() value at which the ability fires.
+---@field is_emphasized boolean True for a high priority bar, which ExBoss emphasizes on screen.
+
+---@class addons_exboss
+core.addons.exboss = {}
+
+--- Returns whether the ExBoss addon, also shipped as EXWIND, is loaded and available.
+--- Always check this before calling the other exboss functions.
+--- It confirms the addon's prediction scheduler specifically, not merely that the global exists,
+--- so a partially initialized addon reads as not loaded.
+---@return boolean is_loaded True if ExBoss is loaded.
+function core.addons.exboss.is_loaded()
+    return false
+end
+
+--- Returns whether ExBoss currently shows any timer bars.
+--- A cheap gate to put in front of get_bars in a per-frame path.
+---@return boolean has_bars True if there is at least one bar on screen.
+function core.addons.exboss.has_active_bars()
+    return false
+end
+
+--- Returns the ExBoss timer bars currently on screen.
+--- ExBoss predicts upcoming boss and trash ability casts and counts them down, so this is the
+--- ExBoss counterpart of core.addons.bigwigs.get_bars. The two are separate addons and separate
+--- namespaces; a plugin that supports both queries each and merges the results itself.
+--- Only bars ExBoss is actually displaying are reported, so timers the user filtered out do not
+--- appear. Timing is read live from the prediction scheduler rather than from the bar widget.
+--- Returns an empty array when the addon's bar UI is unavailable, even if is_loaded() is true.
+--- The key field is a spell id, unlike the BigWigs bar key which is an opaque bar identifier,
+--- so do not reuse a lookup written against bigwigs_bar_info without changing that field.
+---@return exboss_bar_info[] bars An array of bar info tables.
+function core.addons.exboss.get_bars()
     return {}
 end
 
