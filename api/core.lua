@@ -72,7 +72,7 @@ function core.register_on_spell_cast_callback(callback) end
 --- reliable count for any payload with optional fields. Index positionally, never with ipairs.
 ---
 --- The registration list is build_events_literal() in wow_core/src/core/game/event_pump.cpp
---- and that function is its only source of truth. As of 2026-09-01 it is:
+--- and that function is its only source of truth. As of 2026-09-14 (core 2.058) it is:
 ---   combat log  COMBAT_LOG_EVENT_UNFILTERED
 ---   countdown   START_PLAYER_COUNTDOWN, CANCEL_PLAYER_COUNTDOWN
 ---   spells      SPELLS_CHANGED
@@ -92,11 +92,13 @@ function core.register_on_spell_cast_callback(callback) end
 ---   confirms    AUTOEQUIP_BIND_CONFIRM, EQUIP_BIND_CONFIRM, CONFIRM_BINDER, LOOT_BIND_CONFIRM
 ---   group       GROUP_ROSTER_UPDATE, GROUP_JOINED, GROUP_LEFT
 ---   encounters  ENCOUNTER_START, ENCOUNTER_END
+---   challenge   CHALLENGE_MODE_COMPLETED (retail only, no args: read the result with
+---               core.world.get_challenge_completion_info)
 ---   gossip      GOSSIP_SHOW, GOSSIP_CLOSED
 ---   quests      QUEST_GREETING, QUEST_DETAIL, QUEST_PROGRESS, QUEST_COMPLETE,
 ---               QUEST_FINISHED, QUEST_ACCEPTED, QUEST_TURNED_IN, QUEST_LOG_UPDATE,
 ---               QUEST_ITEM_UPDATE
----   chat        CHAT_MSG_ADDON
+---   chat        CHAT_MSG_ADDON, CHAT_MSG_PARTY, CHAT_MSG_PARTY_LEADER
 ---   ui          UI_ERROR_MESSAGE
 ---   auction     AUCTION_HOUSE_SHOW, AUCTION_HOUSE_CLOSED, AUCTION_HOUSE_DISABLED,
 ---               AUCTION_HOUSE_NEW_RESULTS_RECEIVED, AUCTION_HOUSE_BROWSE_RESULTS_UPDATED,
@@ -829,19 +831,115 @@ end
 ---@class inventory
 core.inventory = {}
 
---- -2 for the keyring
---- -4 for the tokens bag
---- 0 = backpack, 1 to 4 for the bags on the character
---- While bank is opened -1 for the bank content, 5 to 11 for bank bags (numbered left to right, was 5-10 prior to tbc expansion, 2.0 game version)
+--- Enumerate the items in one container.
+---
+--- BAG 0 DOES NOT MEAN "THE BACKPACK". It returns the player's ENTIRE item array: everything
+--- worn, then the four bag slots, then the backpack. This surprises everyone who reads the
+--- old one-line "0 = backpack" doc, it has now cost two separate investigations, and it is
+--- NOT a private-server quirk, so the whole chain is written out here once.
+---
+--- WHAT THE CORE ACTUALLY DOES, read 2026-08-31 in wow_core:
+---
+---   lua_bindings_inventory.cpp  lua_inventory_get_items passes bag_id through unchanged,
+---                               then publishes slot_id = native_index + 1 (`slot = slot + 1`).
+---   game_inventory.cpp          enumerate_inventory_bag -> get_bag_item_info, whose FIRST
+---                               statement is `bag_id = bag_id - 1`.
+---     decremented id <  0       returns *local_player->get_inventory_instance(), the whole
+---                               player container. Every non-positive bag_id lands here.
+---     decremented id >= 0       resolves that equipped bag's object by guid and walks the
+---                               bag's own item array, which is the container you expected.
+---     decremented id >= 17      returns nothing, so bag_id 18 and up answer {}.
+---
+--- So bag_id 0 (backpack), -1 (bank), -2 (keyring) and -4 (tokens) ALL return the identical
+--- whole-player-container list. The keyring and bank ids in the wowwiki table below are not
+--- implemented, they just fall down the same branch. Bank bags 5 to 11 do reach the guid
+--- lookup, but nobody has confirmed they resolve on any build here, so treat them as unproven.
+---
+--- THE PLAYER CONTAINER LAYOUT. Native indices, so published slot_id is one higher:
+---
+---   index  0 to 18   equipped gear, head through tabard, in INVSLOT_* order
+---   index 19 to 22   the four equipped bag slots, the bag OBJECTS themselves
+---   index 23 and up  the backpack proper, then bank storage on some clients
+---
+--- The index the backpack starts at is a client-layout constant and it is the ONLY part of
+--- this that differs per build. Measured values live in common/utility/inventory_helper.lua
+--- as BAG_1_REAL_START, in published slot_id terms: 24 on wow_vanilla_ps and wow_tbc_ps,
+--- 35 on the retail family.
+---
+--- Verified on wow_tbc_ps 2026-08-31 against the server's character_inventory table, level 70
+--- rogue, same character and same minute. get_items_in_bag(0) answered 49@4 48@7 47@8 2092@16
+--- 28979@18 4540@24 6948@25 for DB rows 3, 6, 7, 15, 17, 23, 24: five worn pieces, then bread
+--- and a hearthstone. Five rows of equipment nobody asked for, and the two backpack rows.
+---
+--- THIS IS NOT A PRIVATE-SERVER DIVERGENCE AND AN #ifdef CANNOT FIX IT. The bag 0 branch has
+--- no build guard at all. The one `#ifdef CLASSIC_PRIV` inside get_bag_item_info only picks
+--- the f_get_bag_guid calling convention, and that line is reached only for bag_id >= 1.
+--- wow_tbc_us runs the identical code and answers identically, so a private-server branch here
+--- would make the PS builds DIFFER from the other TBC target rather than match it. See the
+--- "Bag 0 is the whole player container" section of claude_md/GLOBAL/CORE_WOW.md before
+--- reopening this.
+---
+--- Core reads this same buffer for game_object:for_each_equipped_item(), so as the code stands
+--- today "bag 0" and "the equipped items" are literally one read.
+---
+--- DO NOT PASS A RAW slot_id TO core.input.use_container_item AND FRIENDS. Their (bag, slot)
+--- pair is a slot WITHIN the named bag, and for bag 0 that means 1 to 16, not 24 to 39. A raw
+--- 24 reaches C_Container.UseContainerItem(0, 24), which is out of range for a 16 slot
+--- backpack. common/utility/inventory_helper.lua owns that conversion and is the supported way
+--- to get a usable pair. The convention itself is written out in the core at
+--- lua_bindings_input.cpp, "THE BAG SLOT CONVENTION, once, for every container binding".
+---
+--- DO NOT "FIX" THIS BINDING WITHOUT CHANGING inventory_helper.lua IN THE SAME COMMIT. Making
+--- bag 0 mean the backpack would renumber its slot_ids to 1 to 16, every one of them below
+--- BAG_1_REAL_START, so the helper's filter would discard the entire backpack and every
+--- consumer would see empty bags. Core, the helper and this stub move together or not at all.
 ---@param bag_id integer BagId https://wowwiki-archive.fandom.com/wiki/BagId
----@return item_slot_info_table
+---@return item_slot_info_table items One entry per OCCUPIED slot. Empty slots are skipped
+--- entirely, so #items is an item count and never a slot count, and the list is not indexable
+--- by slot. Each entry is { object = game_object, slot_id = native_index + 1 }, and carries no
+--- item_id field: read the id off the object with item:get_item_id().
 function core.inventory.get_items_in_bag(bag_id)
     return {}
 end
 
 --- Returns the total number of slots a bag has.
---- @param bag_id integer Bag ID (1 to 4 for character bags)
---- @return integer num_slots Number of slots in the bag (0 if no bag equipped)
+---
+--- IT DOES NOT TAKE THE SAME bag_id AS get_items_in_bag. This one is shifted by one, so the
+--- pairing you want is get_num_bag_slots(N) alongside get_items_in_bag(N - 1). Passing the
+--- same number to both asks about two different bags and the mistake is silent.
+---
+--- WHY, read 2026-08-31 in wow_core. The id is decremented TWICE on the way down, at two
+--- sites that each look like the only one:
+---
+---   lua_bindings_inventory.cpp  lua_inventory_get_bag_slots does `bag_id--` before the call.
+---   game_inventory.cpp          get_container_num_slots opens with `container_id--` again.
+---
+--- get_items_in_bag is decremented only once, in get_bag_item_info. That single missing
+--- decrement is the whole difference between the two bindings, and it is worth stating as a
+--- table because reading either file alone gives the wrong answer:
+---
+---   backpack           get_items_in_bag(0)   get_num_bag_slots(1)
+---   first worn bag     get_items_in_bag(1)   get_num_bag_slots(2)
+---   fourth worn bag    get_items_in_bag(4)   get_num_bag_slots(5)
+---
+--- get_num_bag_slots(0) therefore reaches container_id -2, fails the `container_id < -1`
+--- guard, and returns 0 on EVERY build, always. A zero from bag 0 is not "no bag equipped"
+--- and not a private-server defect, it is the answer to a question that cannot be asked this
+--- way. common/utility/inventory_helper.lua currently calls it that way on the private-server
+--- branch and falls back to a hardcoded 16, which is why the mistake has stayed invisible.
+---
+--- A zero from bags 1 to 4 does mean no bag is equipped in that slot.
+---
+--- One further caveat on the backpack count. get_container_num_slots reads it straight off the
+--- player object at a hardcoded offset, 0x75D0 under IS_RETAIL and 0x1405A otherwise, rather
+--- than from the per-build table in core_literal_imports.hpp that every other offset comes
+--- from. The private-server clients have their own layout, o_player_inventory is 0x28FF8 there
+--- against 0x165A8 on wow_tbc_us, so that literal has never been shown to be right on them.
+--- Do not trust a backpack count from these builds without measuring it first.
+--- @param bag_id integer Bag id, shifted one HIGHER than the get_items_in_bag id: 1 = backpack,
+--- 2 to 5 = the four equipped bags.
+--- @return integer num_slots Number of slots in the bag. 0 for bags 1 to 4 means no bag is
+--- equipped there; 0 for bag_id 0 means the argument was out of range, see above.
 function core.inventory.get_num_bag_slots(bag_id)
     return 0
 end
@@ -1487,6 +1585,42 @@ end
 ---@return active_keystone_info info The active keystone info table.
 function core.world.get_active_keystone_info()
     return {}
+end
+
+--- Returns the challenge map ID of the Mythic+ run in progress (C_ChallengeMode.GetActiveChallengeMapID).
+--- Returns nil, never 0, when no challenge mode is active or the client has no challenge mode API
+--- (classic clients), so a plain truthiness check is safe.
+---@return integer|nil map_challenge_mode_id The active challenge map ID, or nil.
+function core.world.get_active_challenge_map_id()
+    return nil
+end
+
+---@class challenge_completion_member
+---@field guid string The member's GUID string. Empty string when the client did not supply one.
+---@field name string The member's name. Empty string when the client did not supply one.
+
+---@class challenge_completion_info
+---@field map_challenge_mode_id integer Challenge map ID of the completed run.
+---@field level integer Keystone level of the run.
+---@field time number Completion time in milliseconds, as reported by the client.
+---@field on_time boolean Whether the run finished within the timer.
+---@field keystone_upgrade_levels integer How many levels the keystone was upgraded by.
+---@field practice_run boolean Whether the run was a practice run.
+---@field old_overall_dungeon_score integer Overall Mythic+ rating before the run.
+---@field new_overall_dungeon_score integer Overall Mythic+ rating after the run.
+---@field is_map_record boolean Whether the run set a new best for this map.
+---@field is_affix_record boolean Whether the run set a new best for this affix week.
+---@field is_eligible_for_score boolean Whether the run counted toward rating.
+---@field members challenge_completion_member[] Party members of the run, in client order.
+
+--- Returns the most recent Mythic+ completion (C_ChallengeMode.GetChallengeCompletionInfo) as a
+--- snake_case table. Returns nil when the client has no completion info or no challenge mode API
+--- (classic clients). Missing numeric fields read 0 and missing flags read false.
+--- Read it on the CHALLENGE_MODE_COMPLETED game event (core.register_on_game_event_callback),
+--- which fires with no args when a run finishes.
+---@return challenge_completion_info|nil info The completion info, or nil.
+function core.world.get_challenge_completion_info()
+    return nil
 end
 
 --- Places a raid world marker (the ground flare, indices 1-8).
@@ -5468,9 +5602,13 @@ function core.addons.zygor.get_current_stickies()
     return {}
 end
 
---- Returns the current Zygor objectives list.
---- Each entry can be a number or a string depending on the objective type.
----@return (number|string)[] objectives An array of objective values.
+--- Returns every objective target for the current Zygor step and all sticky steps, in step order.
+--- A multi-target goal (kill-from / avoid, goal.mobs) contributes every target ID, the same set
+--- Zygor's action button targets. talk/clicknpc goals contribute their NPC ID, a click goal with
+--- only a name contributes that name as a string, any other goal its single target ID.
+--- Not de-duplicated: a target shared by the current step and a sticky appears twice.
+--- Empty table when Zygor is not loaded or has no step.
+---@return (number|string)[] objectives Numbers are NPC/object IDs, strings are object names for goals with no numeric ID.
 function core.addons.zygor.get_objectives()
     return {}
 end

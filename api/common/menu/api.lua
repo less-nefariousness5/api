@@ -3,7 +3,7 @@
 ---@meta
 
 -- =============================================================================
--- NEW DECLARATIVE MENU — LuaLS stub for `_G.menu` (common/menu/api.lua).
+-- NEW DECLARATIVE MENU: LuaLS stub for `_G.menu` (common/menu/api.lua).
 --
 -- This is the RECOMMENDED surface for new plugins. Content is declared ONCE
 -- (retained mode) as pages → sections → widgets; the menu renders itself and
@@ -14,7 +14,7 @@
 --   local s = page:section("General", nil, { column = "full" })
 --   s:checkbox("enabled", "Enable plugin", true)
 --   s:slider("range", "Attack range", 0, 100, 40, "%")
---   -- reading values (anywhere, every frame is fine — plain table read):
+--   -- reading values (anywhere, every frame is fine: plain table read):
 --   local on = menu:get("My Plugin", "enabled")
 --
 -- Value shapes by widget kind (what menu:get returns / menu:set expects):
@@ -26,7 +26,7 @@
 --   priority_list/reorderable_dropdown → integer[] permutation (slot → option index)
 --
 -- Widget `id`s are the persistence key (salted with the page path). NEVER
--- rename an id or move its widget to another page casually — the saved value
+-- rename an id or move its widget to another page casually; the saved value
 -- is orphaned and the widget resets to its default.
 --
 -- See menu_info.md at the scripts root for the full system guide.
@@ -105,7 +105,7 @@
 ---@field vk integer Virtual-key code (0 or 999 = unbound)
 ---@field mods menu_keybind_mods Required modifier keys
 ---@field mode "hold"|"toggle"|"release" Trigger mode
----@field active boolean Live state. hold: true while the combo is held. toggle: latch, flips on key press. release: latch, flips on key RELEASE (press does nothing until the key is lifted). Runtime-only — not persisted.
+---@field active boolean Live state. hold: true while the combo is held. toggle: latch, flips on key press. release: latch, flips on key RELEASE (press does nothing until the key is lifted). Runtime-only; not persisted.
 
 ---@class menu_rgba
 ---@field r integer 0..255
@@ -315,7 +315,7 @@
 ---@field render fun(ctx: menu_widget_ctx, widget: table, x: number, y: number, row_w: number): number Paints at (x, y) and returns the height actually consumed
 
 -- -----------------------------------------------------------------------------
--- Section — a card of widgets inside a page column
+-- Section: a card of widgets inside a page column
 -- -----------------------------------------------------------------------------
 
 ---@class menu_section
@@ -375,7 +375,7 @@ function Section:dropdown(id, label, options, default_index, opts) end
 ---@return menu_section self
 function Section:radio(id, label, options, default_index, opts) end
 
----Click button. No persisted value — react via opts.on_click.
+---Click button. No persisted value; react via opts.on_click.
 ---@param id string Widget key
 ---@param label string Button text
 ---@param opts? menu_button_opts
@@ -390,7 +390,7 @@ function Section:button(id, label, opts) end
 function Section:icon_button(id, label, opts) end
 
 ---Key binding with modifier support and hold/toggle/release trigger modes.
----Value: menu_keybind_value — poll `menu:get(page, id).active` for the live
+---Value: menu_keybind_value; poll `menu:get(page, id).active` for the live
 ---state (hold: true while held; toggle: latch flipped on press; release:
 ---latch flipped on key-up). The declared default is locked unless the
 ---developer explicitly exposes multiple choices through opts.modes. Editable
@@ -427,7 +427,7 @@ function Section:color(id, label, default_index, opts) end
 ---@return menu_section self
 function Section:color_picker(id, label, default_rgba, opts) end
 
----Inline reorderable list (drag-handle rows). Value: integer[] permutation —
+---Inline reorderable list (drag-handle rows). Value: integer[] permutation:
 ---order[slot] = index into `options`. Default is identity {1, 2, ..., n}.
 ---@param id string Value key
 ---@param label string Row label
@@ -437,7 +437,7 @@ function Section:color_picker(id, label, default_rgba, opts) end
 function Section:priority_list(id, label, options, opts) end
 
 ---Multi-selection dropdown (per-row checkboxes in the popover).
----Value: boolean[] mask — mask[i] == true iff option i is selected.
+---Value: boolean[] mask: mask[i] == true iff option i is selected.
 ---@param id string Value key
 ---@param label string Row label
 ---@param options string[] Item labels
@@ -475,7 +475,7 @@ function Section:tabs(id, label, options, default_index) end
 ---@return menu_section self
 function Section:separator(label) end
 
----Static single-line text row. No value. Width-truncates — split long text
+---Static single-line text row. No value. Width-truncates. Split long text
 ---into multiple label() calls rather than embedding \n.
 ---@param text string
 ---@param opts? menu_label_opts
@@ -504,7 +504,7 @@ function Section:subsection(title, opts) end
 function Section:custom(kind, id, attrs) end
 
 -- -----------------------------------------------------------------------------
--- Subsection — same widget methods as a Section, nested inside one
+-- Subsection: same widget methods as a Section, nested inside one
 -- -----------------------------------------------------------------------------
 
 ---@class menu_subsection: menu_section
@@ -518,7 +518,7 @@ local Subsection = {}
 function Subsection:subsection(title, opts) end
 
 -- -----------------------------------------------------------------------------
--- Page — one sidebar leaf: a grid of sections plus standalone elements
+-- Page: one sidebar leaf; a grid of sections plus standalone elements
 -- -----------------------------------------------------------------------------
 
 ---One entry in a page's declaration-order render list.
@@ -579,7 +579,7 @@ function Page:icon_button(id, label, opts) end
 function Page:section(title, icon, opts) end
 
 -- -----------------------------------------------------------------------------
--- Permashow — always-on-screen mirror of chosen widgets
+-- Permashow: always-on-screen mirror of chosen widgets
 -- -----------------------------------------------------------------------------
 
 ---@class menu_permashow
@@ -763,7 +763,7 @@ local M = {}
 ---@return menu_page
 function M:page(path, meta) end
 
----Create/update a sidebar category node that has no page of its own — use to
+---Create/update a sidebar category node that has no page of its own; use to
 ---give a parent node an icon before its child pages register.
 ---@param path string[]|string
 ---@param meta? menu_category_meta
@@ -795,7 +795,7 @@ function M:get(page_path, id) end
 function M:set(page_path, id, value) end
 
 ---Observe a widget value. `fn(new_value, old_value)` fires on every actual change
----(user edit or menu:set). Observers accumulate — register once at load, not per frame.
+---(user edit or menu:set). Observers accumulate; register once at load, not per frame.
 ---@param page_path string
 ---@param id string
 ---@param fn fun(new_value: any, old_value: any)
@@ -833,7 +833,7 @@ function M:reset_widget(page_path, widget_id) end
 function M:set_lock(page_path, widget_id, spec) end
 
 ---Flush changed values + UI state to the persistence shadows. Driven by the
----menu host on a cadence — plugins normally never call this.
+---menu host on a cadence; plugins normally never call this.
 function M:flush_persistence() end
 
 ---Queue one widget's persistence shadow for the next flush.

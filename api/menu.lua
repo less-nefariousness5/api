@@ -355,7 +355,7 @@ end
 -- ============================================================================
 
 ---@class window
----Soft radial fog puff centered on `center`. `density` (default 3.0) controls falloff steepness — lower = wider, softer halo.
+---Soft radial fog puff centered on `center`. `density` (default 3.0) controls falloff steepness; lower = wider, softer halo.
 ---@field render_fog fun(self:window, center:vec2, radius:number, col:color, density:number|nil):nil
 ---Rounded rect, soft-edged (alias of render_smooth_rect under the League name). rounding default 4, softness default 1.
 ---@field render_sdf_rect fun(self:window, p_min:vec2, p_max:vec2, col:color, rounding:number|nil, softness:number|nil):nil
@@ -398,7 +398,7 @@ end
 ---Frosted-glass blur of whatever is behind the quad, masked to a rounded rect whose corner radius is the WINDOW's set_corner_rounding (there is no per-call radius).
 ---EXPENSIVE: every render_blur call copies the full backbuffer (one CopyResource + barriers), so use at most one per window per frame and never try to
 ---compose a non-rectangular frosted shape out of strips. The kernel is clamped inside the quad, so blur_radius must suit the quad size (large radii on
----small quads collapse into a directional smear — ~14/4.5 works for a ~36 px plate, 40/4.0 for full panels). tint (optional) is blended over the blur.
+---small quads collapse into a directional smear: ~14/4.5 works for a ~36 px plate, 40/4.0 for full panels). tint (optional) is blended over the blur.
 ---@field render_blur fun(self:window, p_min:vec2, p_max:vec2, blur_radius:number|nil, sigma:number|nil, opacity:number|nil, tint:color|nil):nil
 
 -- ============================================================================

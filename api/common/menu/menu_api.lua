@@ -4,7 +4,7 @@
 ---@alias color_helper color
 
 -- =============================================================================
--- LEGACY MENU API (`require("common/menu/menu_api")`) — LuaLS stub.
+-- LEGACY MENU API (`require("common/menu/menu_api")`): LuaLS stub.
 --
 -- This is the OW/League-style imperative menu surface. In the wow tree it is a
 -- COMPATIBILITY SHIM: the old left/right-pane menu is retired, and every
@@ -24,7 +24,7 @@
 -- ticking keep working while hidden.
 --
 -- The legacy per-element STYLING options (window_checkbox_options etc.) are
--- accepted for source compatibility but IGNORED by the new menu — widgets are
+-- accepted for source compatibility but IGNORED by the new menu; widgets are
 -- themed centrally. Only the fields explicitly marked "live" below still work.
 -- =============================================================================
 --
@@ -71,11 +71,11 @@
 -- =============================================================================
 
 -- =============================================================================
--- OPTION TYPES (legacy styling — ignored by the new menu unless marked live)
+-- OPTION TYPES (legacy styling: ignored by the new menu unless marked live)
 -- =============================================================================
 
 ---@class window_checkbox_options
----@field on_changed? fun(state: boolean) IGNORED in the wow shim — poll :get() or use _G.menu's on_change
+---@field on_changed? fun(state: boolean) IGNORED in the wow shim; poll :get() or use _G.menu's on_change
 ---@field text_color? color_helper IGNORED (themed centrally)
 ---@field box_background? color_helper IGNORED
 ---@field box_border? color_helper IGNORED
@@ -125,7 +125,7 @@
 ---@field font_id? integer IGNORED (themed centrally)
 ---@field numeric_only? boolean IGNORED
 ---@field multiline? boolean IGNORED
----@field on_change? fun(text: string) IGNORED — poll :get_text()
+---@field on_change? fun(text: string) IGNORED; poll :get_text()
 
 -- =============================================================================
 -- MENU ELEMENT INSTANCES (proxies onto the new menu)
@@ -193,7 +193,7 @@
 ---Sets the bound key code
 ---@field set_key fun(self: menu_keybind, keycode: integer): nil
 ---True while the bind is on: held (hold) or latched (toggle flips on key press;
----release flips on key RELEASE — pressing does nothing until the key is lifted).
+---release flips on key RELEASE; pressing does nothing until the key is lifted).
 ---@field get_state fun(self: menu_keybind): boolean
 ---Alias of get_state
 ---@field is_active fun(self: menu_keybind): boolean
@@ -321,7 +321,7 @@
 ---@field blur fun(self: menu_text_input): nil
 
 -- =============================================================================
--- BOUND MENU FACTORY (returned by menu_api.bind — the window arg is ignored
+-- BOUND MENU FACTORY (returned by menu_api.bind: the window arg is ignored
 -- by the shim; constructors are identical to the module-level new_* ones)
 -- =============================================================================
 
@@ -353,7 +353,7 @@ local menu_api = {}
 ---Creates a checkbox proxy
 ---@param id string Unique identifier for persistence
 ---@param default_state? boolean Initial checked state (default false)
----@param opts? window_checkbox_options Legacy styling — ignored
+---@param opts? window_checkbox_options Legacy styling; ignored
 ---@return menu_checkbox
 function menu_api.new_checkbox(id, default_state, opts) end
 
@@ -386,7 +386,7 @@ function menu_api.new_keybind(is_toggle, default_state, default_key_code, id, op
 ---@param default_show_in_binds boolean
 ---@param default_toggle_state boolean
 ---@param default_key_code integer
----@param opts? window_key_checkbox_options Legacy styling — ignored
+---@param opts? window_key_checkbox_options Legacy styling; ignored
 ---@return menu_key_checkbox
 function menu_api.new_key_checkbox(id, default_is_toggle, default_show_in_binds, default_toggle_state, default_key_code, opts) end
 
@@ -434,7 +434,7 @@ function menu_api.new_text_input(id, opts) end
 
 ---Creates a tree node proxy. Nesting depth decides what it renders as:
 ---page (top level) → section (depth 1) → subsection (depth 2+).
----@param id string Unique identifier (page/section identity — keep it stable)
+---@param id string Unique identifier (page/section identity: keep it stable)
 ---@param opts? menu_tree_options icon/ns/column are live
 ---@return menu_tree_node
 function menu_api.new_tree(id, opts) end
@@ -492,16 +492,16 @@ function menu_api.is_materializing() end
 ---Renders a static text row at the current container position.
 ---Each \n-separated line becomes its own row.
 ---@param text string
----@param text_color? color_helper IGNORED — pass opts.color_key instead
+---@param text_color? color_helper IGNORED; pass opts.color_key instead
 ---@param opts? { color_key?: string } Theme tint key ("warning", "danger", ...)
 function menu_api.header(text, text_color, opts) end
 
 ---Renders a horizontal separator at the current container position
----@param opts? table Legacy styling — ignored
+---@param opts? table Legacy styling; ignored
 function menu_api.separator(opts) end
 
 -- =============================================================================
--- FRAME LIFECYCLE (driven by the menu host — plugins normally never call these)
+-- FRAME LIFECYCLE (driven by the menu host: plugins normally never call these)
 -- =============================================================================
 
 ---Opens the per-frame walk. Must run before any element :render this frame.

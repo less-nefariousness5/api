@@ -36,9 +36,28 @@
 ---@field type integer
 ---@field lockout_school schools_flag
 
+--- One row from any container enumeration: core.inventory.get_items_in_bag,
+--- game_object:get_equipped_items and game_object:get_item_at_inventory_slot all return this
+--- shape and nothing else.
+---
+--- THERE IS NO item_id FIELD, and that omission has caused a real, long-lived bug. Code that
+--- reads `row.item_id` gets nil on every row of every build, silently, forever. The core builds
+--- these rows in lua_push_item_table (lua_bindings_inventory.cpp and lua_type_game_object.cpp)
+--- and sets exactly the two fields below. Read the id off the object:
+---
+---     local id = row.object and row.object:get_item_id()
+---
+--- Empty slots are never emitted, so #list is an item count and never a slot count, and the
+--- list cannot be indexed by slot. Walk it and read slot_id off each row.
 ---@class item_slot_info
----@field object game_object
----@field slot_id integer
+---@field object game_object The item itself. Never nil in practice, since the core only emits a
+--- row once find_object_by_guid resolved the slot, but it is pushed through
+--- push_game_object_or_nill, so guard it if you are being careful.
+---@field slot_id integer 1-BASED index into the container, always the native index plus one.
+--- For bags 1 to 4 this is the slot within that bag. For the player container (bag 0, and both
+--- game_object enumerations) it is a position in the whole player array: 1 to 19 worn gear,
+--- 20 to 23 the bag objects, 24 and up the backpack, on the classic clients. NOT a
+--- core.input.use_container_item slot, see common/utility/inventory_helper.lua.
 
 ---@class unit_ranged_damage_data
 ---@field speed number
@@ -307,8 +326,45 @@
 ---Returns a table containing the debuffs applied to the game object.
 ---@field get_debuffs fun(self: game_object): buff_table
 ---Returns a list of equipped items (item_slot_info) of the game object, the format comes in we call item_slot_info, a table that contains game_object ptr of the item and item_slot.
+---
+---IT RETURNS MORE THAN EQUIPPED ITEMS ON THE CLASSIC CLIENTS, and the overshoot is a fixed
+---number of backpack rows rather than an occasional one. Documented 2026-08-31.
+---
+---The binding walks the player's whole item array, the same buffer core.inventory
+---.get_items_in_bag(0) returns, and trims it with a single hardcoded cutoff in
+---lua_type_game_object.cpp: `if (slot <= 35)`, commented "bags 31..35, after this slot it starts
+---enumerating your bag contents". That 35 is a RETAIL layout number. It is not derived from the
+---build, so every client gets it:
+---
+---  retail family   slot_id 1..30 worn, 31..35 the bag objects, backpack from 36. Cutoff correct,
+---                  though the four or five bag OBJECTS are still included as "equipped".
+---  classic family  slot_id 1..19 worn, 20..23 the bag objects, backpack from 24. The cutoff
+---                  admits slot_id 24 through 35, so up to TWELVE BACKPACK ITEMS arrive labelled
+---                  as equipment.
+---
+---So on wow_tbc_ps, wow_vanilla_ps and the Blizzard classic targets alike, filter by slot_id
+---yourself: worn gear is slot_id 1 to 19 and nothing else. Do not treat the list length as an
+---equipped-item count and do not feed it to anything that assumes an INVSLOT.
+---
+---This is a core-side defect, tracked rather than worked around in the SDK because the fix is a
+---per-build constant next to o_player_inventory. Reported with the bag 0 write-up, see
+---claude_md/GLOBAL/CORE_WOW.md under "Bag 0 is the whole player container".
 ---@field get_equipped_items fun(self: game_object): item_slot_info_table
 ---Returns a table with the item game_object ptr and the slot_id where the item is on the game object equipped items.
+---
+---THE SLOT IS 1-BASED, an INVSLOT_* id, not a 0-based index. The binding subtracts one before it
+---indexes the player array, so 1 is the head and 19 is the tabard. Passing 0 underflows to an
+---unsigned 0xFFFFFFFF, fails the capacity check and returns a row whose .object is nil, which
+---looks exactly like an empty slot and is why a `for slot = 0, 18` loop silently reads head
+---through ranged and never sees the tabard.
+---
+---The full 1-based map on the classic clients: 1 head, 2 neck, 3 shoulder, 4 shirt, 5 chest,
+---6 waist, 7 legs, 8 feet, 9 wrist, 10 hands, 11 finger1, 12 finger2, 13 trinket1, 14 trinket2,
+---15 back, 16 main hand, 17 off hand, 18 ranged, 19 tabard. Above that it keeps indexing the
+---same array, so 20 to 23 are the bag objects and 24 and up is the backpack.
+---
+---The returned row always exists; an empty or out-of-range slot gives .object == nil rather than
+---nil itself, so test the field, not the return value.
 ---@field get_item_at_inventory_slot fun(self: game_object, slot:number): item_slot_info
 --- Returns whether the game object can be looted.
 ---@field can_be_looted fun(self: game_object): boolean
