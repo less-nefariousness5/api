@@ -111,7 +111,17 @@
 ---@field get_level fun(self: game_object): number
 ---Returns the effective level of the game object.
 ---@field get_effective_level fun(self: game_object): number
----Returns the gold amount of the game object (in copper).
+---Returns the LOCAL PLAYER's money in copper. 0 on every other object, and 0 when the
+---client has no answer. The name says "gold" and the unit is copper: divide by 10000.
+---
+---Only the local player has a purse the client knows about, so calling this on a target,
+---a party member or an NPC answers 0 by design rather than guessing. Before 2026-09-20 it
+---read a hardcoded offset and answered whatever had moved into that slot after a patch,
+---which is how it spent six weeks returning 0 on retail 12.1.0; it now asks the client
+---through GetMoney(), so it cannot go stale again.
+---
+---This is a Lua call into the game, not a memory read. Cheap, but cache it rather than
+---polling it every frame.
 ---@field get_gold fun(self: game_object): number
 ---Returns the faction id of the game object.
 ---@field get_faction_id fun(self: game_object): number
@@ -225,8 +235,12 @@
 ---@field get_guid fun(self: game_object): string
 ---Returns the current health of the game object.
 ---@field get_health fun(self: game_object): number
----Returns the unit's money in copper (local player only; may be absent on other builds).
----@field get_money? fun(self: game_object): number
+---NOTE 2026-09-20: there is no get_money and there never has been, on any build. A
+---`get_money?` field used to sit here; it was added to satisfy a call site in
+---test_barney rather than because the core registered anything, which is exactly what
+---CORE_WOW.md forbids, and every caller of it got nil. Use get_gold above, or
+---core.inventory.get_gold. Do not re-add it without a matching luaL_Reg row in
+---lua_type_game_object.cpp.
 ---Returns the maximum health of the game object.
 ---@field get_max_health fun(self: game_object): number
 ---Returns the max health modifier of the game object.

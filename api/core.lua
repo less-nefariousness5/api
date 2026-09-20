@@ -72,7 +72,7 @@ function core.register_on_spell_cast_callback(callback) end
 --- reliable count for any payload with optional fields. Index positionally, never with ipairs.
 ---
 --- The registration list is build_events_literal() in wow_core/src/core/game/event_pump.cpp
---- and that function is its only source of truth. As of 2026-09-14 (core 2.058) it is:
+--- and that function is its only source of truth. As of 2026-09-19 (core 2.060) it is:
 ---   combat log  COMBAT_LOG_EVENT_UNFILTERED
 ---   countdown   START_PLAYER_COUNTDOWN, CANCEL_PLAYER_COUNTDOWN
 ---   spells      SPELLS_CHANGED
@@ -94,6 +94,11 @@ function core.register_on_spell_cast_callback(callback) end
 ---   encounters  ENCOUNTER_START, ENCOUNTER_END
 ---   challenge   CHALLENGE_MODE_COMPLETED (retail only, no args: read the result with
 ---               core.world.get_challenge_completion_info)
+---   talents    CHARACTER_POINTS_CHANGED, CONFIRM_TALENT_WIPE, PLAYER_TALENT_UPDATE
+---               (1.14+), TRAIT_CONFIG_UPDATED and TRAIT_NODE_CHANGED (retail 10.0+).
+---               CONFIRM_TALENT_WIPE carries no args and is not a notification: the
+---               trainer withholds the respec until core.game_ui.confirm_talent_wipe
+---               answers it.
 ---   gossip      GOSSIP_SHOW, GOSSIP_CLOSED
 ---   quests      QUEST_GREETING, QUEST_DETAIL, QUEST_PROGRESS, QUEST_COMPLETE,
 ---               QUEST_FINISHED, QUEST_ACCEPTED, QUEST_TURNED_IN, QUEST_LOG_UPDATE,
@@ -284,8 +289,26 @@ function core.get_difficulty_id()
     return 0
 end
 
+--- Returns the level of the keystone the player is CARRYING. 0 when they hold none, and 0
+--- on every non-retail client.
 ---@return number
 function core.get_keystone_level()
+    return 0
+end
+
+--- Returns the challenge map id of the keystone the player is CARRYING. 0 when they hold
+--- none, and 0 on every non-retail client. Pair it with core.get_keystone_level: the two
+--- together are what identify a key.
+---
+--- This is not core.world.get_active_challenge_map_id, which answers the dungeon of the run
+--- you are standing in. This one answers the key in your bag, which is usually a different
+--- dungeon and exists while you are in no run at all.
+---
+--- It is also how you fill in your own row after core.game_ui.request_party_keystones: you
+--- never receive your own addon message, so the party broadcast returns everybody's key
+--- except yours.
+---@return number
+function core.get_keystone_map_id()
     return 0
 end
 
@@ -977,8 +1000,19 @@ function core.inventory.get_item_durability(slot)
     return {}
 end
 
---- Returns the local player's current gold in copper.
---- @return integer copper Total money in copper
+--- Returns the local player's current money in copper. Divide by 10000 for gold.
+---
+--- 0 means either "you are broke" or "there is no local player yet", which is the answer at
+--- character select. It no longer means "the binding is stale": before 2026-09-20 this read a
+--- hardcoded offset that the retail 12.1.0 client layout shift invalidated, and it returned 0
+--- for six weeks. It now asks the client through GetMoney() on every game version.
+---
+--- Copper, not gold, so the value passes 2^31 at 214,748 gold. It is returned as a Lua number
+--- and is exact to 2^53, far above the money cap.
+---
+--- This is a Lua call into the game, not a memory read. Cache it rather than polling it every
+--- frame. game_object:get_gold() is the same value through the local player object.
+--- @return integer copper Total money in copper, 0 when there is no local player.
 function core.inventory.get_gold()
     return 0
 end
@@ -1403,6 +1437,228 @@ end
 ---@return active_talent_entry[] talents Array of active talent entries.
 function core.game_ui.get_active_talents()
     return {}
+end
+
+--- Registers the "LibKS" addon-message prefix so CHAT_MSG_ADDON starts delivering LibKeystone
+--- traffic. Call it once at plugin load, never per frame.
+---
+--- Registration is what makes the client deliver that prefix at all: without it the game event
+--- never fires for LibKS and core.game_ui.request_party_keystones looks like it silently failed.
+--- It is idempotent, and a second call reporting "duplicate" still counts as success.
+---
+--- Register even if you only ever call request_party_keystones, because peers also broadcast
+--- their key UNPROMPTED when it changes after a run, and those updates only arrive if you are
+--- registered when they land.
+---@return boolean registered True when the prefix is registered, including when it already was.
+function core.game_ui.register_keystone_prefix()
+    return false
+end
+
+--- Asks the party for their Mythic+ keystones over the LibKeystone protocol, the de facto
+--- standard that BigWigs, Details and the M+ addons all speak. There is no game API for "what
+--- key does my party member hold"; the number only travels over the addon channel.
+---
+--- Registers the prefix first, so one call is enough to get working.
+---
+--- Each answer arrives as an ordinary CHAT_MSG_ADDON game event through
+--- core.register_on_game_event_callback, with args:
+---   args[1] prefix   "LibKS"
+---   args[2] message  "<level>,<challenge_map_id>,<mythic_plus_rating>", three integers
+---   args[3] channel  "PARTY"
+---   args[4] sender   "Name-Realm", the FULL identity, realm included
+---
+--- The realm is preserved on purpose and this differs from LibKeystone itself, which runs
+--- Ambiguate(sender, "none") and hands its own consumers a bare name. The core does not touch
+--- the argument, so you get what the client sent.
+---
+--- The boolean is "the client accepted the send", NOT "the party answered". Replies land
+--- asynchronously over the next moment or two, and a member running no addon never answers at
+--- all, so treat a missing member as unknown rather than as holding no key.
+---
+--- False means nothing went out: you are not in a group, the client has no addon-message API, or
+--- its throttle refused the send. The protocol allows one request per 3 seconds and peers ignore
+--- a second one inside that window, so back off on false instead of retrying in a loop.
+---
+--- YOUR OWN KEY IS NOT IN THE REPLIES. You never receive your own addon message. Read yours with
+--- core.get_keystone_level and core.get_keystone_map_id.
+---@return boolean sent True when the client accepted the request for sending.
+function core.game_ui.request_party_keystones()
+    return false
+end
+
+--- Spends a talent point, or picks a trait entry, whichever the running client has.
+--- The two arguments mean different things per game version, on purpose: they are the same
+--- numbers the matching read function already handed you.
+---   trees (1.12 / 1.14 / 1.15 / 2.5)  learn_talent(tab_index, talent_index), both 1 based
+---   MoP 5.5                           learn_talent(talent_id), the talent_id field of
+---                                     get_talent_info(tier, column, spec_group)
+---   Midnight 12.1, normal node        learn_talent(node_id)
+---   Midnight 12.1, choice node        learn_talent(node_id, entry_id)
+---
+--- The boolean says the client ACCEPTED THE REQUEST, not that a point was spent. On the tree
+--- and MoP clients LearnTalent answers nothing at all, so true means only that the call was
+--- reached: confirm with get_talent_info(...).rank or get_unspent_talent_points(). On Midnight
+--- the purchase is staged and then committed in the same call, so there false is a real
+--- refusal (in combat, no currency left, prerequisite not met).
+---@param arg1 integer Tab index (trees), talent id (MoP), or node id (Midnight).
+---@param arg2? integer Talent index (trees) or entry id (Midnight choice nodes). Omit otherwise.
+---@return boolean accepted True when the client accepted the request.
+function core.game_ui.learn_talent(arg1, arg2)
+    return false
+end
+
+--- Returns the number of talent points the player has not spent yet.
+--- Tree clients answer UnitCharacterPoints("player"), MoP answers GetNumUnspentTalents.
+---
+--- On Midnight 12.1 this is the FIRST tree currency, which is the class pool. The trait trees
+--- carry several non-fungible currencies at once (class, spec, and the hero pool from 11.0) and
+--- they cannot be summed into one honest number, because two spec points do not buy a class
+--- node. Ask per node with can_purchase_talent_rank when you need the others.
+---@return integer points Unspent talent points, 0 when the client has none to report.
+function core.game_ui.get_unspent_talent_points()
+    return 0
+end
+
+--- Confirms a pending talent wipe at a trainer.
+--- This is the answer to the CONFIRM_TALENT_WIPE game event, not a convenience wrapper: the
+--- engine withholds the reset and waits, so a respec never happens until this is called.
+--- The boolean says the call was reached. The gold is spent and the talents are gone by the
+--- next CHARACTER_POINTS_CHANGED, not on the next line.
+---@return boolean accepted True when the client had the function and it was called.
+function core.game_ui.confirm_talent_wipe()
+    return false
+end
+
+--- Returns the number of talent tree tabs, normally 3.
+--- Tree clients only (1.12 / 1.14 / 1.15 / 2.5). 0 on MoP and Midnight, which have no tabs.
+---@return integer tabs Number of talent tabs, 0 when the client has no talent trees.
+function core.game_ui.get_num_talent_tabs()
+    return 0
+end
+
+--- Returns the number of talents in one talent tree tab.
+--- Tree clients only. Walk a tab by pairing this with get_talent_info(tab_index, i).
+---@param tab_index integer 1 based tab index.
+---@return integer count Number of talents in that tab, 0 when the client has no talent trees.
+function core.game_ui.get_num_talents(tab_index)
+    return 0
+end
+
+--- Returns the header information for one talent tree tab.
+--- Tree clients only, nil elsewhere. GetTalentTabInfo gained two fields in 1.14, so `id` and
+--- `description` are absent (nil) on a 1.12 client and present on 1.14 / 1.15 / 2.5.
+---@class talent_tab_info
+---@field id? integer Talent tab id. Absent on 1.12.
+---@field name string Localized tab name, for example "Fire".
+---@field description? string Localized tab description. Absent on 1.12.
+---@field texture string Icon texture path for the tab.
+---@field points_spent integer Points spent in this tab.
+---@field background string Background art name for the tab.
+
+---@param tab_index integer 1 based tab index.
+---@return talent_tab_info|nil info Tab information, nil when the client has no talent trees.
+function core.game_ui.get_talent_tab_info(tab_index)
+    return nil
+end
+
+--- Returns the talent that gates the given talent, on the tree clients.
+--- nil means the talent has no prerequisite, which is the common case and is not an error.
+--- Only the first prerequisite is reported; no talent in any shipped tree has a second.
+---@class talent_prereq_info
+---@field tier integer Tier (row) of the required talent, 1 based.
+---@field column integer Column of the required talent, 1 based.
+---@field is_learnable boolean True when that requirement is currently met.
+
+---@param tab_index integer 1 based tab index.
+---@param talent_index integer 1 based talent index inside the tab.
+---@return talent_prereq_info|nil prereq The prerequisite, or nil when there is none.
+function core.game_ui.get_talent_prereqs(tab_index, talent_index)
+    return nil
+end
+
+--- Returns the 1 based INDEX of the active specialization, 1 to 4, as the class orders its own
+--- spec list. nil on the tree clients, which have no specializations.
+---
+--- This is not core.spell_book.get_specialization_id(). That one answers the global
+--- ChrSpecialization id (250 Blood, 577 Havoc) and is what a database lookup wants. This one is
+--- the index the client's own talent UI counts with, and it is the only value
+--- set_specialization accepts.
+---@return integer|nil spec_index The 1 based specialization index, or nil when there is none.
+function core.game_ui.get_specialization()
+    return nil
+end
+
+--- Switches the player to another specialization, by the 1 based index get_specialization
+--- returns. Never a ChrSpecialization id.
+---
+--- The boolean says the call was reached. The client then runs its own "Activating
+--- Specialization" cast, which takes seconds, can be interrupted, and is refused in combat.
+--- Watch PLAYER_TALENT_UPDATE, or poll get_specialization, for the result. Note that the core
+--- reloads every Lua plugin when the specialization changes, so a plugin calling this is asking
+--- to be restarted.
+---@param spec_index integer 1 based specialization index.
+---@return boolean accepted True when the client had the function and it was called.
+function core.game_ui.set_specialization(spec_index)
+    return false
+end
+
+--- Returns the trait tree ids of the active talent config, class tree first (Midnight 12.1,
+--- retail 10.0+). Empty on every older client.
+--- A node id only means something inside a tree, and the config id a tree comes from is not
+--- reachable from Lua, which is why this exists instead of exposing C_Traits.GetConfigInfo.
+---@return integer[] tree_ids Trait tree ids, empty when the client has no trait trees.
+function core.game_ui.get_talent_tree_ids()
+    return {}
+end
+
+--- Returns every node id in one trait tree, bought or not (Midnight 12.1, retail 10.0+).
+--- get_active_talents lists what you HAVE; this lists what EXISTS, which is what you need
+--- before buying something you do not have yet. Around 100 ids on a current class tree, so
+--- cache the result rather than calling it per frame.
+---@param tree_id integer A tree id from get_talent_tree_ids.
+---@return integer[] node_ids Node ids in that tree, empty when the client has no trait trees.
+function core.game_ui.get_talent_tree_nodes(tree_id)
+    return {}
+end
+
+--- Returns the state of one trait node in the active config (Midnight 12.1, retail 10.0+).
+--- nil on older clients and when the node is not part of the active config.
+---
+--- node_type is the C_Traits enum and decides how learn_talent has to be called: 0 single,
+--- 1 tiered, 2 selection. A selection node needs an entry id from entry_ids, the others do not.
+--- active_entry_id is 0 when nothing is chosen yet.
+---@class talent_node_info
+---@field node_id integer The node id.
+---@field active_rank integer Ranks currently active on the node.
+---@field ranks_purchased integer Ranks bought in the active config.
+---@field max_ranks integer Maximum ranks the node can hold.
+---@field node_type integer C_Traits node type: 0 single, 1 tiered, 2 selection.
+---@field is_available boolean True when the node's requirements are met.
+---@field is_visible boolean True when the node is shown in the tree.
+---@field can_purchase_rank boolean True when the client would allow another rank right now.
+---@field can_refund_rank boolean True when the client would allow refunding a rank.
+---@field active_entry_id integer Chosen entry id, 0 when none is chosen.
+---@field entry_ids integer[] Every entry id the node offers.
+
+---@param node_id integer A node id from get_talent_tree_nodes or get_active_talents.
+---@return talent_node_info|nil info Node state, or nil when the node is not readable.
+function core.game_ui.get_talent_node_info(node_id)
+    return nil
+end
+
+--- Asks the client whether another rank of a trait node could be bought right now
+--- (Midnight 12.1, retail 10.0+). This is the check that makes learn_talent safe to call in a
+--- loop: it covers currency, prerequisites and edge requirements in one question, none of which
+--- can be derived from get_talent_node_info alone.
+---
+--- entry_id may be omitted. The core then resolves it from the node: the active entry first,
+--- then the node's first entry. Pass it explicitly to ask about a specific side of a choice
+--- node. False on every client without trait trees.
+---@param node_id integer A node id from get_talent_tree_nodes or get_active_talents.
+---@param entry_id? integer A specific entry id. Omit to let the core resolve it.
+---@return boolean can_purchase True when the client would accept the purchase.
+function core.game_ui.can_purchase_talent_rank(node_id, entry_id)
+    return false
 end
 
 --- Deprecated. Removed from core.game_ui on May 10, 2026 and will be nil at runtime.
