@@ -36,12 +36,19 @@
 ---@field skip_range? boolean
 ---@field skip_gcd? boolean
 ---@field cache_time_override? number -- to override prediction cache, default value 0.15s (150ms)
+---@field check_los? boolean                   -- default true; false casts with NO line of sight check
+-- LINE OF SIGHT BEHAVIOR:
+-- - Omitted or true: both traces run, the spell_helper one and izi's own. This is the default.
+-- - false: neither runs, on unit casts and position casts alike.
+-- - Use it for targets the trace cannot reach honestly, e.g. the npc hovering above the
+--   floor in the last fight of Temple of Sethraliss, where the line clips geometry the
+--   game itself does not count. It is not a general purpose range extender: the game
+--   still refuses a cast it considers out of sight, you just stop filtering it early.
 
 ---@alias prediction_type_opt   "AUTO"|"ACCURACY"|"MOST_HITS"|number
 ---@alias geometry_type_opt "CIRCLE"|"LINE"|number
 
 ---@class pos_cast_opts: unit_cast_opts
----@field check_los? boolean
 ---@field use_prediction? boolean                 -- default true for position casts
 ---@field prediction_type? prediction_type_opt    -- "AUTO"|"ACCURACY"|"MOST_HITS"|number
 ---@field geometry? geometry_type_opt             -- "CIRCLE"|"LINE"|number

@@ -39,15 +39,15 @@
 
 ---@class spell_helper
 --- Check if the spell can be cast by considering various factors like cooldown, range, and caster's resources.
----@field is_spell_castable fun(self: spell_helper, spell_id: number, caster: game_object, target: game_object, skip_facing: boolean, skips_range: boolean, skip_usable: boolean?, skip_controller: boolean?, skip_learned: boolean?): boolean
+---@field is_spell_castable fun(self: spell_helper, spell_id: number, caster: game_object, target: game_object, skip_facing: boolean, skips_range: boolean, skip_usable: boolean?, skip_controller: boolean?, skip_learned: boolean?, skip_los: boolean?): boolean
 
 ---@class spell_helper
 --- Check if the spell can be cast (on position vec3) by considering various factors like cooldown, range, and caster's resources.
----@field is_spell_castable_position fun(self: spell_helper, spell_id: number, caster: game_object, target: game_object, cast_position: vec3, skip_facing: boolean, skips_range: boolean,  is_queue: boolean?, skip_usable: boolean?, skip_controller: boolean?, skip_learned: boolean?): boolean
+---@field is_spell_castable_position fun(self: spell_helper, spell_id: number, caster: game_object, target: game_object, cast_position: vec3, skip_facing: boolean, skips_range: boolean,  is_queue: boolean?, skip_usable: boolean?, skip_controller: boolean?, skip_learned: boolean?, skip_los: boolean?): boolean
 
 ---@class spell_helper
 --- Check if the spell can be cast by considering various factors like cooldown, range, and caster's resources.
----@field is_spell_queueable fun(self: spell_helper, spell_id: number, caster: game_object, target: game_object, skip_facing: boolean, skips_range: boolean, skip_usable: boolean?, skip_controller: boolean?, skip_learned: boolean?): boolean
+---@field is_spell_queueable fun(self: spell_helper, spell_id: number, caster: game_object, target: game_object, skip_facing: boolean, skips_range: boolean, skip_usable: boolean?, skip_controller: boolean?, skip_learned: boolean?, skip_los: boolean?): boolean
 
 ---@class spell_helper
 --- Return parsed tooltip info, is not precise and doesnt support all spells.
