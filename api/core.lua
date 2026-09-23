@@ -1017,6 +1017,52 @@ function core.inventory.get_gold()
     return 0
 end
 
+--- The stat NUMBERS for a bag item, as a ready-to-index table, or nil when there is nothing.
+---
+--- This is the other half of get_container_item_link. The link tells you WHICH random suffix an
+--- item rolled; it does not tell you what the roll gave. This does.
+---
+---     local stats = core.inventory.get_container_item_stats(bag_id, bag_slot)
+---     if stats then
+---         local agi = stats.agility or 0
+---         local sta = stats.stamina or 0
+---     end
+---
+--- THE KEYS ARE RENAMED FOR YOU. The client answers with its own global-string tokens,
+--- ITEM_MOD_AGILITY_SHORT and friends, which nobody should have to type. The ITEM_MOD_ prefix and
+--- the _SHORT suffix are stripped and the rest lowercased, so you get agility, stamina,
+--- crit_rating, attack_power, haste_rating, versatility, mastery_rating and so on. RESISTANCE0_NAME
+--- is aliased to `armor`, because resistance index 0 IS armor and the raw token is the one key you
+--- would never guess.
+---
+--- Anything the client reports that is not in that shape comes through lowercased as-is rather than
+--- being dropped, so a stat this core has never seen still reaches you.
+---
+--- nil, not an empty table, when the slot is empty or the item data is not cached yet. Those two
+--- are not distinguishable here, which is why there is no second return value pretending otherwise.
+---@param container_id integer The bag id: 0 = backpack, 1 to 4 = the equipped bags.
+---@param slot_id integer The slot within that bag, as inventory_helper reports it.
+---@return table<string, number>|nil stats Stat name to value, or nil when there is nothing to report.
+function core.inventory.get_container_item_stats(container_id, slot_id)
+    return nil
+end
+
+--- The stat numbers for an EQUIPPED item. Same table shape and same renaming as
+--- get_container_item_stats; this is the side you compare a bag candidate against.
+---
+---     local worn = core.inventory.get_inventory_item_stats(12)          -- second ring
+---     local cand = core.inventory.get_container_item_stats(bag, slot)
+---     if worn and cand and (cand.agility or 0) > (worn.agility or 0) then
+---         core.input.equip_container_item(bag, slot, 12)
+---     end
+---
+--- LOCAL PLAYER ONLY, for the same reason as get_inventory_item_link.
+---@param inventory_slot integer 1 to 19 for gear (12 second ring, 14 second trinket, 17 off hand), 20 to 23 for the bag slots.
+---@return table<string, number>|nil stats Stat name to value, or nil when there is nothing to report.
+function core.inventory.get_inventory_item_stats(inventory_slot)
+    return nil
+end
+
 ---@class game_ui
 core.game_ui = {}
 
@@ -2049,6 +2095,35 @@ end
 ---@param slot_id integer The slot within that bag, as inventory_helper reports it.
 ---@return boolean destroyed True only when the item was picked up and deleted.
 function core.input.destroy_container_item(container_id, slot_id)
+    return false
+end
+
+--- Equip a bag item into a slot YOU name. Same (container_id, slot_id) convention as
+--- use_container_item, plus the destination.
+---
+--- WHY THIS EXISTS. use_container_item takes no destination, so the client decides, and the
+--- client will never pick the second ring (12), the second trinket (14) or the off hand (17): it
+--- fills the first empty of a pair and then keeps overwriting that one. A second quiver or bag is
+--- worse, it fails outright with "You can only equip one quiver". This is the only call that can
+--- name those slots.
+---
+--- WHAT FALSE MEANS, because it is three different things and you can tell them apart:
+---   * the pick-up was refused (locked slot, item in transit). Bags untouched, cursor empty.
+---   * the placement was refused (wrong slot for this item, the one-quiver rule). THE ITEM IS
+---     LEFT ON THE CURSOR. Clear it with core.input.clear_cursor when you are done.
+---   * the item is bind-on-equip and the engine is waiting for an answer. Also still on the
+---     cursor. core.game_ui.get_pending_equip_slot reports the slot within a frame or two and
+---     core.input.equip_pending_item releases it. Do NOT clear the cursor in this case, that
+---     cancels the equip.
+--- True means the cursor ended empty, which is the item actually leaving for the slot.
+---
+--- The cursor is deliberately not cleared for you on failure, because doing so would cancel a
+--- pending bind-on-equip, and that is the one case that is not a failure at all.
+---@param container_id integer The bag id: 0 = backpack, 1 to 4 = the equipped bags.
+---@param slot_id integer The slot within that bag, as inventory_helper reports it.
+---@param inventory_slot integer 1 to 19 for gear (12 second ring, 14 second trinket, 17 off hand), 20 to 23 for the bag slots.
+---@return boolean equipped True only when the item left the cursor for the slot.
+function core.input.equip_container_item(container_id, slot_id, inventory_slot)
     return false
 end
 
