@@ -45,6 +45,8 @@
 ---@field get_queue_snapshot fun(self: spell_queue): { [number]: { spell_id: number, spell_type: integer, target: game_object|nil, position: vec3|nil, priority: number, timestamp: number, skips_global: boolean, is_item_exception: boolean, allow_movement: boolean } }
 ---Removes all entries from the **normal** queue that match `spell_id`. If `target` is provided, only entries for that exact target are removed. Returns the number removed.
 ---@field purge_by_spell fun(self: spell_queue, spell_id: number, target?: game_object): integer
+---True while the **fast** (off-GCD) queue still holds a spell entry for `spell_id`, i.e. it has been neither sent nor dropped yet. Read-only. The fast queue sends one entry per pass and drops the rest.
+---@field is_in_fast_queue fun(self: spell_queue, spell_id: number): boolean
 
 -- local sq = require("common/modules/spell_queue")
 -- local snap = sq:get_queue_snapshot()

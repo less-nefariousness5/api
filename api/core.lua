@@ -1019,8 +1019,9 @@ end
 
 --- The stat NUMBERS for a bag item, as a ready-to-index table, or nil when there is nothing.
 ---
---- This is the other half of get_container_item_link. The link tells you WHICH random suffix an
---- item rolled; it does not tell you what the roll gave. This does.
+--- An item id and an item name are both blind to the random "of the ..." suffix that decides a
+--- green's real stats. The core resolves the item's link internally and hands back what the
+--- roll produced; the link itself is never exposed, so there is no link reader to pair this with.
 ---
 ---     local stats = core.inventory.get_container_item_stats(bag_id, bag_slot)
 ---     if stats then
@@ -1056,10 +1057,42 @@ end
 ---         core.input.equip_container_item(bag, slot, 12)
 ---     end
 ---
---- LOCAL PLAYER ONLY, for the same reason as get_inventory_item_link.
----@param inventory_slot integer 1 to 19 for gear (12 second ring, 14 second trinket, 17 off hand), 20 to 23 for the bag slots.
+--- LOCAL PLAYER ONLY. It takes no unit token on purpose: a settable token would be a developer
+--- string inside a chunk that runs in the game Lua state, which the core's security rules forbid.
+---
+--- THE SLOT IS THE CLIENT'S OWN INVSLOT_* ID, and above 19 that number is not the same on every
+--- game version: bag slots are 20 to 23 on the private-server clients and 31 to 35 on retail.
+--- Take a bag slot from core.inventory.get_bag_inventory_slot, never from a constant. A slot this
+--- game version does not have raises an error; above 19, the answer is nil in the case the
+--- client could not report its slot layout, which is logged.
+---@param inventory_slot integer 1 to 19 is gear on every version (12 second ring, 14 second trinket, 17 off hand). For a bag slot use core.inventory.get_bag_inventory_slot.
 ---@return table<string, number>|nil stats Stat name to value, or nil when there is nothing to report.
 function core.inventory.get_inventory_item_stats(inventory_slot)
+    return nil
+end
+
+--- The inventory_slot that holds an equipped BAG, asked of the game client. This is the portable
+--- way to name a bag slot for core.input.equip_container_item and get_inventory_item_stats.
+---
+--- WHY IT EXISTS. Gear slots 1 to 19 are numbered the same on every game version, bag slots are
+--- not. The private-server clients (wow_tbc_ps, wow_vanilla_ps) keep the four bags at 20 to 23.
+--- Retail keeps them at 31 to 34 with the reagent bag at 35, because 20 to 30 is profession gear
+--- there. A plugin that hardcodes either set is right on one client and refused, or wrong, on the
+--- other. The core asks the client itself (ContainerIDToInventoryID, the call the default UI's bag
+--- buttons are built from) once, and caches the answer for the session, so it is cheap to call.
+---
+---     -- a bigger bag sits in the backpack at (bag_id, bag_slot): put it in the fourth bag slot
+---     local slot = core.inventory.get_bag_inventory_slot(4)
+---     if slot then
+---         core.input.equip_container_item(bag_id, bag_slot, slot)
+---     end
+---
+--- nil, not 0, when there is no such bag slot: container 0 (the backpack is not held in a slot),
+--- 5 on a client without a reagent bag, anything out of range, and the case the client could not
+--- report its layout at all, which is logged.
+---@param container_id integer The bag: 1 to 4 for the equipped bags, 5 for the reagent bag where the client has one.
+---@return integer|nil inventory_slot The INVSLOT_* id holding that bag on this client, or nil.
+function core.inventory.get_bag_inventory_slot(container_id)
     return nil
 end
 
@@ -2119,9 +2152,17 @@ end
 ---
 --- The cursor is deliberately not cleared for you on failure, because doing so would cancel a
 --- pending bind-on-equip, and that is the one case that is not a failure at all.
+---
+--- THE DESTINATION IS THE CLIENT'S OWN INVSLOT_* ID. 1 to 19 is gear on every game version. Bag
+--- slots move: 20 to 23 on the private-server clients, 31 to 34 plus the reagent bag at 35 on
+--- retail, where 20 to 30 is profession gear. Take a bag slot from
+--- core.inventory.get_bag_inventory_slot instead of hardcoding one. A slot this game version does
+--- not have raises an error before anything is picked up. In the case the client could not
+--- report its slot layout, a slot above 19 answers false without touching the bags, and the
+--- reason is logged; gear 1 to 19 never depends on that.
 ---@param container_id integer The bag id: 0 = backpack, 1 to 4 = the equipped bags.
 ---@param slot_id integer The slot within that bag, as inventory_helper reports it.
----@param inventory_slot integer 1 to 19 for gear (12 second ring, 14 second trinket, 17 off hand), 20 to 23 for the bag slots.
+---@param inventory_slot integer 1 to 19 is gear on every version (12 second ring, 14 second trinket, 17 off hand). For a bag slot use core.inventory.get_bag_inventory_slot.
 ---@return boolean equipped True only when the item left the cursor for the slot.
 function core.input.equip_container_item(container_id, slot_id, inventory_slot)
     return false

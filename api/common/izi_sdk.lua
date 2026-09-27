@@ -392,10 +392,11 @@
 ---@field unit? game_object                      -- candidate unit for *_target_if helpers
 ---@field rank_index? integer                    -- index chosen in ranked lists
 ---@field attempted? integer                     -- how many candidates were attempted
----@field reason? string                         -- failure reason code on false
+---@field reason? string                         -- failure reason code on false. "fast_queue_busy": another off-GCD spell is still waiting to be sent; call again next frame (it was not queued and not blacklisted)
 ---@field err? string                            -- optional lower level error string
 
 ---@class izi_spell
+---Queues the spell with no safety gates. Off-GCD spells follow the one-per-frame rule described on cast_safe.
 ---@field cast fun(
 ---   self: izi_spell,
 ---   target?: game_object,
@@ -403,6 +404,12 @@
 ---   opts?: pos_cast_opts): (boolean, izi_cast_meta)
 
 ---@class izi_spell
+---Queues the spell after the full safety gates. true means it was queued and will be sent.
+---Off-GCD spells (GCD 0 in the spell_gcd database) go out one per frame. The spell queue sends only one
+---off-GCD entry per pass and drops the rest, so while izi's previous off-GCD spell is still waiting to be
+---sent, this returns false with reason "fast_queue_busy" and neither queues nor blacklists the spell.
+---Keep calling every frame: a burst of three off-GCD cooldowns requested in the same frame lands one frame
+---apart. Do not treat "fast_queue_busy" as a failed cast. GCD spells are not affected.
 ---@field cast_safe fun(
 ---   self: izi_spell,
 ---   target?: game_object,
@@ -433,6 +440,7 @@
 ---   opts?: unit_cast_opts): (boolean, izi_cast_meta)
 
 ---@class izi_api
+---Same as spell:cast. Off-GCD spells go out one per frame, see izi_spell.cast_safe ("fast_queue_busy").
 ---@field cast fun(
 ---   spell: izi_spell,
 ---   target?: game_object,
@@ -440,6 +448,7 @@
 ---   opts?: pos_cast_opts): (boolean, izi_cast_meta)
 
 ---@class izi_api
+---Same as spell:cast_safe. Off-GCD spells go out one per frame, see izi_spell.cast_safe ("fast_queue_busy").
 ---@field cast_safe fun(
 ---   spell: izi_spell,
 ---   target?: game_object,
@@ -470,6 +479,7 @@
 ---   opts?: unit_cast_opts): (boolean, izi_cast_meta)
 
 ---@class izi_spell
+---Queues the spell at a position. Off-GCD spells follow the one-per-frame rule described on cast_safe.
 ---@field cast_position fun(
 ---   self: izi_spell,
 ---   position: vec3,
