@@ -28,6 +28,8 @@
 
 ---@class plugin_helper
 --- Calculates latency based on the current ping, clamped to a maximum value.
+--- VERSIONS: a constant 0.005 on the private-server clients (Vanilla 1.14 / TBC 2.5.3), where
+--- core.get_ping is always 10.
 ---@field get_latency fun(self: plugin_helper): number
 
 ---@class plugin_helper

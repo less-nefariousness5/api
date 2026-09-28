@@ -17,6 +17,8 @@
 ---@field ptr buff                                 -- raw buff pointer
 ---@field buff_name string                         -- name of the aura
 ---@field buff_type number                         -- type of the aura
+--- VERSIONS: points is always {} on the private-server clients (Vanilla 1.14 / TBC 2.5.3), see
+--- game_object:get_auras.
 ---@field points number[]                          -- variable values from aura data (e.g. absorb remaining for shields)
 
 ---@class buff_manager_cache_data

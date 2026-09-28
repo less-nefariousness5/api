@@ -117,6 +117,10 @@
 ---@field get_all_auras               fun(self: game_object): buff_manager_cache_data[]                            -- Aura cache snapshot
 
 ---@class game_object
+--- VERSIONS (is_tank, is_dps, is_healer): the assigned group role is read only on Retail, MoP
+--- Classic and Titan (China) (see game_object:get_group_role). Everywhere else the role is
+--- guessed from class + spec, and on the private-server clients (Vanilla 1.14 / TBC 2.5.3)
+--- other units have no spec, so all three are false for everyone but you.
 ---@field is_tank                     fun(self: game_object): boolean                           -- Role heuristic
 ---@field is_dps                      fun(self: game_object): boolean                           -- Role heuristic
 ---@field is_healer                   fun(self: game_object): boolean                           -- Role heuristic
@@ -245,6 +249,8 @@
 ---@field chi_deficit_pct             fun(self: game_object): number
 
 ---@class game_object
+--- VERSIONS: branches on core.get_game_version(). On "Tbc" (TBC Classic and the TBC 2.5.3
+--- private server) these read power type 14 (enums.power_type.COMBOPOINTS_TBC) instead of 4.
 ---@field combo_points_max            fun(self: game_object): number
 ---@field combo_points_current        fun(self: game_object): number
 ---@field combo_points_deficit        fun(self: game_object): number
@@ -256,6 +262,8 @@
 ---@field holy_power_deficit          fun(self: game_object): number
 
 ---@class game_object
+--- VERSIONS: haste_pct is always 0 (spell_haste_multiplier 1.0) on the private-server clients,
+--- where game_object:get_spell_haste is always 0.
 ---@field haste_pct                   fun(self: game_object): number
 ---@field spell_haste_multiplier      fun(self: game_object): number
 ---@field gcd                         fun(self: game_object): number
@@ -266,6 +274,8 @@
 ---@class game_object
 ---@field rune_count                  fun(self: game_object): integer
 ---@field rune_time_to_x              fun(self: game_object, value: integer): number
+--- VERSIONS: always 0 on Retail, Forever and the private-server clients, where
+--- core.spell_book.get_rune_type returns nil. Only Classic Era, TBC, MoP and Titan have rune types.
 ---@field rune_type_count             fun(self: game_object, index: integer): integer
 
 ---@class game_object
@@ -356,6 +366,8 @@
 ---@field get_gcd             fun(self: izi_spell): number
 ---@field skips_gcd           fun(self: izi_spell): boolean
 ---@field is_usable_while_moving fun(self: izi_spell): boolean
+--- VERSIONS: requires_back only knows MoP Classic spells (53, 8676, 6785); it is always false on
+--- every other build.
 ---@field requires_back       fun(self: izi_spell): boolean
 ---@field since_last_cast     fun(self: izi_spell): number
 ---@field in_gcd_window       fun(self: izi_spell, threshold?: number): boolean
@@ -494,6 +506,8 @@
 ---   opts?: pos_cast_opts): (boolean, izi_cast_meta)
 
 ---@class izi_module
+--- VERSIONS: Retail only. Empower spells exist only there, and the release step reads
+--- game_object:get_empower_current_stage, which is meaningless on every classic build.
 ---@field cast_charge_spell fun(
 ---   spell: izi_spell,                       -- the empower spell wrapper
 ---   stage: 1|2|3|4,                         -- target empower stage to release at
@@ -548,6 +562,9 @@
 ---@field on_combat_start fun(cb: fun(ev: { unit: game_object })) : (fun())
 ---@field on_combat_finish fun(cb: fun(ev: { unit: game_object })) : (fun())
 ---@field on_spell_begin  fun(cb: fun(ev: { spell_id: integer, caster: game_object, target: game_object|nil })) : (fun())
+--- VERSIONS: for cast-time spells on_spell_success fires at cast end minus (2 x ping + 54 ms) and
+--- on_spell_cancel stops checking in that same window. On the private-server clients
+--- core.get_ping is always 10, so that window is fixed at about 75 ms whatever your real latency.
 ---@field on_spell_success fun(cb: fun(ev: { spell_id: integer, caster: game_object, target: game_object|nil })) : (fun())
 ---@field on_spell_cancel fun(cb: fun(ev: { spell_id: integer, caster: game_object, target: game_object|nil })) : (fun())
 ---@field on_key_release  fun(key: integer|string, cb: fun(key: integer|string)) : (fun())
@@ -1076,10 +1093,13 @@
 ---@field icon integer|nil Normalized icon. Native where the build reports one, derived from gossip_type otherwise, so it is the same number on every build. nil for a type the mapping does not know.
 ---@field icon_source string "native" or "derived".
 ---@field id integer OPAQUE selector token, valid for this frame on this build only. Pass to :select() and nothing else. Never persist it, never compare it against an id from elsewhere.
----@field status integer|nil Retail only; nil on the private-server builds.
----@field spell_id integer|nil Retail only; nil on the private-server builds.
----@field flags integer|nil Retail only; nil on the private-server builds.
----@field rewards gossip_reward[]|nil Retail only; nil on the private-server builds.
+--- VERSIONS (status, spell_id, flags, rewards): filled on every Blizzard build. On the
+--- private-server clients (Vanilla 1.14 / TBC 2.5.3) they are 0 and {} (not nil): the core
+--- always sends the fields and the legacy client has nothing to put in them.
+---@field status integer|nil
+---@field spell_id integer|nil
+---@field flags integer|nil
+---@field rewards gossip_reward[]|nil
 ---@field select fun(self: gossip_option_view) Select this option. Correct on every build.
 
 ---@class gossip_quest_view
@@ -1124,6 +1144,11 @@
 ---@field find_option_by_icon fun(icon: integer): gossip_option_view|nil
 ---@field find_quest fun(pattern: string, include_active?: boolean): gossip_quest_view|nil
 
+---@class izi_api
+--- VERSIONS (queue_popup_info, queue_has_popup, queue_accept, queue_decline): the dungeon
+--- finder and battleground calls behind them do nothing on Classic Era, Titan (China) and the
+--- private-server clients (see core.input.has_dungeon_proposal / accept_battlefield_port). There
+--- a PvE popup is never seen, and a PvP accept or decline still returns true but does nothing.
 ---@field queue_accept fun(kind?: queue_kind, idx?: integer): boolean
 ---@field queue_decline fun(kind?: queue_kind, idx?: integer): boolean
 ---@field gossip izi_gossip

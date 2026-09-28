@@ -8,6 +8,10 @@
 --- Cooldown Tracker Module
 --- Tracks and manages cooldowns for spells, with public APIs
 --- to extend the internal whitelists/lists safely at runtime.
+---
+--- VERSIONS: the tracked cooldown list is a per-version database picked by
+--- core.get_game_version(): "Midnight", "Tbc", "Mop" and "Vanilla" each get their own. "Titan"
+--- and "Forever" fall back to the MoP list (the WotLK list is never loaded).
 
 ---@class cooldown_tracker
 ---@field has_any_relevant_defensive_up fun(self: cooldown_tracker, unit: game_object): boolean

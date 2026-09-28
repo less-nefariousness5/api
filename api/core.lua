@@ -93,10 +93,13 @@ function core.register_on_spell_cast_callback(callback) end
 ---   confirms    AUTOEQUIP_BIND_CONFIRM, EQUIP_BIND_CONFIRM, CONFIRM_BINDER, LOOT_BIND_CONFIRM
 ---   group       GROUP_ROSTER_UPDATE, GROUP_JOINED, GROUP_LEFT
 ---   encounters  ENCOUNTER_START, ENCOUNTER_END
----   challenge   CHALLENGE_MODE_COMPLETED (retail only, no args: read the result with
----               core.world.get_challenge_completion_info)
+---   challenge   CHALLENGE_MODE_COMPLETED (no args: read the result with
+---               core.world.get_challenge_completion_info). VERSIONS: fires on Retail (Mythic+)
+---               and MoP Classic (Challenge Modes); never on Era, TBC or Titan, which have no
+---               challenge mode content. Forever unverified.
 ---   talents    CHARACTER_POINTS_CHANGED, CONFIRM_TALENT_WIPE, PLAYER_TALENT_UPDATE
----               (1.14+), TRAIT_CONFIG_UPDATED and TRAIT_NODE_CHANGED (retail 10.0+).
+---               (1.14+), TRAIT_CONFIG_UPDATED and TRAIT_NODE_CHANGED (the trait-tree clients:
+---               Retail and Forever).
 ---               CONFIRM_TALENT_WIPE carries no args and is not a notification: the
 ---               trainer withholds the respec until core.game_ui.confirm_talent_wipe
 ---               answers it.
@@ -109,12 +112,16 @@ function core.register_on_spell_cast_callback(callback) end
 ---   reputation  UPDATE_FACTION
 ---   stable      PET_STABLE_SHOW, PET_STABLE_UPDATE, PET_STABLE_CLOSED
 ---   interaction PLAYER_INTERACTION_MANAGER_FRAME_SHOW / _HIDE ({ Enum.PlayerInteractionType },
----               retail 10.0+), PLAYER_SOFT_INTERACT_CHANGED ({ old_guid, new_guid }, 10.0+),
----               BANKFRAME_OPENED/_CLOSED, GUILDBANKFRAME_OPENED/_CLOSED, MAIL_SHOW/MAIL_CLOSED,
+---               10.0+ engine: Retail, Forever, Titan and the current Era/TBC/MoP clients all
+---               have C_PlayerInteractionManager; private-server clients unmeasured),
+---               PLAYER_SOFT_INTERACT_CHANGED ({ old_guid, new_guid }, every current client:
+---               the Era UI registers it too),
+---               BANKFRAME_OPENED/_CLOSED, GUILDBANKFRAME_OPENED/_CLOSED (not on Classic Era, which
+---               has no guild bank), MAIL_SHOW/MAIL_CLOSED,
 ---               LOOT_OPENED/LOOT_CLOSED, ITEM_TEXT_BEGIN/ITEM_TEXT_CLOSED,
 ---               BATTLEFIELDS_SHOW/_CLOSED, PETITION_SHOW/_CLOSED, GUILD_REGISTRAR_SHOW/_CLOSED,
 ---               OPEN_TABARD_FRAME/CLOSE_TABARD_FRAME, BARBER_SHOP_OPEN/_CLOSE (3.0+),
----               TRANSMOGRIFY_OPEN/_CLOSE (4.3+), CONFIRM_XP_LOSS (classic spirit healer)
+---               TRANSMOGRIFY_OPEN/_CLOSE (4.3+), CONFIRM_XP_LOSS (spirit healer, Retail too)
 ---   chat        CHAT_MSG_ADDON, CHAT_MSG_PARTY, CHAT_MSG_PARTY_LEADER
 ---   ui          UI_ERROR_MESSAGE, UI_INFO_MESSAGE ({ error_type, message, string_id })
 ---   auction     AUCTION_HOUSE_SHOW, AUCTION_HOUSE_CLOSED, AUCTION_HOUSE_DISABLED,
@@ -129,6 +136,10 @@ function core.register_on_spell_cast_callback(callback) end
 ---               ITEM_SEARCH_RESULTS_UPDATED, ITEM_SEARCH_RESULTS_ADDED,
 ---               REPLICATE_ITEM_LIST_UPDATE, AUCTION_MULTISELL_START,
 ---               AUCTION_MULTISELL_UPDATE, AUCTION_MULTISELL_FAILURE
+---               VERSIONS: the browse, search, commodity, favorites, owned-auction, bid and
+---               replicate names need C_AuctionHouse, which Retail, MoP Classic and Forever
+---               have and Classic Era / TBC Classic do not. There only AUCTION_HOUSE_SHOW,
+---               _CLOSED, _DISABLED and the three AUCTION_MULTISELL_* names fire.
 --- A name that does not exist on the current client is harmless, registration is pcall'd per
 --- event, which is why the one list serves every game version.
 ---
@@ -154,8 +165,13 @@ function core.register_on_spell_cast_callback(callback) end
 --- with core.object_manager.get_object_from_guid, which accepts a token. source_unit is nil
 --- when the client does not know the caster. duration and expiration_time are seconds on WoW's
 --- GetTime() clock, NOT the core.game_time() milliseconds that game_object:get_buffs() uses.
---- Pre-9.0 clients have no update_info table, so args is just { unit }: no sub-type, no aura
+--- A client whose UNIT_AURA has no update_info table gets just { unit }: no sub-type, no aura
 --- fields, no instance id anywhere. playground_events/main.lua is a worked example of all of it.
+--- VERSIONS: the shape is picked at runtime, not by game version number. The current Classic
+--- Era, TBC Classic, MoP Classic, Titan and Forever clients all send UNIT_AURA with the
+--- update_info table and ship C_UnitAuras (Blizzard API docs, GlobalAPI dumps), so they get the
+--- same records as retail. The 1.14.x / 2.5.3
+--- private-server clients are unmeasured: check args[1] against the four names before trusting it.
 ---
 --- The UNIT_SPELLCAST_* family, added 2026-09-01, is twenty events with one shape and several
 --- traps. args[1] is always the CASTER'S unit token, despite Blizzard naming that parameter
@@ -196,7 +212,10 @@ function core.register_on_spell_cast_callback(callback) end
 ---     of the handler, not after the work.
 ---
 --- The EMPOWER_ and RETICLE_ names are retail only and UNIT_SPELL_DIMINISH_CATEGORY_STATE_UPDATED
---- is newer than both, so on the classic branches they simply never bind and never fire.
+--- is newer than both, so on the classic branches they never fire. VERSIONS: the current classic
+--- clients do list those names, so they most likely bind and just stay silent. UNIT_SPELLMISS is
+--- different: no current Blizzard client (Retail, Era, TBC, MoP, Titan, Forever) knows it, so it
+--- never fires anywhere; the private-server clients are unmeasured.
 --- UNVERIFIED on this core, past args[1]: both RETICLE_ events, UNIT_SPELLMISS (believed
 --- { unit, cast_guid, spell_id, miss_type }) and the DIMINISH event. The spellcast probe in
 --- playground_events/main.lua dumps raw args for the whole family; run it and read the log
@@ -224,13 +243,17 @@ function core.register_on_spell_cast_callback(callback) end
 --- the 0 based one the rest of the loot API uses, hence the subtraction. The two equip confirms
 --- are also latched by the core, so core.game_ui.get_pending_equip_slot answers the same slot
 --- outside the callback. playground_items/main.lua is the worked example.
+--- VERSIONS: AUTOEQUIP_BIND_CONFIRM is not an event on any current Blizzard client (Retail, Era,
+--- TBC, MoP, Titan, Forever); an equip from the bags raises EQUIP_BIND_CONFIRM there. Keep the
+--- AUTOEQUIP_ branch only for the private-server clients, where it is unmeasured.
 ---
 --- The gossip and quest names were added 2026-08-30. A plugin cannot ask for an event the pump
 --- does not register: this callback delivers the list above and nothing else, and there is no
 --- Lua-side subscribe to fail loudly, so before that commit the whole pick-up/turn-in sequence
 --- had to be polled. GOSSIP_SHOW and GOSSIP_CLOSED bracket the frame
 --- the gossip readers see; QUEST_DETAIL, QUEST_PROGRESS and QUEST_COMPLETE are the three panel
---- states; QUEST_GREETING is the classic multi-quest picker with no retail equivalent. Read
+--- states; QUEST_GREETING is the multi-quest picker, common on classic and rarer on retail
+--- (VERSIONS: it is in the 12.1 retail event list, for NPCs without gossip). Read
 --- the GOSSIP ACROSS GAME VERSIONS block further down this file before using any of it, and
 --- prefer common/izi_sdk/izi_gossip.lua, which normalizes the retail and private-server
 --- shapes.
@@ -248,11 +271,12 @@ function core.register_on_spell_cast_callback(callback) end
 --- the faction list changes, header clicks included; re-read core.reputation on it rather than
 --- polling every frame.
 ---
---- INTERACTION OUTCOME (added 2026-09-27). core.input.interact_with_object always returns true:
+--- INTERACTION OUTCOME (added 2026-09-27, merged into wow_core master after 2.069, so a core newer
+--- than 2.069 is needed for these names and for args[3]). core.input.interact_with_object always returns true:
 --- it only dispatches. The answer arrives as an event. A window-open name (GOSSIP_SHOW,
 --- QUEST_GREETING, QUEST_DETAIL, MERCHANT_SHOW, TRAINER_SHOW, TAXIMAP_OPENED, PET_STABLE_SHOW,
---- AUCTION_HOUSE_SHOW, BANKFRAME_OPENED, MAIL_SHOW, LOOT_OPENED, ... and on retail
---- PLAYER_INTERACTION_MANAGER_FRAME_SHOW for all of them) means accepted. UI_ERROR_MESSAGE means
+--- AUCTION_HOUSE_SHOW, BANKFRAME_OPENED, MAIL_SHOW, LOOT_OPENED, ... and on every current Blizzard
+--- client PLAYER_INTERACTION_MANAGER_FRAME_SHOW for all of them) means accepted. UI_ERROR_MESSAGE means
 --- refused. Its args[1] is a per-build number and args[2] is localized, so match on args[3], the
 --- client's string id from GetGameMessageInfo (nil on a client without it). Neither within about
 --- a second means nothing happened.
@@ -260,6 +284,8 @@ function core.register_on_spell_cast_callback(callback) end
 function core.register_on_game_event_callback(callback) end
 
 --- Get the current ping.
+--- VERSIONS: always 10 on both private-server clients (Vanilla 1.14 / TBC 2.5.3), which
+--- overwrite the measured latency with a constant. Real on every Blizzard client.
 ---@return number The current ping.
 function core.get_ping()
     return 0
@@ -384,7 +410,8 @@ function core.is_main_menu_open()
 end
 
 ---@return string
----Returns "Midnight", "Tbc", "Vanilla", "Mop", "Titan"
+---Returns "Midnight", "Tbc", "Vanilla", "Mop", "Titan", "Forever". Both private servers answer
+---like their Blizzard counterpart ("Vanilla" / "Tbc"); tell them apart with get_exact_game_version.
 function core.get_game_version()
     return ""
 end
@@ -992,7 +1019,9 @@ end
 --- than from the per-build table in core_literal_imports.hpp that every other offset comes
 --- from. The private-server clients have their own layout, o_player_inventory is 0x28FF8 there
 --- against 0x165A8 on wow_tbc_us, so that literal has never been shown to be right on them.
---- Do not trust a backpack count from these builds without measuring it first.
+--- Do not trust a backpack count from these builds without measuring it first. VERSIONS: the same
+--- holds for Forever (o_player_inventory 0x9410) and MoP (0x16590): one classic literal, several
+--- layouts, so the backpack count is only trustworthy on the build it was measured on.
 --- @param bag_id integer Bag id, shifted one HIGHER than the get_items_in_bag id: 1 = backpack,
 --- 2 to 5 = the four equipped bags.
 --- @return integer num_slots Number of slots in the bag. 0 for bags 1 to 4 means no bag is
@@ -1146,6 +1175,8 @@ core.game_ui = {}
 ---
 --- The slot is latched from the drained events before that same batch reaches your
 --- on_game_event callback, so it is already set when you handle AUTOEQUIP_BIND_CONFIRM.
+--- VERSIONS: on every current Blizzard client only EQUIP_BIND_CONFIRM exists, bag equips included;
+--- AUTOEQUIP_BIND_CONFIRM is at most a private-server case (unmeasured).
 --- It is cleared by core.input.equip_pending_item and core.input.cancel_pending_equip on
 --- success, and by a PLAYER_EQUIPMENT_CHANGED naming the SAME slot, which is how a prompt the
 --- player answered by hand stops being reported. A UI reload while a prompt is open leaves the
@@ -1202,15 +1233,19 @@ function core.game_ui.get_loot_item_name(index)
     return ""
 end
 
---- @return string
+--- @return string|nil
 --- @param index number
 --- confirm, queued, none, error, active
+--- VERSIONS: Retail, TBC, MoP, Forever. nil on Classic Era, Titan and both private servers (core stub).
+--- On Era and Titan that is a core gap: both clients have GetBattlefieldStatus.
 function core.game_ui.get_battlefield_status(index)
     return ""
 end
 
---- @return number
+--- @return number|nil
 --- 2 Prep | 3 Action | 5 Finished
+--- VERSIONS: real only on Retail and Forever. Always 0 on TBC and MoP (no C_PvP.GetActiveMatchState
+--- in those clients); nil on Classic Era, Titan and both private servers (core stub).
 function core.game_ui.get_battlefield_state()
     return 0
 end
@@ -1242,14 +1277,17 @@ function core.game_ui.normalize_ui_position(pos)
     return {}
 end
 
---- @return number
+--- @return number|nil
 --- Timer in MS Since the battlefield started
+--- VERSIONS: TBC, MoP and Forever only. nil on Retail, Classic Era, Titan and both private servers.
 function core.game_ui.get_battlefield_run_time()
     return 0
 end
 
 --- @return number|nil
 --- NIL NONE | 0 Horde | 1 Ally | 2 Tie
+--- VERSIONS: Retail, TBC, MoP, Forever. Always nil on Classic Era, Titan and both private servers
+--- (a core gap on Era and Titan, whose clients have GetBattlefieldWinner).
 function core.game_ui.get_battlefield_winner()
     return nil
 end
@@ -1257,6 +1295,7 @@ end
 --- Returns the faction index of the team that won the active PvP match (C_PvP.GetActiveMatchWinner).
 --- 0 = Horde, 1 = Alliance. Returns nil while the match is still in progress (no
 --- winner yet) or when the C_PvP API is unavailable.
+--- VERSIONS: Retail and Forever only. Always nil on every other build (TBC/MoP clients lack the call).
 ---@return integer|nil winner The winning faction index, or nil if undecided/unavailable.
 function core.game_ui.get_active_match_winner()
     return nil
@@ -1266,7 +1305,9 @@ end
 --- 0 = Inactive, 1 = Waiting, 2 = StartUp, 3 = Engaged, 4 = PostRound, 5 = Complete.
 --- Mirrors get_battlefield_state but kept under the C_PvP-style name for new logic.
 --- Returns 0 when the API is unavailable on supported clients.
----@return integer state The current PvP match state.
+--- VERSIONS: real only on Retail and Forever. Always 0 on TBC and MoP; nil (not 0) on Classic Era,
+--- Titan and both private servers (core stub).
+---@return integer|nil state The current PvP match state, nil where the core stubs it.
 function core.game_ui.get_active_match_state()
     return 0
 end
@@ -1280,6 +1321,7 @@ end
 ---@field tooltip string The tooltip body text shown for the column header.
 
 --- Returns a single PvP scoreboard stat column by its PvP stat ID (C_PvP.GetMatchPVPStatColumn).
+--- VERSIONS: Retail and Forever only. Always nil on every other build.
 ---@param pvp_stat_id integer The PvP stat ID of the column to fetch.
 ---@return pvp_stat_column|nil column The column info, or nil if not found/unavailable.
 function core.game_ui.get_match_pvp_stat_column(pvp_stat_id)
@@ -1287,12 +1329,15 @@ function core.game_ui.get_match_pvp_stat_column(pvp_stat_id)
 end
 
 --- Returns every PvP scoreboard stat column for the active match (C_PvP.GetMatchPVPStatColumns).
+--- VERSIONS: Retail and Forever only. Always {} on every other build.
 ---@return pvp_stat_column[] columns Array of column info tables (empty if none/unavailable).
 function core.game_ui.get_match_pvp_stat_columns()
     return {}
 end
 
 --- Returns the player's arena/battleground team faction (GetBattlefieldArenaFaction).
+--- VERSIONS: Retail, TBC, MoP, Forever. Always nil on Classic Era, Titan and both private servers
+--- (a core gap on Era and Titan, whose clients have GetBattlefieldArenaFaction).
 ---@return integer|nil faction 0 = Horde, 1 = Alliance, or nil if unavailable / not in a match.
 function core.game_ui.get_battlefield_arena_faction()
     return nil
@@ -1316,6 +1361,7 @@ end
 ---@field rounds_weekly_won integer Solo-shuffle rounds won this week (0 before patch 10.0).
 
 --- Returns the player's rated info for the active match (C_PvP.GetPVPActiveMatchPersonalRatedInfo).
+--- VERSIONS: Retail and Forever only. Always nil on every other build.
 ---@return pvp_personal_rated_info|nil info The rated info, or nil outside a rated match.
 function core.game_ui.get_active_match_personal_rated_info()
     return nil
@@ -1347,6 +1393,7 @@ end
 --- Returns a scoreboard row for the active match by index (C_PvP.GetScoreInfo).
 --- The nested per-row `stats` (PVPStatInfo[]) array is not marshalled; only its length is
 --- exposed via `num_stats`.
+--- VERSIONS: Retail and Forever only. Always nil on every other build.
 ---@param index integer 1-based scoreboard row index.
 ---@return pvp_score_info|nil info The scoreboard row, or nil if not found / unavailable.
 function core.game_ui.get_score_info(index)
@@ -1365,12 +1412,15 @@ function core.game_ui.is_map_open()
 end
 
 --- Returns the top-left corner of the world map frame in UI coordinates.
+--- VERSIONS: on Retail the value is also multiplied by UIParent's effective scale; on every
+--- classic build it is not, so the units differ. Same for get_map_bottom_right.
 ---@return vec2 The top-left position of the map in UI coordinates.
 function core.game_ui.get_map_top_left()
     return {}
 end
 
 --- Returns the bottom-right corner of the world map frame in UI coordinates.
+--- VERSIONS: Retail scales by UIParent's effective scale, classic builds do not (see get_map_top_left).
 ---@return vec2 The bottom-right position of the map in UI coordinates.
 function core.game_ui.get_map_bottom_right()
     return {}
@@ -1417,6 +1467,9 @@ end
 
 --- Returns information about a specific vendor item.
 --- Note: vendor_item_id is 1-indexed (internally adjusted to 0-indexed).
+--- VERSIONS: BROKEN on Retail and Forever. Their clients have no GetMerchantItemInfo (replaced by
+--- C_MerchantFrame.GetItemInfo), so every call returns cost 0, item_id 0, item_name "" and
+--- vendor_item_index 0. Works on Classic Era, TBC, MoP and Titan.
 ---@param vendor_item_id integer The 1-based index of the vendor item.
 ---@return vendor_item_info A table containing the vendor item information.
 function core.game_ui.get_vendor_item_info(vendor_item_id)
@@ -1430,6 +1483,9 @@ function core.game_ui.get_vendor_item_count()
 end
 
 --- Returns a table containing all completed quest IDs for the local player.
+--- VERSIONS: always {} on Retail and Forever, whose clients have no GetQuestsCompleted (replaced by
+--- C_QuestLog.GetAllCompletedQuestIDs). Works on Classic Era, TBC and MoP; Titan unverified.
+--- core.quests.is_quest_flagged_completed answers a single id on Retail, Forever and Classic.
 ---@return integer[] An array of completed quest IDs.
 function core.game_ui.get_all_completed_quest_ids()
     return {}
@@ -1488,12 +1544,14 @@ function core.game_ui.add_tooltip_double_line(left_text, right_text, lr, lg, lb,
 end
 
 --- Returns whether the ping system is currently enabled.
+--- VERSIONS: can answer true on Era/TBC, MoP and Titan, but send_ping does nothing there (see send_ping).
 ---@return boolean enabled True if the ping system is enabled, false otherwise.
 function core.game_ui.is_ping_enabled()
     return false
 end
 
 --- Sends a ping, optionally targeting a game object.
+--- VERSIONS: Retail and Forever only. A silent no-op on Era/TBC, MoP and Titan (no C_Ping.SendMacroPing).
 ---@param ping_type? integer The ping type ID. Pass -1 or omit for default contextual ping.
 ---@param target? game_object The target game object to ping on. Omit for a contextual ping at the cursor.
 function core.game_ui.send_ping(ping_type, target)
@@ -1509,6 +1567,12 @@ end
 --- Returns talent information for a given talent position.
 --- Classic: pass tab_index, talent_index, and optionally is_inspect.
 --- Retail: pass tier, column, and optionally spec_group_index.
+--- VERSIONS: every current Blizzard client answers through a Blizzard deprecation fallback that
+--- only exists while the loadDeprecationFallbacks CVar is on; with it off this is {} everywhere.
+--- Era/TBC: is_exceptional is never set and `available` actually holds the preview rank (the
+--- fallback's 7th/8th returns moved). MoP 5.5: the fallback takes (tab, talent_index), returns the
+--- classic-shaped table and no talent_id, and Blizzard flags its rank/max_rank as unreliable.
+--- Forever uses trait trees: use get_active_talents / get_talent_node_info there.
 ---@class talent_info_classic
 ---@field name string The talent name.
 ---@field texture integer The icon texture ID.
@@ -1540,6 +1604,7 @@ end
 
 --- Returns all active talent nodes for the player (retail 10.0+ only).
 --- Falls back to an empty table on classic.
+--- VERSIONS: Retail and Forever (both trait-tree clients). {} on Classic Era, TBC, MoP and Titan.
 ---@class active_talent_entry
 ---@field node_id integer The talent node ID.
 ---@field spell_id integer The spell ID associated with the talent.
@@ -1613,6 +1678,9 @@ end
 --- reached: confirm with get_talent_info(...).rank or get_unspent_talent_points(). On Midnight
 --- the purchase is staged and then committed in the same call, so there false is a real
 --- refusal (in combat, no currency left, prerequisite not met).
+--- VERSIONS: Forever is a trait-tree client and takes the Midnight form. On MoP 5.5 the client's
+--- GetTalentInfo is a fallback that returns no talent id, so get_talent_info has no talent_id
+--- field there; where the MoP talent_id comes from is unverified.
 ---@param arg1 integer Tab index (trees), talent id (MoP), or node id (Midnight).
 ---@param arg2? integer Talent index (trees) or entry id (Midnight choice nodes). Omit otherwise.
 ---@return boolean accepted True when the client accepted the request.
@@ -1622,6 +1690,8 @@ end
 
 --- Returns the number of talent points the player has not spent yet.
 --- Tree clients answer UnitCharacterPoints("player"), MoP answers GetNumUnspentTalents.
+--- VERSIONS: GetNumUnspentTalents exists on the current Era and TBC clients too and is asked first
+--- there. Retail and Forever answer from the trait currency (see below).
 ---
 --- On Midnight 12.1 this is the FIRST tree currency, which is the class pool. The trait trees
 --- carry several non-fungible currencies at once (class, spec, and the hero pool from 11.0) and
@@ -1644,6 +1714,8 @@ end
 
 --- Returns the number of talent tree tabs, normally 3.
 --- Tree clients only (1.12 / 1.14 / 1.15 / 2.5). 0 on MoP and Midnight, which have no tabs.
+--- VERSIONS: 0 on Retail and Forever (no GetNumTalentTabs). The MoP 5.5 client still exports
+--- GetNumTalentTabs, GetNumTalents and GetTalentPrereqs, so "0 on MoP" is unverified.
 ---@return integer tabs Number of talent tabs, 0 when the client has no talent trees.
 function core.game_ui.get_num_talent_tabs()
     return 0
@@ -1660,6 +1732,8 @@ end
 --- Returns the header information for one talent tree tab.
 --- Tree clients only, nil elsewhere. GetTalentTabInfo gained two fields in 1.14, so `id` and
 --- `description` are absent (nil) on a 1.12 client and present on 1.14 / 1.15 / 2.5.
+--- VERSIONS: on the current Blizzard clients GetTalentTabInfo is a deprecation fallback (needs the
+--- loadDeprecationFallbacks CVar, else nil) whose icon is a file id number, so `texture` is nil there.
 ---@class talent_tab_info
 ---@field id? integer Talent tab id. Absent on 1.12.
 ---@field name string Localized tab name, for example "Fire".
@@ -1717,6 +1791,8 @@ end
 
 --- Returns the trait tree ids of the active talent config, class tree first (Midnight 12.1,
 --- retail 10.0+). Empty on every older client.
+--- VERSIONS: Forever has trait trees too and answers like Retail (same for get_talent_tree_nodes,
+--- get_talent_node_info and can_purchase_talent_rank). Empty on Classic Era, TBC, MoP and Titan.
 --- A node id only means something inside a tree, and the config id a tree comes from is not
 --- reachable from Lua, which is why this exists instead of exposing C_Traits.GetConfigInfo.
 ---@return integer[] tree_ids Trait tree ids, empty when the client has no trait trees.
@@ -1804,44 +1880,6 @@ core.game_ui.remove_unit_menu_button = nil
 ---@deprecated Removed on May 10, 2026. This field is nil in core 1.930+.
 core.game_ui.poll_unit_menu_click = nil
 
---- Adds a custom button to all unit right-click context menus.
---- The button appears in menus for players, targets, focus, party, raid, arena, boss, pet, and vehicle units.
---- Poll for clicks with poll_unit_menu_click().
----@param text string The button label text.
----@return integer id The button ID used to update, remove, or identify clicks.
-function core.game_ui.add_unit_menu_button(text)
-    return 0
-end
-
---- Updates the label text of an existing unit menu button.
----@param id integer The button ID returned by add_unit_menu_button.
----@param text string The new button label text.
----@return nil
-function core.game_ui.set_unit_menu_button_text(id, text)
-    return nil
-end
-
---- Removes a unit menu button entirely.
----@param id integer The button ID returned by add_unit_menu_button.
----@return nil
-function core.game_ui.remove_unit_menu_button(id)
-    return nil
-end
-
---- Polls the oldest queued unit menu button click.
---- Returns nil if no clicks are pending.
----@class unit_menu_click_result
----@field button_id integer The ID of the button that was clicked.
----@field unit_token string The unit token (e.g. "target", "party1").
----@field unit_name string The unit's name.
----@field unit_guid string The unit's GUID.
----@field menu_tag string The menu context tag (e.g. "MENU_UNIT_PLAYER").
-
----@return unit_menu_click_result|nil result The click info table, or nil if no clicks pending.
-function core.game_ui.poll_unit_menu_click()
-    return nil
-end
-
 ---@class character
 core.character = {}
 
@@ -1855,10 +1893,44 @@ end
 
 --- Returns the combat rating bonus for a specific combat rating value.
 --- Useful for calculating what bonus a hypothetical rating value would provide.
+---
+--- VERSIONS: RETAIL ONLY. Always 0 on every classic build (Era, TBC, MoP, Titan, Forever and both
+--- private servers). Blizzard's GetCombatRatingBonusForCombatRatingValue does not exist on the
+--- Era 1.15.9, TBC 2.5.6 or MoP 5.5.4 clients (Ketho/BlizzardInterfaceResources GlobalAPI dumps),
+--- and the core's classic implementation is a stub (game_object_classic.cpp). Forever 1.60.1 DOES
+--- have the global, so 0 there is a core gap, not a client limit. Classic workaround with the two
+--- calls that do work everywhere, valid because classic ratings convert linearly at a given level
+--- (no diminishing returns), and only while the player has some of that rating:
+---     local r = core.character.get_combat_rating(i)
+---     local pct = r > 0 and value * core.character.get_combat_rating_bonus(i) / r or 0
 ---@param rating_index integer The combat rating index.
 ---@param value integer The combat rating value to calculate the bonus for.
 ---@return number The combat rating bonus for the given value.
 function core.character.get_combat_rating_bonus_for_combat_rating_value(rating_index, value)
+    return 0
+end
+
+--- Returns the local player's current combat rating VALUE for a rating index (gear, buffs and
+--- enchants), not the percent: the raw number in the character pane's stat tooltips. Same index
+--- space as get_combat_rating_bonus. Local player only. Wraps Blizzard's GetCombatRating(index).
+---
+--- Retail CR_* indices (Blizzard's PaperDollFrame.lua): 3 dodge, 4 parry, 5 block, 9 crit melee,
+--- 10 crit ranged, 11 crit spell, 14 speed, 17 lifesteal, 18 haste melee, 19 haste ranged,
+--- 20 haste spell, 21 avoidance, 26 mastery, 29 versatility damage done, 31 versatility damage taken.
+---
+--- VERSIONS: works on every build (GetCombatRating is in the retail, Era, TBC, MoP and Forever
+--- API dumps). Era has almost no ratings, so expect 0 for most indices there.
+---
+--- On retail, get_combat_rating_bonus_for_combat_rating_value(i, get_combat_rating(i)) equals
+--- get_combat_rating_bonus(i). NOT on the classic builds: there the _for_combat_rating_value sibling
+--- is always 0 (see its VERSIONS note for the classic workaround), while this one and
+--- get_combat_rating_bonus answer. 0 on a client without GetCombatRating.
+---
+--- Added 2026-09-27 on wow_core branch combat_rating ("added core.character.get_combat_rating"),
+--- nil at runtime until that is merged and shipped in a core newer than 2.069.
+---@param rating_index integer The combat rating index (CR_*).
+---@return number rating The current rating value.
+function core.character.get_combat_rating(rating_index)
     return 0
 end
 
@@ -1926,6 +1998,8 @@ function core.world.is_flyable_area()
 end
 
 --- Returns whether the current area allows advanced (dynamic/skyriding) flying.
+--- VERSIONS: Retail only. Always false on every classic build, Forever included (the Forever client
+--- has IsAdvancedFlyableArea, the core does not call it there).
 ---@return boolean True if the area allows advanced flying, false otherwise.
 function core.world.is_advanced_flyable_area()
     return false
@@ -1938,6 +2012,7 @@ end
 
 --- Returns a table of encounter data for the specified UI map ID.
 --- Each entry contains the encounter ID and its map position.
+--- VERSIONS: always {} on the private-server clients (Vanilla 1.14 / TBC 2.5.3), core stub.
 ---@param ui_map_id integer The UI map ID to query encounters for.
 ---@return encounter_info[] An array of encounter info tables.
 function core.world.get_encounters_on_map(ui_map_id)
@@ -1951,14 +2026,17 @@ end
 
 --- Returns the active Mythic+ keystone information.
 --- Returns an empty table on classic clients or when no active keystone is available.
+--- VERSIONS: Retail and Forever only; Era/TBC, MoP and Titan have no GetActiveKeystoneInfo, always {}.
 ---@return active_keystone_info info The active keystone info table.
 function core.world.get_active_keystone_info()
     return {}
 end
 
 --- Returns the challenge map ID of the Mythic+ run in progress (C_ChallengeMode.GetActiveChallengeMapID).
---- Returns nil, never 0, when no challenge mode is active or the client has no challenge mode API
---- (classic clients), so a plain truthiness check is safe.
+--- Returns nil, never 0, when no challenge mode is active or the client has no challenge mode API,
+--- so a plain truthiness check is safe.
+--- VERSIONS: the call exists on every current client. MoP Classic has Challenge Mode dungeons, so it
+--- can answer there too; Era/TBC have no challenge modes and always get nil. Only Retail is tested.
 ---@return integer|nil map_challenge_mode_id The active challenge map ID, or nil.
 function core.world.get_active_challenge_map_id()
     return nil
@@ -1983,8 +2061,11 @@ end
 ---@field members challenge_completion_member[] Party members of the run, in client order.
 
 --- Returns the most recent Mythic+ completion (C_ChallengeMode.GetChallengeCompletionInfo) as a
---- snake_case table. Returns nil when the client has no completion info or no challenge mode API
---- (classic clients). Missing numeric fields read 0 and missing flags read false.
+--- snake_case table. Returns nil when the client has no completion info or no challenge mode API.
+--- Missing numeric fields read 0 and missing flags read false.
+--- VERSIONS: the call exists on every current client with the same documented fields. It can
+--- answer on MoP Classic (Challenge Modes, CHALLENGE_MODE_COMPLETED fires there); Era/TBC have no
+--- challenge modes and always get nil. Only Retail is tested.
 --- Read it on the CHALLENGE_MODE_COMPLETED game event (core.register_on_game_event_callback),
 --- which fires with no args when a run finishes.
 ---@return challenge_completion_info|nil info The completion info, or nil.
@@ -2094,8 +2175,8 @@ end
 --- bar_max / bar_value as ABSOLUTE reputation, e.g. Honored with 3500 into it is bar_min 9000,
 --- bar_max 21000, bar_value 12500. Re-read on the UPDATE_FACTION event instead of polling.
 ---
---- Every classic client (vanilla to MoP) answers through the legacy globals; retail through
---- C_Reputation. Same table on both. On a client with neither the functions answer 0 / nil / false
+--- Every classic client (vanilla to MoP) answers through the legacy globals; retail and Forever
+--- through C_Reputation. Same table on both. On a client with neither the functions answer 0 / nil / false
 --- and the core log names the missing API.
 ---@class reputation
 core.reputation = {}
@@ -2170,8 +2251,9 @@ end
 ---
 --- Classic stables only (vanilla, TBC, Wrath). MoP and retail have the five-slot stable, which this
 --- namespace does not drive: there every call except close() answers 0 / nil / false and the core
---- log says why. stable_pet and unstable_pet exist only on the clients that kept the old index
---- (both private-server clients among them); move_pet does the same job on all three.
+--- log says why. VERSIONS: Forever behaves the same way (its client has only retail's stable API).
+--- stable_pet and unstable_pet exist only on the clients that kept the old index (both
+--- private-server clients among them); move_pet does the same job on all three.
 ---@class pet_stable
 core.pet_stable = {}
 
@@ -2261,6 +2343,8 @@ end
 core.party = {}
 
 --- Returns whether the local player can invite another player to the group.
+--- VERSIONS: Retail and Forever only. Always false on Era/TBC, MoP and Titan (no C_PartyInfo.CanInvite
+--- there), even when you can invite; invite_unit still works on those clients.
 ---@return boolean can_invite True if the player can invite others.
 function core.party.can_invite()
     return false
@@ -2446,6 +2530,8 @@ end
 
 --- Accept an innkeeper's "make this your home" prompt, the one raised by CONFIRM_BINDER.
 --- Fires after using a hearthstone bind gossip option; the event's arg1 is the innkeeper's name.
+--- VERSIONS: always false on Retail and Forever, whose clients have no ConfirmBinder (it moved to
+--- C_PlayerInteractionManager). Works on Classic Era, TBC and MoP.
 ---@return boolean ran True when the client's confirm call was reached.
 function core.input.confirm_binder()
     return false
@@ -2496,6 +2582,8 @@ function core.input.set_target(unit)
 end
 
 --- Set the local player focus
+--- VERSIONS: always false on Classic Era and on both private-server clients (wow_vanilla_ps and
+--- wow_tbc_ps, the 2.5.3 one included): the core stubs focus there. Works on every other build.
 ---@param unit game_object The game_object to set as focus
 ---@return boolean Return true on successfully focusing the desired unit
 function core.input.set_focus(unit)
@@ -2503,7 +2591,8 @@ function core.input.set_focus(unit)
 end
 
 --- Get the local player focus
----@return table Return the game_object focus, can be nil
+--- VERSIONS: always nil on Classic Era and on both private-server clients, same stub as set_focus.
+---@return table|nil Return the game_object focus, can be nil
 function core.input.get_focus()
     return {};
 end
@@ -2686,9 +2775,9 @@ end
 --- abandoned such as a warlock demon, this answers false and calls nothing.
 ---
 --- true means the abandon request was sent; the pet is gone when the server confirms it, which
---- shows up as the player no longer having a pet. Vanilla to MoP; retail has no such function, so
---- there it answers false and the core log names the missing function. The hunter stable itself
---- is core.pet_stable.
+--- shows up as the player no longer having a pet. The hunter stable itself is core.pet_stable.
+--- VERSIONS: Vanilla to MoP only. Retail and Forever have no PetAbandon global (it moved to
+--- C_PetInfo), so there this always answers false and the core log names the missing function.
 ---@return boolean sent True when the request was sent for a pet the client says can be abandoned.
 function core.input.abandon_pet()
     return false
@@ -2895,12 +2984,16 @@ function core.input.close_loot()
     return nil
 end
 
+--- VERSIONS: silently does nothing on Forever: the core looks the buff up through UnitBuff, which
+--- the Forever client does not have. Works on every other build.
 ---@return nil
 ---@param buff_otr buff
 function core.input.cancel_buff(buff_otr)
     return nil
 end
 
+--- VERSIONS: does nothing on Classic Era, Titan and both private-server clients (compiled out).
+--- Works on Retail, Forever, TBC Classic and MoP.
 ---@return nil
 ---@param index number
 ---@param is_accept boolean
@@ -2908,6 +3001,8 @@ function core.input.accept_battlefield_port(index, is_accept)
     return nil
 end
 
+--- VERSIONS: does nothing on Classic Era, Titan and both private-server clients (compiled out).
+--- Works on Retail, Forever, TBC Classic and MoP.
 ---@return nil
 ---@param role_flags number
 ---@param battlefield_id number
@@ -2925,6 +3020,9 @@ function core.input.leave_battlefield()
     return nil
 end
 
+--- VERSIONS: does nothing on Classic Era, Titan and both private-server clients (compiled out).
+--- Works on Retail, Forever and MoP. TBC Classic runs it, but TBC has no Dungeon Finder, so
+--- nothing happens there.
 ---@return nil
 ---@param dungeon_id number
 ---@param category_id number
@@ -2932,6 +3030,9 @@ function core.input.select_dungeon(category_id, dungeon_id)
     return nil
 end
 
+--- VERSIONS: does nothing on Classic Era, Titan and both private-server clients (compiled out).
+--- Works on Retail, Forever and MoP. TBC Classic runs it, but TBC has no Dungeon Finder, so
+--- nothing happens there.
 ---@return nil
 ---@param role_flags number
 ---@param category_id number
@@ -2939,17 +3040,26 @@ function core.input.join_dungeon(category_id, role_flags)
     return nil
 end
 
----@return nil
+--- True while a Dungeon Finder "group found" popup is waiting for your answer.
+--- VERSIONS: always false on Classic Era, Titan and both private-server clients (compiled out),
+--- and on TBC Classic, which has no Dungeon Finder. Real on Retail, Forever and MoP.
+---@return boolean
 function core.input.has_dungeon_proposal()
-    return nil
+    return false
 end
 
+--- VERSIONS: does nothing on Classic Era, Titan and both private-server clients (compiled out).
+--- Works on Retail, Forever and MoP. TBC Classic runs it, but TBC has no Dungeon Finder, so
+--- nothing happens there.
 ---@return nil
 ---@param is_accept boolean
 function core.input.accept_dungeon_proposal(is_accept)
     return nil
 end
 
+--- VERSIONS: does nothing on Classic Era, Titan and both private-server clients (compiled out).
+--- Works on Retail, Forever and MoP. TBC Classic runs it, but TBC has no Dungeon Finder, so
+--- nothing happens there.
 ---@return nil
 ---@param index integer
 function core.input.clear_dungeon_selections(index)
@@ -3222,12 +3332,20 @@ function core.spell_book.get_buff_description(buff_ptr)
 end
 
 --- Retrieves a table containing all spells and their corresponding IDs.
+---
+--- VERSIONS: on the private-server clients the list comes from the client's spell book Lua
+--- (GetSpellBookItemInfo, FUTURESPELL rows excluded) and is cached for 1 second, so a newly
+--- learned spell can be missing for up to a second. Vanilla 1.14 always takes that path; TBC 2.5.3
+--- walks the book natively first and falls back to it. Every other build walks it natively.
 ---@return table<number, number>
 function core.spell_book.get_spells()
     return {}
 end
 
 --- Checks if the specified spell identified by its ID is owned by the localplayer.
+---
+--- VERSIONS: on the private-server clients (no C_SpellBook) this searches get_spells() instead,
+--- and when that list is empty it answers is_spell_learned(spell_id) rather than false.
 ---@param spell_id integer The ID of the spell.
 ---@return boolean Returns true if the specified spell is equipped, otherwise returns false.
 function core.spell_book.has_spell(spell_id)
@@ -3416,11 +3534,16 @@ end
 
 --- Retrieves the local player's current gliding/skyriding state.
 --- Returns a fallback table with false/false/0 when gliding info is unavailable.
+--- VERSIONS: real data on Retail and Forever only. Era, TBC, MoP Classic and Titan have no
+--- C_PlayerInfo.GetGlidingInfo, so they always get the false/false/0 table.
 ---@return gliding_info info A table containing is_gliding, can_glide, and forward_speed.
 function core.spell_book.get_gliding_info()
     return {}
 end
 
+--- Returns the base spell id of an override spell (C_Spell.GetBaseSpell).
+--- VERSIONS: resolves on Retail and Forever only. On Era, TBC, MoP Classic, Titan and the
+--- private-server clients the game function does not exist, and the id you pass in comes back.
 ---@return integer
 ---@param spell_id integer
 function core.spell_book.get_base_spell_id(spell_id)
@@ -3447,9 +3570,12 @@ function core.spell_book.is_item_usable(item_id)
     return false
 end
 
----@return integer
+---@return integer|nil
 ---@param index integer
 --- 1 Blood | 2 Unholy | 3 Frost | 4 Death
+--- VERSIONS: nil on Retail and Forever (no per-rune type in those clients) and on the
+--- private-server clients (not wired up). Only Era, TBC, MoP and Titan read one, and of those
+--- only MoP and Titan have Death Knights.
 function core.spell_book.get_rune_type(index)
     return 0
 end
@@ -3491,6 +3617,10 @@ end
 --- If `caster` is not provided, it defaults to the local player.
 --- If `target` is not provided, it defaults to the current target of the local player.
 --- This function internally evaluates the spell's range data and both game object positions.
+---
+--- VERSIONS: on the private-server clients the check goes by the spell's name, not its id, so a
+--- ranked spell is checked at whichever rank the game resolves that name to (normally your highest),
+--- not at the rank id you passed.
 ---@param spell_id integer The ID of the spell to check.
 ---@param target? game_object (optional) The target game object to check range against. Defaults to current target if omitted.
 ---@param caster? game_object (optional) The caster game object. Defaults to the local player if omitted.
@@ -3525,6 +3655,8 @@ function core.spell_book.get_spell_cast_count(spell_id)
     return 0
 end
 
+--- VERSIONS: Retail only. Always 0 on every classic build (Era, TBC, MoP, Titan, Forever and
+--- both private servers): the core does not call C_AssistedCombat there.
 ---@return number
 ---@param target game_object
 ---@param ui_check? boolean -- true wont suggest the spell unless is on the action bar (optional)
@@ -3544,7 +3676,11 @@ end
 ---@field loyalty_rate number The pet loyalty rate.
 
 --- Retrieves the current pet happiness information.
----@return pet_happiness_data A table containing happiness, damage_percentage, and loyalty_rate.
+--- VERSIONS: nil on Retail. Every classic build returns the table, but two of them are not real:
+--- Forever always answers happiness 0 / damage 100 / loyalty 0 (the core calls a global Forever
+--- does not have; Forever has it as C_PetInfo.GetPetHappiness), and MoP Classic pets have no
+--- happiness at all, so the MoP table means nothing.
+---@return pet_happiness_data|nil A table containing happiness, damage_percentage, and loyalty_rate.
 function core.spell_book.get_pet_happiness()
     return {}
 end
@@ -3558,8 +3694,9 @@ end
 --- Added 2026-09-26.
 ---
 --- available is computed for you exactly the way Blizzard's own pet frames compute it. 0 / 0 is a
---- normal answer for a character without a hunter pet. nil on retail, which has no such function
---- (the core log names it). Pets after TBC have talents instead, and what the function answers on
+--- normal answer for a character without a hunter pet. nil on retail, which has no such function,
+--- and on Forever, which has it only as C_PetInfo.GetPetTrainingPoints, a name the core does not call
+--- yet (the core log names it). Pets after TBC have talents instead, and what the function answers on
 --- those clients has not been measured, so do not build on it there.
 ---@return pet_training_points|nil points The training points, or nil when the client has no training points API.
 function core.spell_book.get_pet_training_points()
@@ -3567,8 +3704,10 @@ function core.spell_book.get_pet_training_points()
 end
 
 --- Checks if a spell is flagged as important.
+--- VERSIONS: Retail only. nil (not false) on every classic build, Forever and the private
+--- servers included.
 ---@param spell_id integer The ID of the spell to check.
----@return boolean True if the spell is important, false otherwise.
+---@return boolean|nil True if the spell is important, false otherwise; nil off Retail.
 function core.spell_book.is_important_spell(spell_id)
     return false
 end
@@ -5089,10 +5228,17 @@ function core.quests.get_quest_reward(choice) end
 function core.quests.confirm_accept_quest() end
 
 --- Returns the total number of entries in the quest log (including headers).
+--- VERSIONS: always 0 on Forever, which lacks the classic quest log globals the classic builds call
+--- (the same gap hits get_quest_log_title, select_quest_log_entry, add/remove_quest_watch,
+--- set_abandon_quest and abandon_quest). Works on Retail, Era, TBC and MoP.
 ---@return integer count The number of quest log entries.
 function core.quests.get_num_quest_log_entries() return 0 end
 
 --- Returns information about a quest in the quest log.
+--- VERSIONS: an empty entry on Forever (see get_num_quest_log_entries).
+--- VERSIONS: on Retail is_complete is always nil (the game's retail quest info has no such field).
+--- On the classic builds only title to quest_id are right: is_task, is_story, start_event,
+--- is_on_map, has_local_poi and is_hidden are read from the wrong positions (core bug); do not use them.
 ---@param index integer The quest log index.
 ---@return quest_log_entry entry A table containing the quest log entry information.
 function core.quests.get_quest_log_title(index) return {} end
@@ -5108,7 +5254,11 @@ function core.quests.is_quest_flagged_completed(quest_id) return false end
 function core.quests.is_on_quest(quest_id) return false end
 
 --- Selects a quest log entry (sets it as the active quest).
----@param index integer The quest log index.
+--- VERSIONS: does nothing on Forever (see get_num_quest_log_entries).
+--- VERSIONS: on Retail the game call takes a QUEST ID, not a log index: pass
+--- get_quest_log_title(i).quest_id there, or the wrong quest (or none) is selected. Same for
+--- add_quest_watch and remove_quest_watch.
+---@param index integer The quest log index (the quest id on Retail).
 function core.quests.select_quest_log_entry(index) end
 
 --- Expands a quest log header, revealing the quests grouped under it.
@@ -5142,21 +5292,26 @@ function core.quests.get_quest_log_leader_board(obj_index, quest_log_index) retu
 function core.quests.get_quest_log_item_link(type, index, quest_id) return "" end
 
 --- Adds a quest to the watch list (tracker).
----@param index integer The quest log index.
+--- VERSIONS: does nothing on Forever (see get_num_quest_log_entries); remove_quest_watch too.
+--- On Retail pass the quest id, not the log index (see select_quest_log_entry); watch_time is ignored there.
+---@param index integer The quest log index (the quest id on Retail).
 ---@param watch_time? number The watch time duration (default 0).
 function core.quests.add_quest_watch(index, watch_time) end
 
 --- Removes a quest from the watch list (tracker).
----@param index integer The quest log index.
+--- VERSIONS: does nothing on Forever (see get_num_quest_log_entries). On Retail pass the quest id.
+---@param index integer The quest log index (the quest id on Retail).
 function core.quests.remove_quest_watch(index) end
 
 --- Pushes the selected quest to the quest detail frame.
 function core.quests.quest_log_push_quest() end
 
 --- Sets the selected quest for abandonment.
+--- VERSIONS: does nothing on Forever (see get_num_quest_log_entries).
 function core.quests.set_abandon_quest() end
 
 --- Abandons the currently selected quest.
+--- VERSIONS: does nothing on Forever (see get_num_quest_log_entries).
 function core.quests.abandon_quest() end
 
 --- Returns the list of gossip options from an NPC.
@@ -5217,6 +5372,8 @@ function core.quests.buy_trainer_service(index) end
 function core.quests.close_trainer() return false end
 
 --- Returns spell information for an item.
+--- VERSIONS: always empty on Forever. Elsewhere it relies on Blizzard's deprecated-API fallbacks,
+--- so it is also empty whenever the game's loadDeprecationFallbacks setting is off.
 ---@param item_id_or_link integer|string The item ID or item link.
 ---@return item_spell_info info A table containing the item spell information.
 function core.quests.get_item_spell(item_id_or_link) return {} end
@@ -5335,6 +5492,17 @@ function core.quests.get_quest_item_link(type, index) return "" end
 ---@field g number The green color component (0-1).
 ---@field b number The blue color component (0-1).
 
+--- VERSIONS: two implementations.
+--- Retail: Blizzard's C_AuctionHouse, as documented per function.
+--- Era / TBC / Titan (and the other classic builds): an emulation on the legacy auction API. There
+--- auction_id / owned_auction_id are 1-based ROW INDICES of the current search / owner list (valid
+--- until the list changes), and the retail-only parts answer fixed values (noted per function).
+--- Forever: NOT WORKING. It builds as classic, but its client only has retail's C_AuctionHouse, so
+--- the legacy calls are missing: readers answer 0 / {} / "", actions do nothing, apart from the
+--- fixed answers noted per function.
+--- MoP Classic: UNVERIFIED. Its client has both the legacy calls and C_AuctionHouse and picks one at
+--- runtime; this module always uses the legacy one, so on a realm running the modern auction house
+--- it behaves like Forever.
 ---@class auction_house
 core.auction_house = {}
 
@@ -5350,28 +5518,30 @@ function core.auction_house.get_num_replicate_items()
 end
 
 --- Returns detailed information about a replicate item at the given index.
----@param index integer The 0-based index of the replicate item.
+--- VERSIONS: 0-based (0 to count - 1) on Retail, 1-based (1 to count) on the classic builds. Same for
+--- get_replicate_item_link, get_replicate_item_time_left and batch_get_replicate_items' start.
+---@param index integer The index of the replicate item: 0-based on Retail, 1-based on classic builds.
 ---@return replicate_item_info info A table containing the replicate item information.
 function core.auction_house.get_replicate_item_info(index)
     return {}
 end
 
 --- Returns the item link string for a replicate item at the given index.
----@param index integer The 0-based index of the replicate item.
+---@param index integer The index of the replicate item: 0-based on Retail, 1-based on classic builds.
 ---@return string link The item link string.
 function core.auction_house.get_replicate_item_link(index)
     return ""
 end
 
 --- Returns the time remaining category for a replicate item.
----@param index integer The 0-based index of the replicate item.
+---@param index integer The index of the replicate item: 0-based on Retail, 1-based on classic builds.
 ---@return integer time_left The time remaining category.
 function core.auction_house.get_replicate_item_time_left(index)
     return 0
 end
 
 --- Returns a batch of replicate items as a raw string (for fast bulk processing).
----@param start integer The starting index.
+---@param start integer The starting index: 0-based on Retail, 1-based on classic builds.
 ---@param count integer The number of items to retrieve.
 ---@return string raw_data The raw serialized item data.
 function core.auction_house.batch_get_replicate_items(start, count)
@@ -5380,6 +5550,8 @@ end
 
 --- Sends a search query for an item on the auction house.
 --- Results are retrieved via commodity or item search result functions depending on the item type.
+--- VERSIONS: on classic builds this searches by item name, looked up through Blizzard's
+--- deprecated-API fallbacks, so it sends nothing when the game's loadDeprecationFallbacks setting is off.
 ---@param item_id integer The item ID to search for.
 ---@param item_level? integer Optional item level filter (default 0).
 ---@param item_suffix? integer Optional item suffix filter (default 0).
@@ -5388,6 +5560,8 @@ end
 function core.auction_house.send_search_query(item_id, item_level, item_suffix, separate_owner_items) end
 
 --- Sends a sell-oriented search query (used when posting items to compare prices).
+--- VERSIONS: on classic builds this and send_search_query are the same name search; item_level,
+--- item_suffix and separate_owner_items are ignored.
 ---@param item_id integer The item ID to search for.
 ---@param item_level? integer Optional item level filter (default 0).
 ---@param item_suffix? integer Optional item suffix filter (default 0).
@@ -5404,13 +5578,14 @@ end
 
 --- Returns information about a specific commodity search result.
 ---@param item_id integer The item ID.
----@param index integer The 0-based index of the result.
+---@param index integer The 1-based index of the result (every build).
 ---@return commodity_search_result_info info A table containing the commodity result information.
 function core.auction_house.get_commodity_search_result_info(item_id, index)
     return {}
 end
 
 --- Returns whether all commodity search results have been received for the given item.
+--- VERSIONS: always true on classic builds (has_full_item_search_results too).
 ---@param item_id integer The item ID.
 ---@return boolean has_full True if all results have been received.
 function core.auction_house.has_full_commodity_search_results(item_id)
@@ -5430,13 +5605,14 @@ end
 ---@param item_id integer The item ID.
 ---@param item_level? integer Optional item level filter (default 0).
 ---@param item_suffix? integer Optional item suffix filter (default 0).
----@param index integer The 0-based index of the result.
+---@param index integer The 1-based index of the result (every build).
 ---@return item_search_result_info info A table containing the item result information.
 function core.auction_house.get_item_search_result_info(item_id, item_level, item_suffix, index)
     return {}
 end
 
 --- Returns whether all item search results have been received.
+--- VERSIONS: always true on classic builds.
 ---@param item_id integer The item ID.
 ---@param item_level? integer Optional item level filter (default 0).
 ---@param item_suffix? integer Optional item suffix filter (default 0).
@@ -5447,6 +5623,7 @@ end
 
 --- Sends a request to query the player's own active auctions.
 --- Results become available via get_num_owned_auctions / get_owned_auction_info.
+--- VERSIONS: no-op on classic builds, where the owner list needs no query while the AH is open.
 ---@return nil
 function core.auction_house.query_owned_auctions() end
 
@@ -5457,13 +5634,15 @@ function core.auction_house.get_num_owned_auctions()
 end
 
 --- Returns information about an owned auction at the given index.
----@param index integer The 0-based index of the owned auction.
+---@param index integer The 1-based index of the owned auction (every build).
 ---@return owned_auction_info info A table containing the owned auction information.
 function core.auction_house.get_owned_auction_info(index)
     return {}
 end
 
 --- Posts a commodity item on the auction house.
+--- VERSIONS: on classic builds quantity is ignored: the whole stack in that slot is posted as one
+--- auction (bid = buyout = stack size * unit_price), and true only means the calls ran.
 --- Same (bag, slot) pair as core.auction_house.pickup_container_item, including the classic and
 --- retail shift difference documented there.
 ---@param bag integer The bag id: 0 = backpack, 1 to 4 = the equipped bags.
@@ -5477,6 +5656,8 @@ function core.auction_house.post_commodity(bag, slot, duration, quantity, unit_p
 end
 
 --- Posts a non-commodity item on the auction house.
+--- VERSIONS: RETAIL ONLY. On every classic build it posts nothing and still returns true; use
+--- pickup_container_item + click_auction_sell_button + do_post_auction there.
 --- Same (bag, slot) pair as core.auction_house.pickup_container_item, including the classic and
 --- retail shift difference documented there.
 ---@param bag integer The bag id: 0 = backpack, 1 to 4 = the equipped bags.
@@ -5497,6 +5678,8 @@ end
 function core.auction_house.place_bid(auction_id, bid_amount) end
 
 --- Initiates a commodity purchase. Must be confirmed with confirm_commodities_purchase.
+--- VERSIONS: on classic builds this call already BUYS: it bids buyout on whole matching stacks of
+--- the current search until quantity is reached (it can overshoot); confirm / cancel do nothing there.
 ---@param item_id integer The item ID of the commodity.
 ---@param quantity integer The quantity to purchase.
 ---@return nil
@@ -5518,6 +5701,7 @@ function core.auction_house.cancel_commodities_purchase() end
 function core.auction_house.cancel_auction(owned_auction_id) end
 
 --- Returns whether an owned auction can be cancelled.
+--- VERSIONS: always true on classic builds.
 ---@param owned_auction_id integer The owned auction ID.
 ---@return boolean can_cancel True if the auction can be cancelled.
 function core.auction_house.can_cancel_auction(owned_auction_id)
@@ -5525,6 +5709,7 @@ function core.auction_house.can_cancel_auction(owned_auction_id)
 end
 
 --- Calculates the deposit cost for posting a commodity.
+--- VERSIONS: always 0 on classic builds (get_cancel_cost too).
 ---@param item_id integer The item ID.
 ---@param duration integer The auction duration (1 = 12h, 2 = 24h, 3 = 48h).
 ---@param quantity integer The quantity to post.
@@ -5534,6 +5719,7 @@ function core.auction_house.calculate_commodity_deposit(item_id, duration, quant
 end
 
 --- Returns the cancellation cost for an owned auction.
+--- VERSIONS: always 0 on classic builds.
 ---@param owned_auction_id integer The owned auction ID.
 ---@return number cost The cancellation cost in copper.
 function core.auction_house.get_cancel_cost(owned_auction_id)
@@ -5542,6 +5728,7 @@ end
 
 --- Returns whether the AH throttled message system is ready for another request.
 --- Use this to avoid sending requests too quickly and getting throttled.
+--- VERSIONS: classic builds ask CanSendAuctionQuery and answer true when it is missing (Forever).
 ---@return boolean ready True if the system is ready for a new request.
 function core.auction_house.is_throttled_message_system_ready()
     return false
@@ -5552,6 +5739,8 @@ end
 function core.auction_house.close_auction_house() end
 
 --- Returns whether the auction house frame is currently shown.
+--- VERSIONS: classic builds check the old auction frame, so this is always false on Forever (and on
+--- MoP Classic whenever the game opened the modern auction house instead).
 ---@return boolean is_shown True if the auction house is open.
 function core.auction_house.is_auction_house_shown()
     return false
@@ -5559,6 +5748,7 @@ end
 
 --- Returns the remaining duration (in seconds) for the current commodity price quote.
 --- A quote locks in the price for a commodity purchase for a limited time.
+--- VERSIONS: always 0 on classic builds.
 ---@return number seconds The remaining quote duration in seconds.
 function core.auction_house.get_quote_duration_remaining()
     return 0
@@ -5566,6 +5756,7 @@ end
 
 --- Returns the commodity status of an item in a bag slot.
 --- Determines whether the item will be listed as a commodity or a regular item.
+--- VERSIONS: always 0 on classic builds.
 ---@param bag integer The bag index.
 ---@param slot integer The slot index within the bag.
 ---@return integer status The commodity status code.
@@ -5574,6 +5765,10 @@ function core.auction_house.get_item_commodity_status(bag, slot)
 end
 
 --- Returns detailed item information for an item ID (similar to GetItemInfo).
+--- VERSIONS: on classic builds (this and get_item_icon_name) it goes through Blizzard's
+--- deprecated-API fallbacks: always empty on Forever, and empty elsewhere when the game's
+--- loadDeprecationFallbacks setting is off. Retail calls the game directly. core.quests.get_item_info
+--- has no such dependency.
 ---@param item_id integer The item ID.
 ---@return ah_item_info info A table containing the item information.
 function core.auction_house.get_item_info(item_id)
@@ -5581,6 +5776,7 @@ function core.auction_house.get_item_info(item_id)
 end
 
 --- Returns the icon texture name/path for an item.
+--- VERSIONS: same classic dependency as get_item_info (always "" on Forever).
 ---@param item_id integer The item ID.
 ---@return string icon_name The icon texture name.
 function core.auction_house.get_item_icon_name(item_id)
@@ -5589,6 +5785,7 @@ end
 
 --- Returns the tooltip lines for an item.
 --- Each line contains left/right text and an RGB color.
+--- VERSIONS: RETAIL ONLY; always {} on every classic build.
 ---@param item_id integer The item ID.
 ---@param link_fragment? string Optional item link fragment for more specific tooltip data.
 ---@return ah_tooltip_line[] lines An array of tooltip line tables.
@@ -5614,11 +5811,14 @@ end
 function core.auction_house.pickup_container_item(bag, slot) end
 
 --- Clicks the auction sell button to confirm placing the cursor item into the sell slot.
+--- VERSIONS: CLASSIC ONLY (legacy sell slot: Era, TBC, Titan; MoP unverified). No-op on Retail and Forever.
 ---@return nil
 function core.auction_house.click_auction_sell_button() end
 
 --- Posts an auction using the classic auction house flow.
 --- Requires an item to be placed in the sell slot first via pickup_container_item + click_auction_sell_button.
+--- VERSIONS: CLASSIC ONLY (Era, TBC, Titan; MoP unverified). Returns false on Retail and Forever (use
+--- post_commodity / post_item on Retail).
 ---@param min_bid number The minimum starting bid in copper.
 ---@param buyout number The buyout price in copper.
 ---@param duration integer The auction duration (1 = 12h, 2 = 24h, 3 = 48h).
@@ -5630,6 +5830,7 @@ function core.auction_house.do_post_auction(min_bid, buyout, duration, stack_siz
 end
 
 --- Returns information about the item currently in the auction sell slot.
+--- VERSIONS: CLASSIC ONLY (Era, TBC, Titan; MoP unverified). "" on Retail and Forever.
 ---@return string info The sell item info string.
 function core.auction_house.get_auction_sell_item_info()
     return ""
@@ -5641,6 +5842,9 @@ function core.auction_house.get_cursor_item_name()
     return ""
 end
 
+--- VERSIONS: CLASSIC BUILDS ONLY (Era, TBC, MoP and Forever confirmed). On Retail every core.mail
+--- function is a stub: readers answer 0 / {} / "" / false and actions do nothing, even though the
+--- retail client has the same mail API.
 ---@class mail
 core.mail = {}
 
@@ -5890,6 +6094,9 @@ end
 ---@field type number BattlePetTypeID (1-10).
 
 ---@class pet_battle
+--- VERSIONS: RETAIL ONLY, the whole namespace. On every classic build, MoP Classic included
+--- (which does have pet battles in game), every reader returns false/0/empty and every action
+--- is a silent no-op: the core compiles the namespace to stubs outside retail.
 core.pet_battle = {}
 
 --- Returns whether the player is currently in a pet battle.
@@ -6189,6 +6396,9 @@ end
 ---@param item_id integer The item ID of the toy to use.
 function core.pet_battle.use_toy(item_id) end
 
+--- VERSIONS: Retail feature; the Forever client has the delve API too. On Era/TBC, MoP and Titan the
+--- client has no delve API and every core.delves function returns false; leave_delve does not fall
+--- back to leaving the party there.
 ---@class delves
 core.delves = {}
 
@@ -6336,6 +6546,8 @@ end
 ---@field expire_time number Absolute GetTime() value at which the ability fires.
 ---@field is_emphasized boolean True for a high priority bar, which ExBoss emphasizes on screen.
 
+--- VERSIONS: ExBoss is a Retail-only addon. On every classic build is_loaded() and
+--- has_active_bars() are always false and get_bars() is always {}.
 ---@class addons_exboss
 core.addons.exboss = {}
 
@@ -6373,6 +6585,8 @@ end
 ---@field id integer The spell or item ID (always positive).
 ---@field is_item boolean Whether this entry is an item (true) or a spell (false).
 
+--- VERSIONS: ConROC ships for Classic Era and TBC Anniversary. Retail uses a different addon,
+--- ConRO, which this does not read, so on Retail is_loaded() is false and both lists are {}.
 ---@class addons_conroc
 core.addons.conroc = {}
 
@@ -6395,6 +6609,8 @@ function core.addons.conroc.get_suggested_utility_spells()
     return {}
 end
 
+--- VERSIONS: Questie is a Classic-only addon (Era, TBC, Titan, MoP, Forever). On Retail
+--- is_loaded() and is_ready() are always false, the id lists are {} and the other calls nil.
 ---@class addons_questie
 core.addons.questie = {}
 
@@ -6501,6 +6717,9 @@ end
 ---@field is_manual boolean Whether the waypoint was placed manually. RestedXP always returns false.
 ---@field wrong_continent boolean Whether the waypoint is on another continent and its distance is not meaningful.
 
+--- VERSIONS: RestedXP ships for Retail, Era, TBC, MoP and Forever, not for Titan (China). On
+--- Titan is_loaded() and has_current_step() are always false and the reads return empty or
+--- zero-valued tables.
 ---@class addons_rested_xp
 core.addons.rested_xp = {}
 
@@ -6723,6 +6942,8 @@ end
 -- core.addons.maxdps
 -- ========================================
 
+--- VERSIONS: MaxDps ships for Retail, Era, TBC and MoP, not for Titan (China) or Forever. There
+--- is_loaded() is always false and get_next_spell() 0.
 ---@class addons_maxdps
 core.addons.maxdps = {}
 
@@ -6786,6 +7007,8 @@ end
 -- core.addons.arena_core
 -- ========================================
 
+--- VERSIONS: Arena Core is a Retail-only addon. On every classic build is_loaded() is false,
+--- get_frame_info() nil, get_class() "" and get_spec_id() 0.
 ---@class addons_arena_core
 core.addons.arena_core = {}
 
@@ -6829,6 +7052,8 @@ end
 -- core.addons.mdt
 -- ========================================
 
+--- VERSIONS: Mythic Dungeon Tools ships for Retail and MoP Classic only. On Era, TBC and the
+--- other classic builds is_loaded() is false, the counts are 0 and the get_* reads nil.
 ---@class addons_mdt
 core.addons.mdt = {}
 
@@ -7133,6 +7358,8 @@ function core.lfg_list.get_application_info(result_id)
 end
 
 --- Programmatically clicks the refresh button on the Blizzard LFG search panel.
+--- VERSIONS: Classic Era and TBC Classic have no such panel (their group finder is a different
+--- window), so there this always answers false, "LFGListFrame.SearchPanel.RefreshButton unavailable".
 ---@return boolean success True if the click was issued without error.
 ---@return string|nil error The error message if the call failed, nil on success.
 function core.lfg_list.refresh_search_panel()
@@ -7140,6 +7367,7 @@ function core.lfg_list.refresh_search_panel()
 end
 
 --- Returns whether the Blizzard LFG search panel is currently visible.
+--- VERSIONS: always false on Classic Era and TBC Classic, which have no such panel.
 ---@return boolean is_visible True if the search panel is visible.
 function core.lfg_list.search_panel_is_visible()
     return false
@@ -7172,8 +7400,11 @@ end
 core.profession = {}
 
 --- Opens the given profession's window by casting its stable Apprentice-rank spell (locale-
---- independent, works across every expansion). Notes: Mining opens its Smelting window;
+--- independent). Notes: Mining opens its Smelting window;
 --- Skinning has no window; Fishing starts the fishing cast rather than opening a window.
+--- VERSIONS: only professions that exist in that game version can open. Jewelcrafting (TBC+) and
+--- Inscription (Wrath+) do not exist on Era or the Vanilla private server, Inscription does not
+--- exist on TBC or the TBC private server, and First Aid does not exist on Retail.
 ---@param profession integer A core.profession.* enum value.
 ---@return boolean success True if the open/cast was issued; false for an unknown enum or no local player.
 function core.profession.open_profession(profession)
@@ -7202,6 +7433,12 @@ end
 ---@field skill_modifier integer Bonus skill from gear/buffs.
 ---@field skill_line_name string Localized skill-line name.
 
+--- VERSIONS: two halves on different clients.
+--- The classic index-based functions (do_trade_skill ... get_trade_skill_reagent_item_link) work on
+--- Era, TBC and MoP; on Retail and Forever they answer 0 / nil / {} / false and actions do nothing.
+--- The C_TradeSkillUI functions (craft_recipe ... get_all_profession_trade_skill_lines) work on Retail
+--- and Forever only; on Era, TBC, MoP and Titan they answer defaults. get_recipe_num_items_produced and
+--- get_recipe_tools answer defaults everywhere (their Blizzard function exists on no current client).
 ---@class trade_skill
 core.trade_skill = {}
 
@@ -7493,6 +7730,8 @@ function core.trade_skill.get_recipe_link(recipe_spell_id)
 end
 
 --- Returns the min/max quantity a recipe produces (C_TradeSkillUI.GetRecipeNumItemsProduced).
+--- VERSIONS: always { min_made = 0, max_made = 0 } on every client, Retail included: that Blizzard
+--- function is gone. Use get_recipe_schematic's quantity_min / quantity_max on Retail.
 ---@param recipe_spell_id integer Recipe spell ID.
 ---@return profession_num_made made Quantity produced per craft.
 function core.trade_skill.get_recipe_num_items_produced(recipe_spell_id)
@@ -7500,6 +7739,7 @@ function core.trade_skill.get_recipe_num_items_produced(recipe_spell_id)
 end
 
 --- Returns the required tools for a recipe (C_TradeSkillUI.GetRecipeTools).
+--- VERSIONS: always {} on every client, Retail included: that Blizzard function is gone.
 ---@param recipe_spell_id integer Recipe spell ID.
 ---@return string[] tools Array of required tool names (empty if none).
 function core.trade_skill.get_recipe_tools(recipe_spell_id)
@@ -7543,6 +7783,8 @@ end
 -- core.craft - classic Craft API (enchanting/beast training on older clients)
 --------------------------------------------------------------------------------
 
+--- VERSIONS: CLASSIC ONLY (Era, TBC and MoP). On Retail and Forever the Craft API does not exist and
+--- every core.craft function answers 0 / nil / false or does nothing.
 ---@class craft
 core.craft = {}
 
@@ -7673,6 +7915,9 @@ end
 -- core.skill - classic Skill window API
 --------------------------------------------------------------------------------
 
+--- VERSIONS: Classic Era, TBC and MoP Classic only. Every getter answers 0 / nil / false and every
+--- setter does nothing on Retail (no Skill window functions) and on Forever (it has the Skill window
+--- functions under a new name, C_SkillInfo, that the core does not call yet).
 ---@class skill
 core.skill = {}
 

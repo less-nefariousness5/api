@@ -11,6 +11,8 @@
 ---@class questie_obj_entry
 ---@field id number -- The NPC or object ID associated with a quest objective.
 
+--- VERSIONS: Questie does not run on Retail (see core.addons.questie). There is_hooked() is
+--- false, get_list_ids() is empty and is_quest_object() is always false.
 ---@class questie_tracker
 ---@field obj_list questie_obj_entry[] -- Cached list of quest objective NPC/object IDs. Refreshed automatically.
 ---@field is_hooked fun(self: questie_tracker): boolean -- Returns whether Questie is loaded and has quest log data.

@@ -5,6 +5,10 @@
 --- x: -> IntelliSense
 --- Warning: Access with ":", not "."
 
+--- VERSIONS: the CC / DR / immunity / burst tables come from a per-version database picked by
+--- core.get_game_version(): "Midnight", "Tbc", "Mop" and "Vanilla" each get their own. Every
+--- other answer ("Titan", "Forever") falls back to the MoP database, and is_wotlk is never true
+--- (it tests "Classic Wotlk", which get_game_version does not return).
 ---@class pvp_helper
 ---@field is_player fun(self: pvp_helper, unit: game_object): boolean
 ---@field is_pvp_scenario fun(self: pvp_helper): boolean

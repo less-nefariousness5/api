@@ -5,6 +5,9 @@
 -- x: -> IntelliSense
 -- Warning: Access with ":", not "."
 
+--- VERSIONS: get_mythic_key_level reads core.get_keystone_level, which is Retail only. On every
+--- other build it is 0, so is_mythic_plus_dungeon is false and get_mythic_scaling is 1.0. The
+--- *_exception checks name Retail (The War Within) dungeon mobs and spells.
 ---@class dungeons_helper
 ---@field is_heroic_dungeon fun(self: dungeons_helper): boolean
 ---@field is_mythic_dungeon fun(self: dungeons_helper): boolean

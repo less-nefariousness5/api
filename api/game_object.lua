@@ -1,4 +1,8 @@
 
+--- VERSIONS: is_tanking is unreliable on Era, MoP, Titan and both private servers. The core
+--- compares against a hardcoded offset that is not the mob's target field on those clients (TBC
+--- and Forever were moved to the verified field; retail asks UnitDetailedThreatSituation). There,
+--- compare mob:get_target() with yourself instead. status and threat_percent do not use that read.
 ---@class threat_table
 ---@field is_tanking boolean
 ---@field status integer -- 0, 1, 2, 3
@@ -56,7 +60,8 @@
 ---@field slot_id integer 1-BASED index into the container, always the native index plus one.
 --- For bags 1 to 4 this is the slot within that bag. For the player container (bag 0, and both
 --- game_object enumerations) it is a position in the whole player array: 1 to 19 worn gear,
---- 20 to 23 the bag objects, 24 and up the backpack, on the classic clients. NOT a
+--- 20 to 23 the bag objects, 24 and up the backpack, on the private-server clients (measured on
+--- wow_tbc_ps; the Blizzard classic clients number bags 31 to 34 like retail in their UI). NOT a
 --- core.input.use_container_item slot, see common/utility/inventory_helper.lua.
 
 ---@class unit_ranged_damage_data
@@ -74,14 +79,16 @@
 --- resolve reads as four zeros rather than nil, and there is no separate failure signal. Treat
 --- effective_armor of 0 on a live unit as "not answered", not as "no armor".
 ---
---- UnitArmor returns baseArmor, effectiveArmor, armor, posBuff, negBuff. The core reads the first
---- four and DISCARDS negBuff, which is why bonus_armor is the positive component only and a
---- debuffed unit's reduction shows up in effective_armor without a field of its own.
+--- VERSIONS (corrected 2026-09-28, bonus_armor is NOT the same on every build): on retail the core
+--- passes UnitArmor's 4th return through unchanged. On every classic build (Era, TBC, MoP, Titan,
+--- Forever, both private servers) it is posBuff - negBuff (the 4th minus the 5th return), so it
+--- nets the debuff in and CAN BE NEGATIVE. The old note here said negBuff was discarded on every
+--- build; that is only true of retail.
 ---@class armor_data
 ---@field base integer Armor before buffs and debuffs.
 ---@field effective_armor integer Armor actually applied to damage taken. This is the one mitigation math wants.
 ---@field armor integer The client's displayed armor value.
----@field bonus_armor integer The positive buff component only. UnitArmor's negBuff is not read by the core.
+---@field bonus_armor integer Retail: UnitArmor's 4th return. Classic builds: posBuff - negBuff, may be negative.
 
 ---@class nameplate_info
 ---@field is_shown boolean Whether the nameplate frame is currently shown on screen.
@@ -98,10 +105,14 @@
 ---Returns the type of the game object.
 ---@field get_type fun(self: game_object): number
 ---Returns the object type as a string.
+--- VERSIONS: RETAIL ONLY. Always "" on every classic build (Era, TBC, MoP, Titan, Forever, both
+--- private servers); the classic body is a stub.
 ---@field get_object_type_string fun(self: game_object): string
 ---Returns the class of the game object.
 ---@field get_class fun(self: game_object): number
 ---Returns the spec_id of the game object.
+--- VERSIONS: on the private-server clients (wow_vanilla_ps, wow_tbc_ps) only the local player
+--- answers; every other unit returns -1.
 ---@field get_specialization_id fun(self: game_object): number
 ---Returns the npc_id of the game object.
 ---@field get_npc_id fun(self: game_object): number
@@ -173,6 +184,9 @@
 --- "TANK" = 0  
 --- "HEALER" = 1  
 --- "DAMAGER" = 2  
+--- VERSIONS: real on retail, MoP and Titan CN. Hard -1 on Era, TBC, Forever and both private
+--- servers (the core returns "NONE" there by #if, even though Era/TBC/Forever ship
+--- UnitGroupRolesAssigned).
 ---@field get_group_role fun(self: game_object): number
 ---Returns the bounding radius of the game object.
 ---@field get_bounding_radius fun(self: game_object): number
@@ -201,8 +215,11 @@
 ---Returns whether the game object is a unit.
 ---@field is_unit fun(self: game_object): boolean
 ---Returns whether the game object is a boss.
+--- VERSIONS: always false on Era, TBC, MoP and Titan, whose clients have no UnitIsBossMob (Ketho
+--- GlobalAPI dumps; Titan UI source). Works on retail and Forever. Private servers unchecked.
 ---@field is_boss fun(self: game_object): boolean
 ---Returns whether the game object is a quest unit.
+--- VERSIONS: RETAIL ONLY. Always false on every classic build; the classic body is a stub.
 ---@field is_quest_unit fun(self: game_object): boolean
 ---Returns whether the game object is an item.
 ---@field is_item fun(self: game_object): boolean
@@ -213,8 +230,10 @@
 ---Returns whether the game object is indoors.
 ---@field is_indoors fun(self: game_object): boolean
 ---Returns whether the game object is glowing.
+--- VERSIONS: RETAIL ONLY. Always false on every classic build.
 ---@field is_glow fun(self: game_object): boolean
 ---Sets the glowing state of the game object.
+--- VERSIONS: RETAIL ONLY. A silent no-op on every classic build.
 ---@field set_glow fun(self: game_object, state: boolean): nil
 ---Returns whether the game object is in combat.
 ---@field is_in_combat fun(self: game_object): boolean
@@ -256,6 +275,8 @@
 ---Returns the maximum experience points (XP) of the game object.
 ---@field get_max_xp fun(self: game_object): number
 ---Returns the total absorb shield of the game object.
+--- VERSIONS: RETAIL ONLY. Always 0 on every classic build (the classic body is a stub, although
+--- the Era/TBC, MoP and Forever clients do have UnitGetTotalAbsorbs).
 ---@field get_total_shield fun(self: game_object): number
 ---Returns the total incoming heals of the game object.
 ---@field get_incoming_heals fun(self: game_object): number
@@ -282,6 +303,8 @@
 ---Returns the maximum flight speed of the game object.
 ---@field get_flight_speed_max fun(self: game_object): number
 ---Returns the glide speed of the game object.
+--- VERSIONS: retail and Forever only. Always 0 on Era, TBC, MoP and Titan, whose clients have no
+--- C_PlayerInfo.GetGlidingInfo. Private servers unchecked.
 ---@field get_glide_speed fun(self: game_object): number
 ---Returns the auto attack swing speed of the game object.
 ---@field get_attack_speed fun(self: game_object): number
@@ -316,6 +339,8 @@
 ---Returns the end time of the active spell being cast by the game object.
 ---@field get_active_spell_cast_end_time fun(self: game_object): number
 ---Returns whether the active spell being cast by the game object can be interrupted.
+--- VERSIONS: always true on the private-server clients (wow_vanilla_ps, wow_tbc_ps), where the
+--- not-interruptible flag is not read.
 ---@field is_active_spell_interruptable fun(self: game_object): boolean
 ---Returns whether the game object is currently channeling a spell.
 ---@field is_channelling_spell fun(self: game_object): boolean
@@ -334,6 +359,9 @@
 ---Returns resolved aura data for the specified aura spec (cached).
 ---@field get_aura_data fun(self: game_object, spec: buff_db | number[]): buff_manager_data|nil
 ---Returns a table containing the auras applied to the game object.
+--- VERSIONS (get_auras, get_buffs, get_debuffs): on the private-server clients every buff's
+--- `points` is an empty table, and an aura with no expiry reports expire_time = now + 5000 ms
+--- instead of 0.
 ---@field get_auras fun(self: game_object): buff_table
 ---Returns a table containing the buffs applied to the game object.
 ---@field get_buffs fun(self: game_object): buff_table
@@ -341,8 +369,13 @@
 ---@field get_debuffs fun(self: game_object): buff_table
 ---Returns a list of equipped items (item_slot_info) of the game object, the format comes in we call item_slot_info, a table that contains game_object ptr of the item and item_slot.
 ---
----IT RETURNS MORE THAN EQUIPPED ITEMS ON THE CLASSIC CLIENTS, and the overshoot is a fixed
+---IT RETURNS MORE THAN EQUIPPED ITEMS ON THE PRIVATE-SERVER CLIENTS, and the overshoot is a fixed
 ---number of backpack rows rather than an occasional one. Documented 2026-08-31.
+---
+---VERSIONS (corrected 2026-09-28): the classic row below was measured on wow_tbc_ps only. The
+---Blizzard classic clients (Era, TBC, MoP, Titan, Forever) number bags 31 to 34 like retail
+---(CONTAINER_BAG_OFFSET = 30 in their UI source), so the "backpack from 24" layout is not
+---established there and has not been measured. Filtering to slot_id 1..19 is right on every build.
 ---
 ---The binding walks the player's whole item array, the same buffer core.inventory
 ---.get_items_in_bag(0) returns, and trims it with a single hardcoded cutoff in
@@ -352,11 +385,11 @@
 ---
 ---  retail family   slot_id 1..30 worn, 31..35 the bag objects, backpack from 36. Cutoff correct,
 ---                  though the four or five bag OBJECTS are still included as "equipped".
----  classic family  slot_id 1..19 worn, 20..23 the bag objects, backpack from 24. The cutoff
+---  private servers slot_id 1..19 worn, 20..23 the bag objects, backpack from 24. The cutoff
 ---                  admits slot_id 24 through 35, so up to TWELVE BACKPACK ITEMS arrive labelled
 ---                  as equipment.
 ---
----So on wow_tbc_ps, wow_vanilla_ps and the Blizzard classic targets alike, filter by slot_id
+---So on wow_tbc_ps and wow_vanilla_ps, and to be safe everywhere else, filter by slot_id
 ---yourself: worn gear is slot_id 1 to 19 and nothing else. Do not treat the list length as an
 ---equipped-item count and do not feed it to anything that assumes an INVSLOT.
 ---
@@ -375,7 +408,8 @@
 ---The full 1-based map on the classic clients: 1 head, 2 neck, 3 shoulder, 4 shirt, 5 chest,
 ---6 waist, 7 legs, 8 feet, 9 wrist, 10 hands, 11 finger1, 12 finger2, 13 trinket1, 14 trinket2,
 ---15 back, 16 main hand, 17 off hand, 18 ranged, 19 tabard. Above that it keeps indexing the
----same array, so 20 to 23 are the bag objects and 24 and up is the backpack.
+---same array, so on the private-server clients 20 to 23 are the bag objects and 24 and up is the
+---backpack (measured on wow_tbc_ps; not established on the Blizzard classic clients).
 ---
 ---The returned row always exists; an empty or out-of-range slot gives .object == nil rather than
 ---nil itself, so test the field, not the return value.
@@ -387,6 +421,8 @@
 --- Returns whether the game object can be used.
 ---@field can_be_used fun(self: game_object): boolean
 --- Returns whether the game object can be skinned.
+--- VERSIONS: on every classic build this is identical to has_skin (skinnable flag only). Only
+--- retail also checks that you may loot the corpse (CanLootUnit canLoot).
 ---@field can_be_skinned fun(self: game_object): boolean
 --- Returns whether the game object has skin to harvest.
 ---@field has_skin fun(self: game_object): boolean
@@ -412,13 +448,19 @@
 ---@field item_enchant_id fun(self: game_object): integer
 ---Returns the current spell haste percentage of the game object.  
 ---A value of 8 means 8% haste.
+--- VERSIONS: always 0 on the private-server clients (wow_vanilla_ps, wow_tbc_ps).
 ---@field get_spell_haste fun(self: game_object): number
 ---Returns the duration (in seconds) of a specific empower stage for the currently cast empower spell by the game object.
+--- VERSIONS: RETAIL ONLY. Always 0 on every classic build.
 ---@field get_empower_stage_duration fun(self: game_object, index:number): number
 ---Returns the maximum empower stage of the spell being cast by the game object.
+--- VERSIONS: RETAIL ONLY. On classic builds it reads a retail-layout field and the value is
+--- meaningless (no empower spells exist there); do not call it.
 ---@field get_empower_max_stage fun(self: game_object): number
 ---Returns the game object that currently holds the combo points generated by this game object.
----@field get_combo_points_target fun(self: game_object): game_object
+--- VERSIONS: works on TBC, MoP, Forever and wow_tbc_ps. Always nil on retail, Era, Titan and
+--- wow_vanilla_ps.
+---@field get_combo_points_target fun(self: game_object): game_object|nil
 ---Returns the total amount of healing that is being absorbed on this game object (i.e., cannot be healed until the absorb is removed).
 ---@field get_total_heal_absorbs fun(self: game_object): number
 ---Returns whether the game object currently has auto attack toggled on.
@@ -427,6 +469,8 @@
 ---@field does_bobber_have_fish fun(self: game_object): boolean
 ---Returns the current empower stage of the spell being cast by the game object.
 ---Returns -1 if not currently casting an empower spell.
+--- VERSIONS: RETAIL ONLY. On classic builds it reads a retail-layout field and the value is
+--- meaningless (no empower spells exist there); do not call it.
 ---@field get_empower_current_stage fun(self: game_object): number
 ---Returns the unit's ranged damage information including speed, damage range, buffs, and percentage modifier.
 ---@field get_unit_ranged_damage fun(self: game_object): unit_ranged_damage_data
@@ -437,7 +481,39 @@
 ---calls; there is no scalar return path anywhere in it. See armor_data for which field to use.
 ---@field get_armor fun(self: game_object): armor_data
 ---Returns the current state flags bitfield of the game object.
+--- VERSIONS: RETAIL ONLY. Always 0 on every classic build; the classic body is a stub.
+---This is the object's own state word at object+0x94, NOT the NPC's role: it read 0 on 63 samples
+---across vendors, an innkeeper, guards and the player. For "what does this NPC offer" use
+---get_npc_flags below.
 ---@field get_state_flags fun(self: game_object): integer
+---Returns the unit's UNIT_NPC_FLAGS word raw: the services the NPC offers, readable BEFORE any
+---interaction. The same bits the client uses for the cursor and the soft-interact icon. 0 for a
+---non-unit. Added in core after 2.069 ("Added npc tags + forever stuff", wow_core master).
+---
+---Bits (enum npc_flags in wow_core game_object.h; they match TrinityCore's UnitDefines.h NPCFlags):
+---  0x1 gossip, 0x2 quest giver, 0x4 unk (TrinityCore: account banker), 0x10 trainer,
+---  0x20 class trainer, 0x40 profession trainer, 0x80 vendor, 0x100 ammo vendor,
+---  0x200 food vendor, 0x400 poison vendor, 0x800 reagent vendor, 0x1000 repair,
+---  0x2000 flight master, 0x4000 spirit healer, 0x8000 spirit guide, 0x10000 innkeeper,
+---  0x20000 banker, 0x40000 petitioner, 0x80000 tabard designer, 0x100000 battlemaster,
+---  0x200000 auctioneer, 0x400000 stable master, 0x800000 guild banker, 0x1000000 spell click,
+---  0x2000000 player vehicle, 0x4000000 mailbox, 0x8000000 artifact power respec,
+---  0x10000000 transmogrifier, 0x20000000 vault keeper (void storage),
+---  0x40000000 wild battle pet, 0x80000000 black market view.
+---
+---Works on every build since "Added npc flags for forever and privs" (wow_core master, after
+---2.069), which mapped Forever and both private servers; before it those three answered a hard 0.
+---The private-server offset was calibrated on the 1.14.2 client; wow_tbc_ps 2.5.3 shares the same
+---code path. Private-server npc_flags2 bits follow the retail names, but that client acts on fewer.
+---
+---Mailboxes and most world objects are game objects, not units, and answer 0.
+---@field get_npc_flags fun(self: game_object): integer
+---Returns the unit's UNIT_NPC_FLAGS2 word raw, the word after get_npc_flags. Only the bits the client acts on are named (enum
+---npc_flags2 in game_object.h, read from the binary, NOT TrinityCore's NPCFlags2 layout):
+---  0x1 item upgrade master, 0x2 garrison architect, 0x4 steering (movement, not an interaction),
+---  0x20 shipment crafter, 0x40 garrison mission npc, 0x80 black market.
+---  0x10, 0x400, 0x8000 and 0x200000 open interactions the core has not named yet.
+---@field get_npc_flags2 fun(self: game_object): integer
 ---Returns whatever the npc is tap denied for the localplayer (grey healthbar)
 ---@field is_tap_denied fun(self: game_object): number
 ---Returns this unit's nameplate visibility and on-screen rectangle (bottom-left

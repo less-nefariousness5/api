@@ -23,6 +23,8 @@
 --- Speculate the spell damage.
 ---@field speculate_spell_damage fun(self: nil, caster: game_object, target: game_object, damage: number, spell_id: number): number
 --- Get the role ID of the target.
+--- VERSIONS (get_role_id, is_tank): same limits as unit_helper:get_role_id. The group role is
+--- read only on Retail, MoP Classic and Titan (China), elsewhere it is guessed from class + spec.
 ---@field get_role_id fun(self: nil, target: game_object): number
 --- Check if the unit is a tank.
 ---@field is_tank fun(self: nil, unit: game_object): boolean

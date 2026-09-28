@@ -13,6 +13,10 @@
 ---@field DEFAULT_DISK_CACHE_FOLDER string
 ---@field DEFAULT_HTTP_THROTTLE_SECONDS number
 ---@field DEFAULT_PROBE_THROTTLE_SECONDS number
+--- VERSIONS: picked by core.get_game_version(). "Vanilla" -> wowhead.com/classic, "Tbc" -> /tbc,
+--- "Titan" -> /wotlk, "Mop" -> /mop-classic, anything else (Retail, Forever) -> the Retail site.
+--- get_spell_icon_name / draw_spell_icon look spell ids up there. WOWHEAD_ITEM_BASE follows the
+--- same rule.
 ---@field WOWHEAD_SPELL_BASE string
 ---@field DEFAULT_SPELL_CACHE_FILE string
 ---@field MAX_REDIRECTS number

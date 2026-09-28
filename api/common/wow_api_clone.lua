@@ -78,6 +78,8 @@ UnitAuras = function(unit) end
 ---@field RAGE integer
 ---@field FOCUS integer
 ---@field ENERGY integer
+--- VERSIONS: POWER is enums.power_type, so COMBOPOINTS is 14 on the private-server clients
+--- (Vanilla 1.14 / TBC 2.5.3) and 4 everywhere else.
 ---@field COMBOPOINTS integer
 ---@field RUNES integer
 ---@field RUNICPOWER integer

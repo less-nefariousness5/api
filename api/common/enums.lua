@@ -31,6 +31,8 @@
 ---@field RAGE number
 ---@field FOCUS number
 ---@field ENERGY number
+--- VERSIONS: 4 on every Blizzard build, but 14 (COMBOPOINTS_TBC) on the private-server clients
+--- (Vanilla 1.14 / TBC 2.5.3). izi's combo_points_* switch to 14 on TBC Classic too, this does not.
 ---@field COMBOPOINTS number
 ---@field RUNES number
 ---@field RUNICPOWER number

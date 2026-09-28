@@ -10,6 +10,8 @@ Warning: Access with ":", not "."
 -- This library centralizes inventory management.
 -- Simplifying access to items in all bags, bank slots, and tracking specific consumables like potions and elixirs.
 -- Character bags are 1-4. Bag 1 has an internal slot offset (0-34 are equipped gear/bag objects).
+-- VERSIONS: branches on core.get_exact_game_version(). The private-server clients (Vanilla 1.14 /
+-- TBC 2.5.3) use a backpack offset of 24 and their own bag-size reads; every other build uses 35.
 
 ---@class slot_data
 ---@field item game_object          -- The item object in this slot

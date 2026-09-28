@@ -12,6 +12,8 @@
 ---@field id number      -- The spell or item ID (always positive).
 ---@field is_item boolean -- Whether this entry is an item (true) or a spell (false).
 
+--- VERSIONS: ConROC only ships for Classic Era and TBC Classic (see core.addons.conroc). On
+--- every other build is_hooked() is false and spell_list and get_def_spells() stay empty.
 ---@class conroc_tracker
 ---@field spell_list conroc_spell_entry[] -- The current rotation suggestion. Up to 10 entries. Refreshed by read().
 ---@field is_hooked fun(self: conroc_tracker): boolean -- Returns whether ConROC is loaded and has suggestion data.

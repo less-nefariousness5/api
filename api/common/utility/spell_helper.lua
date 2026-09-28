@@ -7,6 +7,9 @@
 
 ---@class spell_helper
 --- Check if the spell is in the spellbook.
+--- VERSIONS: needs core.spell_book.has_spell to answer true once before it trusts it. Until then
+--- (on a client where has_spell never works, e.g. the TBC 2.5.3 private server) it answers
+--- from is_spell_learned alone.
 ---@field has_spell_equipped fun(self: spell_helper, spell_id: number): boolean
 
 ---@class spell_helper
@@ -15,6 +18,9 @@
 
 ---@class spell_helper
 --- Check if a spell is within castable range given a target.
+--- VERSIONS: branches on core.get_game_version(). Its own melee-reach math is 4 yd + radius
+--- (x0.99) on Retail and 3 yd + radius (x0.966) on every other build. On "Vanilla" (Classic Era
+--- and the Vanilla 1.14 private server) a ranged auto attack counts as out of range while you move.
 ---@field is_spell_in_range fun(self: spell_helper, spell_id: number, target: game_object, source: vec3, destination: vec3): boolean
 
 ---@class spell_helper
@@ -35,6 +41,8 @@
 
 ---@class spell_helper
 --- Check if a unit has enough resources to cast a spell.
+--- VERSIONS: always true on the private-server clients (Vanilla 1.14 / TBC 2.5.3); the cost is
+--- not checked there.
 ---@field can_afford_spell fun(self: spell_helper, unit: game_object, spell_id: number, spell_costs: table): boolean
 
 ---@class spell_helper
