@@ -72,7 +72,8 @@ function core.register_on_spell_cast_callback(callback) end
 --- reliable count for any payload with optional fields. Index positionally, never with ipairs.
 ---
 --- The registration list is build_events_literal() in wow_core/src/core/game/event_pump.cpp
---- and that function is its only source of truth. As of 2026-09-19 (core 2.060) it is:
+--- and that function is its only source of truth. As of 2026-09-26 it is (the npc windows,
+--- reputation and stable names need a core built from the cinan_requests_3 branch or later):
 ---   combat log  COMBAT_LOG_EVENT_UNFILTERED
 ---   countdown   START_PLAYER_COUNTDOWN, CANCEL_PLAYER_COUNTDOWN
 ---   spells      SPELLS_CHANGED
@@ -103,8 +104,19 @@ function core.register_on_spell_cast_callback(callback) end
 ---   quests      QUEST_GREETING, QUEST_DETAIL, QUEST_PROGRESS, QUEST_COMPLETE,
 ---               QUEST_FINISHED, QUEST_ACCEPTED, QUEST_TURNED_IN, QUEST_LOG_UPDATE,
 ---               QUEST_ITEM_UPDATE
+---   npc windows MERCHANT_SHOW, MERCHANT_CLOSED, TRAINER_SHOW, TRAINER_CLOSED,
+---               TAXIMAP_OPENED ({ ui_map_system }), TAXIMAP_CLOSED
+---   reputation  UPDATE_FACTION
+---   stable      PET_STABLE_SHOW, PET_STABLE_UPDATE, PET_STABLE_CLOSED
+---   interaction PLAYER_INTERACTION_MANAGER_FRAME_SHOW / _HIDE ({ Enum.PlayerInteractionType },
+---               retail 10.0+), PLAYER_SOFT_INTERACT_CHANGED ({ old_guid, new_guid }, 10.0+),
+---               BANKFRAME_OPENED/_CLOSED, GUILDBANKFRAME_OPENED/_CLOSED, MAIL_SHOW/MAIL_CLOSED,
+---               LOOT_OPENED/LOOT_CLOSED, ITEM_TEXT_BEGIN/ITEM_TEXT_CLOSED,
+---               BATTLEFIELDS_SHOW/_CLOSED, PETITION_SHOW/_CLOSED, GUILD_REGISTRAR_SHOW/_CLOSED,
+---               OPEN_TABARD_FRAME/CLOSE_TABARD_FRAME, BARBER_SHOP_OPEN/_CLOSE (3.0+),
+---               TRANSMOGRIFY_OPEN/_CLOSE (4.3+), CONFIRM_XP_LOSS (classic spirit healer)
 ---   chat        CHAT_MSG_ADDON, CHAT_MSG_PARTY, CHAT_MSG_PARTY_LEADER
----   ui          UI_ERROR_MESSAGE
+---   ui          UI_ERROR_MESSAGE, UI_INFO_MESSAGE ({ error_type, message, string_id })
 ---   auction     AUCTION_HOUSE_SHOW, AUCTION_HOUSE_CLOSED, AUCTION_HOUSE_DISABLED,
 ---               AUCTION_HOUSE_NEW_RESULTS_RECEIVED, AUCTION_HOUSE_BROWSE_RESULTS_UPDATED,
 ---               AUCTION_HOUSE_BROWSE_RESULTS_ADDED, AUCTION_HOUSE_BROWSE_FAILURE,
@@ -222,6 +234,28 @@ function core.register_on_spell_cast_callback(callback) end
 --- the GOSSIP ACROSS GAME VERSIONS block further down this file before using any of it, and
 --- prefer common/izi_sdk/izi_gossip.lua, which normalizes the retail and private-server
 --- shapes.
+---
+--- The npc window, reputation and stable names were added 2026-09-26 together with the calls
+--- that answer them: core.input.close_merchant, core.quests.close_trainer, core.taxi.close,
+--- core.reputation and core.pet_stable. Before that the merchant and flight map comments in this
+--- file already said "between MERCHANT_SHOW and MERCHANT_CLOSED" while the pump delivered neither,
+--- so the window could only be found by polling a reader. None of the ten carries arguments
+--- except TAXIMAP_OPENED, whose args[1] is the map's Enum.UIMapSystem. A *_CLOSED name may
+--- arrive twice for one visit, because Blizzard's own frame calls the matching Close function
+--- again from its OnHide, so handle it idempotently. PET_STABLE_UPDATE is the stable data
+--- changing, and it is how the result of core.pet_stable.stable_pet / unstable_pet / move_pet /
+--- buy_slot shows up: those only send the request. UPDATE_FACTION fires when a standing moves or
+--- the faction list changes, header clicks included; re-read core.reputation on it rather than
+--- polling every frame.
+---
+--- INTERACTION OUTCOME (added 2026-09-27). core.input.interact_with_object always returns true:
+--- it only dispatches. The answer arrives as an event. A window-open name (GOSSIP_SHOW,
+--- QUEST_GREETING, QUEST_DETAIL, MERCHANT_SHOW, TRAINER_SHOW, TAXIMAP_OPENED, PET_STABLE_SHOW,
+--- AUCTION_HOUSE_SHOW, BANKFRAME_OPENED, MAIL_SHOW, LOOT_OPENED, ... and on retail
+--- PLAYER_INTERACTION_MANAGER_FRAME_SHOW for all of them) means accepted. UI_ERROR_MESSAGE means
+--- refused. Its args[1] is a per-build number and args[2] is localized, so match on args[3], the
+--- client's string id from GetGameMessageInfo (nil on a client without it). Neither within about
+--- a second means nothing happened.
 ---@param callback fun(event_name: string, args: (string|number|boolean|nil)[]): nil
 function core.register_on_game_event_callback(callback) end
 
@@ -1993,7 +2027,8 @@ core.taxi = {}
 
 --- Returns the number of flight points on the taxi map that is currently open.
 --- The whole taxi namespace only answers while the flight master's map is open, which is the
---- window between the TAXIMAP_OPENED and TAXIMAP_CLOSED events. Outside it this returns 0, so
+--- window between the TAXIMAP_OPENED and TAXIMAP_CLOSED events (delivered by
+--- core.register_on_game_event_callback since 2026-09-26). Outside it this returns 0, so
 --- treat a zero as "no map open" rather than as "this flight master serves nowhere".
 --- Node indices are 1 based and run from 1 to this value.
 ---@return integer num_nodes Flight point count, 0 when no taxi map is open.
@@ -2019,6 +2054,207 @@ end
 ---@return nil
 function core.taxi.take_node(index)
     return nil
+end
+
+--- Closes the flight map without flying anywhere, the call Blizzard's flight map makes when it
+--- closes. Added 2026-09-26: before it, take_node was the only way to leave a map that had been
+--- opened to read node names.
+--- true means only that the client's CloseTaxiMap was reached; with no map open it is a harmless
+--- no-op that still answers true.
+---@return boolean ran True when the client's close call was reached.
+function core.taxi.close()
+    return false
+end
+
+---@class faction_info
+---@field faction_id? integer The faction id (Faction.dbc). nil when the client reports none for the row.
+---@field name string The faction name, or the header's name for a header row.
+---@field description string The faction description, "" when there is none.
+---@field standing_id integer 1 Hated, 2 Hostile, 3 Unfriendly, 4 Neutral, 5 Friendly, 6 Honored, 7 Revered, 8 Exalted.
+---@field bar_min integer Absolute reputation at which the current standing starts.
+---@field bar_max integer Absolute reputation at which the next standing starts.
+---@field bar_value integer The absolute reputation. Progress within the standing is bar_value - bar_min out of bar_max - bar_min.
+---@field at_war_with boolean True when the player is at war with the faction.
+---@field can_toggle_at_war boolean True when the at-war flag can be changed for it.
+---@field is_header boolean True for a header row that groups other rows.
+---@field is_collapsed boolean True for a header row that is collapsed, hiding its rows.
+---@field has_rep boolean True for a header row that also carries a standing of its own.
+---@field is_watched boolean True for the faction tracked on the reputation bar.
+---@field is_child boolean True for a row the reputation panel nests under another row.
+
+--- core.reputation: the local player's faction standings. Added 2026-09-26.
+---
+--- ROWS ARE THE VISIBLE LIST. get_num_factions and get_faction_info count the rows the reputation
+--- panel shows, headers included, so a collapsed header hides its factions and shifts every index
+--- after it. To read every faction, call expand_all_faction_headers first, or look a faction up by
+--- id with get_faction_info_by_id, which does not care about headers. Expanding and collapsing
+--- change the panel the player sees; no reader does it behind your back.
+---
+--- Standing numbers are the client's: standing_id 1 to 8 (Hated to Exalted) and bar_min /
+--- bar_max / bar_value as ABSOLUTE reputation, e.g. Honored with 3500 into it is bar_min 9000,
+--- bar_max 21000, bar_value 12500. Re-read on the UPDATE_FACTION event instead of polling.
+---
+--- Every classic client (vanilla to MoP) answers through the legacy globals; retail through
+--- C_Reputation. Same table on both. On a client with neither the functions answer 0 / nil / false
+--- and the core log names the missing API.
+---@class reputation
+core.reputation = {}
+
+--- Returns how many rows the reputation list has right now, headers included.
+---@return integer count Rows in the visible reputation list, 0 when the client cannot answer.
+function core.reputation.get_num_factions()
+    return 0
+end
+
+--- Returns one row of the visible reputation list.
+---@param index integer The row, 1 to get_num_factions().
+---@return faction_info|nil info The row, or nil past the end of the list.
+function core.reputation.get_faction_info(index)
+    return nil
+end
+
+--- Returns a faction by id, wherever it sits in the list and whether or not its header is collapsed.
+---@param faction_id integer The faction id (Faction.dbc), e.g. 932 for The Aldor.
+---@return faction_info|nil info The faction, or nil when this client does not know the id.
+function core.reputation.get_faction_info_by_id(faction_id)
+    return nil
+end
+
+--- Expands one collapsed header row, inserting its rows after it and growing the list.
+--- true means the client's call was reached, not that the row was a collapsed header.
+---@param index integer The header's row, 1 to get_num_factions().
+---@return boolean ran True when the client's call was reached.
+function core.reputation.expand_faction_header(index)
+    return false
+end
+
+--- Collapses one header row, hiding its rows and shrinking the list.
+---@param index integer The header's row, 1 to get_num_factions().
+---@return boolean ran True when the client's call was reached.
+function core.reputation.collapse_faction_header(index)
+    return false
+end
+
+--- Expands every header at once, so get_num_factions counts every faction the character has met.
+--- Prefer it to an expand loop: each single expand inserts rows and shifts every later index.
+---@return boolean ran True when the client's call was reached.
+function core.reputation.expand_all_faction_headers()
+    return false
+end
+
+--- Collapses every header at once.
+---@return boolean ran True when the client's call was reached.
+function core.reputation.collapse_all_faction_headers()
+    return false
+end
+
+---@class stable_pet_info
+---@field slot integer The slot this was read from: 0 for the active pet, 1 and up for a stable slot.
+---@field icon? integer|string The pet's icon, a file id or a texture path depending on the client.
+---@field name string The pet's name.
+---@field level integer The pet's level.
+---@field family string The localized pet family, such as "Wolf".
+---@field loyalty? string The loyalty text Blizzard's stable frame shows, vanilla and TBC only.
+---@field talent? string The pet talent tree, such as "Ferocity", on the Wrath client only.
+
+--- core.pet_stable: the hunter stable. Added 2026-09-26.
+---
+--- ONE SLOT NUMBERING ON EVERY CLIENT: 0 is the active pet, 1 to get_num_slots() are the stable
+--- slots. Blizzard moved its own index up by one in patches 1.15.3 and 2.5.5 (on those clients
+--- the client's index 1 is the active pet), and the core converts per client, so the same number
+--- means the same pet on the private servers, on Classic Era, on TBC Anniversary and on Titan.
+---
+--- Everything here reads or acts on the stable master's data, so use it between the
+--- PET_STABLE_SHOW and PET_STABLE_CLOSED events. The actions only SEND a request; the result
+--- arrives as PET_STABLE_UPDATE, so re-read after that event rather than on the next line.
+---
+--- Classic stables only (vanilla, TBC, Wrath). MoP and retail have the five-slot stable, which this
+--- namespace does not drive: there every call except close() answers 0 / nil / false and the core
+--- log says why. stable_pet and unstable_pet exist only on the clients that kept the old index
+--- (both private-server clients among them); move_pet does the same job on all three.
+---@class pet_stable
+core.pet_stable = {}
+
+--- Returns how many stable slots the character has bought (at most 2 on vanilla and TBC, 4 on Wrath).
+---@return integer count Bought stable slots, 0 when the client cannot answer.
+function core.pet_stable.get_num_slots()
+    return 0
+end
+
+--- Returns the pet in one slot.
+--- Raises a Lua error for a negative slot.
+---@param slot integer 0 for the active pet, 1 to get_num_slots() for a stable slot.
+---@return stable_pet_info|nil info The pet, or nil for an empty slot.
+function core.pet_stable.get_pet_info(slot)
+    return nil
+end
+
+--- Returns the slot the stable frame has selected.
+---@return integer|nil slot 0 for the active pet, 1 and up for a stable slot, nil when nothing is selected.
+function core.pet_stable.get_selected_slot()
+    return nil
+end
+
+--- Does what a click on that slot does in Blizzard's stable frame: selects it, or drops a stable pet
+--- the cursor is already holding into it. true is the client's own "something changed" answer.
+--- Raises a Lua error for a negative slot.
+---@param slot integer 0 for the active pet, 1 to get_num_slots() for a stable slot.
+---@return boolean changed True when the client reports the click changed something.
+function core.pet_stable.click_slot(slot)
+    return false
+end
+
+--- Puts the active pet into a free stable slot; the server picks which.
+--- Only on the clients that kept the old index: the private-server clients (TBC 2.5.3, vanilla
+--- 1.14) have it, Classic Era 1.15.4+ and TBC Anniversary 2.5.6 do not, and there it answers false
+--- with the missing function in the core log. move_pet(0, slot) works on vanilla, TBC and Wrath.
+---@return boolean sent True when the request was sent.
+function core.pet_stable.stable_pet()
+    return false
+end
+
+--- Takes the pet in a stable slot out as the active pet. Same availability as stable_pet;
+--- move_pet(slot, 0) is the portable form. Raises a Lua error for a slot below 1.
+---@param slot integer The stable slot, 1 to get_num_slots().
+---@return boolean sent True when the request was sent.
+function core.pet_stable.unstable_pet(slot)
+    return false
+end
+
+--- Moves a pet from one slot to another, swapping when the target is occupied: move_pet(0, 1)
+--- stables the active pet in slot 1, move_pet(1, 0) takes it back out. This is the drag
+--- Blizzard's own stable frame performs, and it works on vanilla, TBC and Wrath alike.
+---
+--- It runs as one step and leaves the cursor as it found it: false, with nothing changed, when the
+--- cursor already holds something, when the from slot is empty, or when the client refuses the
+--- drop (the pet is put back). true means the client took the drop; the stable changes on
+--- PET_STABLE_UPDATE. Raises a Lua error for a negative slot.
+---@param from_slot integer 0 for the active pet, 1 and up for a stable slot.
+---@param to_slot integer 0 for the active pet, 1 and up for a stable slot.
+---@return boolean moved True when the client took the drop.
+function core.pet_stable.move_pet(from_slot, to_slot)
+    return false
+end
+
+--- Buys the next stable slot. SPENDS get_next_slot_cost() copper with no confirmation: Blizzard's
+--- purchase popup is the default UI calling this same function, and it is skipped here.
+---@return boolean sent True when the request was sent.
+function core.pet_stable.buy_slot()
+    return false
+end
+
+--- Returns the price of the next stable slot, the amount buy_slot spends.
+---@return integer copper The price in copper, 0 when the client cannot answer.
+function core.pet_stable.get_next_slot_cost()
+    return 0
+end
+
+--- Closes the stable, the call Blizzard's stable frame makes when it closes. Works on every
+--- client, the five-slot stable included. true means the call was reached; with no stable open it
+--- is a harmless no-op.
+---@return boolean ran True when the client's close call was reached.
+function core.pet_stable.close()
+    return false
 end
 
 ---@class party
@@ -2238,6 +2474,20 @@ end
 function core.input.repair_all_items(use_guild_bank)
 end
 
+--- Closes the merchant window, the same call Blizzard's merchant frame makes when it closes.
+--- Added 2026-09-26: the merchant, the trainer and the flight map were the three NPC windows with
+--- no close (core.quests.close_trainer and core.taxi.close are the other two).
+---
+--- true means only that the client's CloseMerchant was reached. With no merchant open it is a
+--- harmless no-op that still answers true, so this is not an "is a vendor open" test: the window
+--- is the span between the MERCHANT_SHOW and MERCHANT_CLOSED events, which
+--- core.register_on_game_event_callback delivers. false together with "CloseMerchant is not on
+--- this client" in the core log means a game version moved the function, not that it refused.
+---@return boolean ran True when the client's close call was reached.
+function core.input.close_merchant()
+    return false
+end
+
 --- Set the local player target
 ---@param unit game_object The game_object to set as target
 ---@return boolean Return true on successfully targetting the desired unit
@@ -2425,6 +2675,23 @@ end
 ---@return nil
 function core.input.set_pet_follow()
     return nil
+end
+
+--- Abandons the active hunter pet. PERMANENT, and there is no confirmation dialog in this path.
+--- Added 2026-09-26.
+---
+--- Blizzard's "Abandon Pet" menu entry raises a popup whose accept button calls the same client
+--- function this calls, so going straight to it skips the popup and there is nothing to answer.
+--- The client's own PetCanBeAbandoned gate is asked first: with no pet, or a pet that cannot be
+--- abandoned such as a warlock demon, this answers false and calls nothing.
+---
+--- true means the abandon request was sent; the pet is gone when the server confirms it, which
+--- shows up as the player no longer having a pet. Vanilla to MoP; retail has no such function, so
+--- there it answers false and the core log names the missing function. The hunter stable itself
+--- is core.pet_stable.
+---@return boolean sent True when the request was sent for a pet the client says can be abandoned.
+function core.input.abandon_pet()
+    return false
 end
 
 --- Commands the pet to attack a target.
@@ -3280,6 +3547,23 @@ end
 ---@return pet_happiness_data A table containing happiness, damage_percentage, and loyalty_rate.
 function core.spell_book.get_pet_happiness()
     return {}
+end
+
+---@class pet_training_points
+---@field total integer Training points the pet has earned.
+---@field spent integer Training points already spent on pet abilities.
+---@field available integer total - spent, the number the pet frame and the Beast Training window show.
+
+--- Returns the hunter pet's training points, the vanilla and TBC currency Beast Training spends.
+--- Added 2026-09-26.
+---
+--- available is computed for you exactly the way Blizzard's own pet frames compute it. 0 / 0 is a
+--- normal answer for a character without a hunter pet. nil on retail, which has no such function
+--- (the core log names it). Pets after TBC have talents instead, and what the function answers on
+--- those clients has not been measured, so do not build on it there.
+---@return pet_training_points|nil points The training points, or nil when the client has no training points API.
+function core.spell_book.get_pet_training_points()
+    return nil
 end
 
 --- Checks if a spell is flagged as important.
@@ -4923,6 +5207,14 @@ function core.quests.get_trainer_service_cost(index) return {} end
 --- Buys a trainer service.
 ---@param index integer The trainer service index.
 function core.quests.buy_trainer_service(index) end
+
+--- Closes the trainer window, the same call Blizzard's trainer frame makes when it closes.
+--- Added 2026-09-26 with core.input.close_merchant and core.taxi.close.
+--- true means only that the client's CloseTrainer was reached; with no trainer open it is a
+--- harmless no-op that still answers true. The window is the span between the TRAINER_SHOW and
+--- TRAINER_CLOSED events, which core.register_on_game_event_callback delivers.
+---@return boolean ran True when the client's close call was reached.
+function core.quests.close_trainer() return false end
 
 --- Returns spell information for an item.
 ---@param item_id_or_link integer|string The item ID or item link.
