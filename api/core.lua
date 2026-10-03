@@ -122,7 +122,23 @@ function core.register_on_spell_cast_callback(callback) end
 ---               BATTLEFIELDS_SHOW/_CLOSED, PETITION_SHOW/_CLOSED, GUILD_REGISTRAR_SHOW/_CLOSED,
 ---               OPEN_TABARD_FRAME/CLOSE_TABARD_FRAME, BARBER_SHOP_OPEN/_CLOSE (3.0+),
 ---               TRANSMOGRIFY_OPEN/_CLOSE (4.3+), CONFIRM_XP_LOSS (spirit healer, Retail too)
----   chat        CHAT_MSG_ADDON, CHAT_MSG_PARTY, CHAT_MSG_PARTY_LEADER
+---   chat        CHAT_MSG_ADDON, CHAT_MSG_PARTY, CHAT_MSG_PARTY_LEADER, CHAT_MSG_SYSTEM,
+---               CHAT_MSG_WHISPER, CHAT_MSG_WHISPER_INFORM, CHAT_MSG_SAY, CHAT_MSG_YELL,
+---               CHAT_MSG_EMOTE, CHAT_MSG_GUILD, CHAT_MSG_CHANNEL, CHAT_MSG_COMBAT_XP_GAIN.
+---               CHAT_MSG_SYSTEM is the load-bearing one: loot rolls, bind confirmations,
+---               quest XP and most "that did not work" feedback arrive there and nowhere else.
+---   prompts     START_LOOT_ROLL, CONFIRM_LOOT_ROLL, PARTY_INVITE_REQUEST,
+---               GUILD_INVITE_REQUEST, DUEL_REQUESTED, DUEL_FINISHED, RESURRECT_REQUEST,
+---               READY_CHECK, CONFIRM_XP_LOSS. These are NOT notifications: the engine
+---               withholds the action and waits, like the confirms above, and each has one
+---               call that releases it (core.input.roll_on_loot, answer_group_invite,
+---               answer_guild_invite, answer_duel, answer_resurrect, confirm_ready_check,
+---               accept_xp_loss).
+---   lifecycle   PLAYER_ENTERING_WORLD, PLAYER_LEAVING_WORLD, PLAYER_DEAD, PLAYER_ALIVE,
+---               PLAYER_UNGHOST, PLAYER_LEVEL_UP, UNIT_PET, SKILL_LINES_CHANGED,
+---               QUEST_QUERY_COMPLETE
+---   companions  COMPANION_LEARNED, COMPANION_UPDATE (WotLK and later; they simply never bind
+---               on TBC and Era, which costs nothing)
 ---   ui          UI_ERROR_MESSAGE, UI_INFO_MESSAGE ({ error_type, message, string_id })
 ---   auction     AUCTION_HOUSE_SHOW, AUCTION_HOUSE_CLOSED, AUCTION_HOUSE_DISABLED,
 ---               AUCTION_HOUSE_NEW_RESULTS_RECEIVED, AUCTION_HOUSE_BROWSE_RESULTS_UPDATED,
@@ -351,6 +367,26 @@ end
 
 --- Returns the level of the keystone the player is CARRYING. 0 when they hold none, and 0
 --- on every non-retail client.
+---@class game_build_info
+---@field version string Patch string, for example "2.5.6.69795".
+---@field build integer Build number as an integer, for example 69795. 0 when unknown.
+---@field date string The client's build date string.
+---@field toc integer Interface version, for example 20506 on TBC 2.5.6. 0 when unknown.
+
+--- Returns the client's own build information, from GetBuildInfo().
+---
+--- Added 2026-10-03. core.get_exact_game_version() answers a CLIENT KEY ("wow_tbc_us",
+--- "wow_tbc_ps") and not a patch, so consumers were keeping a hand-written table mapping key to
+--- build number: it needs a new row on every client update and is wrong until somebody adds it.
+--- This asks the client, so it is right the moment the client changes.
+---
+--- `build` is the trailing number of `version` as an integer, because that is what comparisons
+--- want. Use `version` for anything a human reads, such as a bug report.
+---@return game_build_info info The client's version, build number, build date and toc version.
+function core.get_game_build()
+    return {}
+end
+
 ---@return number
 function core.get_keystone_level()
     return 0
@@ -988,6 +1024,12 @@ end
 
 --- Returns the total number of slots a bag has.
 ---
+--- FIXED 2026-10-03: this answered garbage on wow_tbc_ps (163579 and 969378897 for two 6-slot
+--- bags) because the native read used o_item_inventory, which on that build is set to the same
+--- value as o_player_inventory and lands ~166KB outside an item object. It asks the client's own
+--- GetContainerNumSlots now, so it is correct on every build and no future patch can stale it.
+--- The bag_id convention below is UNCHANGED by that fix.
+---
 --- IT DOES NOT TAKE THE SAME bag_id AS get_items_in_bag. This one is shifted by one, so the
 --- pairing you want is get_num_bag_slots(N) alongside get_items_in_bag(N - 1). Passing the
 --- same number to both asks about two different bags and the mistake is silent.
@@ -1028,6 +1070,36 @@ end
 --- equipped there; 0 for bag_id 0 means the argument was out of range, see above.
 function core.inventory.get_num_bag_slots(bag_id)
     return 0
+end
+
+--- Returns the FULL item link of one bag slot, or nil when the slot is empty.
+---
+--- Added 2026-10-03. core.auction_house.get_item_info(id).item_link builds a link from an item
+--- id, so it carries no random suffix, no enchant and no gems: two "Bracers of the Eagle" with
+--- different suffixes produced the same string. This is the client's own link for that exact
+--- item instance, so the variants differ.
+---
+--- bag_id uses the SAME shifted numbering as get_num_bag_slots, so this loop lines up:
+---     for slot = 1, core.inventory.get_num_bag_slots(bag) do
+---         local link = core.inventory.get_container_item_link(bag, slot)
+---
+--- slot_id is WoW's own 1-based slot inside the bag. It is NOT the slot_id get_items_in_bag
+--- reports, which is a player inventory index. Pair this with get_num_bag_slots, never with
+--- get_items_in_bag.
+---@param bag_id integer Bag id, same numbering as get_num_bag_slots (1 is the backpack).
+---@param slot_id integer 1-based slot inside that bag.
+---@return string|nil item_link The full item link, or nil when the slot is empty.
+function core.inventory.get_container_item_link(bag_id, slot_id)
+    return nil
+end
+
+--- Returns the full item link of one EQUIPPED slot, or nil when nothing is worn there.
+--- slot_id is WoW's own equipment slot (1 head through 19 tabard). It needs no shift and is
+--- unrelated to the bag numbering above. Added 2026-10-03 with get_container_item_link.
+---@param slot_id integer Equipment slot, 1 to 19.
+---@return string|nil item_link The full item link, or nil when the slot is empty.
+function core.inventory.get_inventory_item_link(slot_id)
+    return nil
 end
 
 --- Returns the total cost in copper to repair all equipped items.
@@ -2127,6 +2199,38 @@ function core.taxi.node_name(index)
     return ""
 end
 
+--- Returns the position of a flight point on the OPEN taxi map, normalised to 0..1 with 0,0 at
+--- the map's top-left. Added 2026-10-03: num_nodes and node_name let you enumerate flight points
+--- and read their names, but not tell which one is where, so "the node nearest my destination"
+--- needed an offline table of every flight master in the game.
+---
+--- These are MAP coordinates, not world coordinates and not yards. They only mean anything
+--- against the taxi map currently open, which is the continent you are standing on, so they
+--- cannot be compared across continents.
+---
+--- Returns 0, 0 when the taxi map is closed or the index is out of range, which is
+--- indistinguishable from a node genuinely at the top-left. Bound the loop with num_nodes()
+--- instead of probing for 0, 0.
+---@param index integer 1-based node index, 1 to num_nodes().
+---@return number x Normalised x, 0 to 1.
+---@return number y Normalised y, 0 to 1.
+function core.taxi.node_position(index)
+    return 0, 0
+end
+
+--- Returns the flight point's type as the client's own string: "REACHABLE", "CURRENT",
+--- "DISTANT" or "NONE", and "" when the taxi map is closed.
+---
+--- This is the only way to tell a node you can actually fly to from one the client is merely
+--- drawing. REACHABLE is a valid take_node target, CURRENT is where you are standing, DISTANT is
+--- a known node on another continent, NONE is undiscovered. Calling take_node on every index
+--- without checking this tries to fly to points the character has never discovered.
+---@param index integer 1-based node index, 1 to num_nodes().
+---@return string node_type "REACHABLE", "CURRENT", "DISTANT", "NONE", or "" when closed.
+function core.taxi.node_type(index)
+    return ""
+end
+
 --- Starts travelling to a flight point on the open taxi map.
 --- Only valid while the taxi map is open and with an index in 1 to num_nodes(); it is a no-op
 --- otherwise. Resolve the index by matching node_name, never by caching an index across visits,
@@ -2901,6 +3005,153 @@ function core.input.resurrect_corpse()
     return nil
 end
 
+--- Drops the current target.
+---
+--- This exists because set_target(nil) does NOT work: that binding takes a game_object and
+--- throws "core.game_object expected, got nil". Reported 2026-09-30, added 2026-10-03.
+---@return boolean accepted True when the client had ClearTarget and it was called.
+function core.input.clear_target()
+    return false
+end
+
+--- Sends a chat message. The read side already arrives through
+--- core.register_on_game_event_callback (CHAT_MSG_SAY, _YELL, _EMOTE, _WHISPER,
+--- _WHISPER_INFORM, _PARTY, _PARTY_LEADER, _GUILD, _CHANNEL, _SYSTEM), so this is the half that
+--- lets a plugin answer rather than only listen. Added 2026-10-03.
+---
+--- chat_type is WoW's own string: "SAY", "YELL", "EMOTE", "PARTY", "RAID", "RAID_WARNING",
+--- "INSTANCE_CHAT", "GUILD", "OFFICER", "WHISPER", "CHANNEL", "BATTLEGROUND". An unknown type is
+--- rejected by the client, not here.
+---
+--- target is the player name for "WHISPER" and the channel INDEX for "CHANNEL". Omit it for
+--- every other type. A whisper target keeps its realm, so args[4] from CHAT_MSG_WHISPER can be
+--- handed straight back.
+---
+--- The boolean is "the call was reached", NOT "the line arrived". SendChatMessage answers
+--- nothing, so a message over the client's 255-byte cap, a muted account or a channel you are
+--- not in all return true and simply do not show up.
+---
+--- Every string reaches the game byte-encoded rather than spliced into the chunk, so an
+--- apostrophe, a quote or a newline in the message is safe and nothing is stripped or rejected.
+---@param message string The text to send. No escaping needed, and none is applied.
+---@param chat_type string WoW chat type, e.g. "SAY", "PARTY", "GUILD", "WHISPER".
+---@param target? string|integer Player name for "WHISPER", channel index for "CHANNEL".
+---@return boolean sent True when the call was reached.
+function core.input.send_chat_message(message, chat_type, target)
+    return false
+end
+
+--- Starts a normal logout. Added 2026-10-03.
+---
+--- This is the TIMED logout: 20 seconds standing in the open world, instant in an inn or a city,
+--- and the client cancels it by itself if you take damage or move. So true means "the countdown
+--- has begun", not "I am at character select". Watch PLAYER_LEAVING_WORLD for the real
+--- transition, and cancel_logout to abort.
+---@return boolean accepted True when the client had Logout and it was called.
+function core.input.logout()
+    return false
+end
+
+--- Aborts a logout countdown started by core.input.logout.
+---
+--- The countdown is cancellable state rather than a fired action, so a reaction that decides to
+--- log out and then sees the reason go away has a way back. Without this the only way to stop it
+--- was to move, which is usually the exact thing such a reaction is avoiding.
+---@return boolean accepted True when the client had CancelLogout and it was called.
+function core.input.cancel_logout()
+    return false
+end
+
+--- Closes the client immediately.
+---
+--- Prefers ForceQuit over Quit, because Quit runs the same cancellable countdown logout does and
+--- a caller asking to quit wants the process gone rather than a timer something can interrupt.
+---
+--- THIS DOES NOT LEAVE CLEANLY. The server takes it as a drop, so anything the client had not
+--- sent yet is lost and the character lingers in the world for the usual timeout. Use
+--- core.input.logout unless leaving immediately is the point.
+---@return boolean accepted True when the client had ForceQuit or Quit and it was called.
+function core.input.quit_game()
+    return false
+end
+
+--- Answers a group-loot roll.
+---
+--- roll_id is the id carried by the START_LOOT_ROLL game event. It is NOT a loot slot and NOT a
+--- bag slot. roll_type is the client's own enum: 0 pass, 1 need, 2 greed, 3 disenchant.
+---
+--- A roll expires on its own timer, so an unanswered roll is a pass by default. Nothing here
+--- tells you whether you won; that arrives as a CHAT_MSG_SYSTEM line.
+---@param roll_id integer The roll id from START_LOOT_ROLL.
+---@param roll_type integer 0 pass, 1 need, 2 greed, 3 disenchant.
+---@return boolean accepted True when the client had RollOnLoot and it was called.
+function core.input.roll_on_loot(roll_id, roll_type)
+    return false
+end
+
+--- Answers a PARTY_INVITE_REQUEST. Added 2026-10-03 with the rest of the prompt answers below.
+---
+--- These prompts are not notifications. The engine WITHHOLDS the action and waits, exactly like
+--- the bind confirms, so an automated session that ignores them stops dead. Each returns "the
+--- client had the function and it was called", never "the thing happened": confirm from the
+--- matching event, GROUP_ROSTER_UPDATE here.
+---
+--- Declining can leave Blizzard's popup on screen on some builds, because the dialog and the
+--- invite are separate state. The invite itself is answered either way.
+---@param accept boolean True to join, false to decline.
+---@return boolean accepted True when the call was reached.
+function core.input.answer_group_invite(accept)
+    return false
+end
+
+--- Answers a GUILD_INVITE_REQUEST.
+---@param accept boolean True to join, false to decline.
+---@return boolean accepted True when the call was reached.
+function core.input.answer_guild_invite(accept)
+    return false
+end
+
+--- Answers a DUEL_REQUESTED.
+---
+--- Note the client's own asymmetry: accepting is AcceptDuel, refusing is CancelDuel. Passing
+--- false during a duel already in progress forfeits it, which is the same underlying call.
+---@param accept boolean True to duel, false to refuse.
+---@return boolean accepted True when the call was reached.
+function core.input.answer_duel(accept)
+    return false
+end
+
+--- Answers a RESURRECT_REQUEST, which is another PLAYER offering a resurrect.
+---
+--- Different from release_spirit and resurrect_corpse above: those two handle your own corpse,
+--- this one answers somebody else's spell. Accepting is not instant, the client runs its own
+--- confirmation, so watch PLAYER_ALIVE rather than assuming you are up on the next line.
+---@param accept boolean True to accept the resurrect, false to decline.
+---@return boolean accepted True when the call was reached.
+function core.input.answer_resurrect(accept)
+    return false
+end
+
+--- Accepts the spirit healer's CONFIRM_XP_LOSS prompt, resurrecting at the graveyard in exchange
+--- for durability (and experience on the clients that still charge it).
+---
+--- There is no decline: refusing is simply not calling this. The prompt closes when you walk
+--- away or release elsewhere.
+---@return boolean accepted True when the client had AcceptXPLoss and it was called.
+function core.input.accept_xp_loss()
+    return false
+end
+
+--- Answers a READY_CHECK.
+---
+--- Not answering is not neutral: the client reports you as NOT ready when the check times out,
+--- so a session that ignores this reads to the group as a declining member.
+---@param is_ready boolean True for ready, false for not ready.
+---@return boolean accepted True when the call was reached.
+function core.input.confirm_ready_check(is_ready)
+    return false
+end
+
 --- Starts moving the player character upwards (e.g., for flying or swimming).
 --- @return nil
 function core.input.move_up_start()
@@ -3067,7 +3318,19 @@ function core.input.clear_dungeon_selections(index)
 end
 
 --- Clears the AFK status of the local player.
---- NOTE: DEPRECATED
+---
+--- DEPRECATED AND EFFECTIVELY USELESS. Do not use it, and do not treat it as the way to stay
+--- unkicked. Annotated 2026-10-03 after a report that it "clears the flag and the client sets it
+--- again right away", which is exactly what it does and is not a bug.
+---
+--- It clears the AFK FLAG, which is a symptom, and the client re-raises it from its own idle
+--- timer on the next tick. It never touches the timer that decides the kick.
+---
+--- That timer is already handled: the hardware-action timestamp is refreshed as part of the
+--- input path, so anything that actually sends input (a move, a turn, a cast, a click) resets
+--- the idle clock as a side effect. If your session is sending input you never needed this, and
+--- if it is sending none this will not save it.
+---@deprecated Clears a flag the client immediately re-raises. Send input instead.
 ---@return nil
 function core.input.clear_afk()
     return nil
