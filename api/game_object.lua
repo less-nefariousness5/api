@@ -440,7 +440,13 @@
 ---@field get_unit_phase fun(self: game_object): number
 ---Returns whether the item in the specified slot has an enchant.
 ---@field item_has_enchant fun(self: game_object): boolean
----Returns the expiration time (in seconds) of the enchant on the item in the specified slot.
+---Returns the time REMAINING on the item's temporary enchant, in MILLISECONDS. 0 when the item has
+---no temporary enchant or it has run out.
+---
+---Corrected 2026-10-04. This used to say "expiration time (in seconds)", which was wrong twice: the
+---core returns enchant_end minus the current game time in ms, so a fresh 30-minute Rockbiter
+---Weapon reads about 1798324, not 1800 and not a timestamp. Divide by 1000 for seconds. It is the
+---same unit and meaning WoW's own GetWeaponEnchantInfo uses for its expiration returns.
 ---@field item_enchant_expiration fun(self: game_object): number
 ---Returns the number of remaining charges of the enchant on the item in the specified slot.
 ---@field item_enchant_charges fun(self: game_object): integer

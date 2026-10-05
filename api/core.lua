@@ -429,6 +429,13 @@ function core.get_map_name()
     return ""
 end
 
+--- Returns the subzone the player stands in: "Razor Hill" where get_map_name says "Durotar",
+--- "Booty Bay" inside Stranglethorn. Empty string in open country. Added 2026-10-04.
+---@return string subzone
+function core.get_subzone_name()
+    return ""
+end
+
 ---@return number
 ---@param pos vec3
 function core.get_height_for_position(pos)
@@ -1079,17 +1086,25 @@ end
 --- different suffixes produced the same string. This is the client's own link for that exact
 --- item instance, so the variants differ.
 ---
---- bag_id uses the SAME shifted numbering as get_num_bag_slots, so this loop lines up:
----     for slot = 1, core.inventory.get_num_bag_slots(bag) do
----         local link = core.inventory.get_container_item_link(bag, slot)
+--- (container_id, slot_id) is the SAME pair use_container_item, pickup_container_item,
+--- destroy_container_item, equip_container_item and get_container_item_stats take, so the slot
+--- you read a link from is the slot you then act on:
+---   container_id  WoW's own bag, 0 is the backpack, 1 to 4 the equipped bags
+---   slot_id       WoW's slot + 1, which is inventory_helper's bag_slot
+--- So backpack slot 16 is (0, 17). See "THE BAG SLOT CONVENTION" in the core.
 ---
---- slot_id is WoW's own 1-based slot inside the bag. It is NOT the slot_id get_items_in_bag
---- reports, which is a player inventory index. Pair this with get_num_bag_slots, never with
---- get_items_in_bag.
----@param bag_id integer Bag id, same numbering as get_num_bag_slots (1 is the backpack).
----@param slot_id integer 1-based slot inside that bag.
+--- CHANGED 2026-10-04. The first version used (bag + 1, wow_slot), a third convention that
+--- disagreed with every action binding on both arguments, so reading a link and then acting on
+--- that slot touched a different item. Reported with a screenshot of the open backpack.
+---
+--- Looping a bag by count: get_num_bag_slots still uses its own shifted bag id, so the loop is
+---     local n = core.inventory.get_num_bag_slots(bag + 1)
+---     for wow_slot = 1, n do
+---         local link = core.inventory.get_container_item_link(bag, wow_slot + 1)
+---@param container_id integer WoW bag id, 0 is the backpack.
+---@param slot_id integer WoW slot + 1, the same bag_slot every container action takes.
 ---@return string|nil item_link The full item link, or nil when the slot is empty.
-function core.inventory.get_container_item_link(bag_id, slot_id)
+function core.inventory.get_container_item_link(container_id, slot_id)
     return nil
 end
 
@@ -1206,6 +1221,89 @@ function core.inventory.get_inventory_item_stats(inventory_slot)
     return nil
 end
 
+--- Returns the stats of ANY item link, not only bag or equipped items: quest rewards, vendor items,
+--- loot rolls. Same table shape and same keys as get_container_item_stats (stamina, armor, ...),
+--- because it is the same reader run against a link you supply. nil when the client knows no stats
+--- for it, which includes an item it has not cached yet: retry once the item has been seen.
+---
+--- The link reaches the client as data, so any link text is safe. Added 2026-10-04.
+---@param item_link string A full item link.
+---@return table<string, number>|nil stats
+function core.inventory.get_item_stats(item_link)
+    return nil
+end
+
+--- Guild bank, added 2026-10-04. Every reader answers 0, nil or false unless the guild bank frame is
+--- open (GUILDBANKFRAME_OPENED to GUILDBANKFRAME_CLOSED). Tabs are 1 based, slots are WoW's 1 to 98.
+--- Depositing an ITEM needs no new call: core.input.use_container_item on a bag item while the guild
+--- bank is open moves it into the open tab.
+---@return integer tabs
+function core.inventory.get_guild_bank_num_tabs()
+    return 0
+end
+
+---@class guild_bank_tab_info
+---@field name string
+---@field is_viewable boolean
+---@field can_deposit boolean
+---@field num_withdrawals integer Daily item withdrawals the rank allows, -1 for unlimited.
+---@field remaining_withdrawals integer Withdrawals left today.
+---@field icon? integer|string
+
+---@param tab integer 1 based tab index.
+---@return guild_bank_tab_info|nil info
+function core.inventory.get_guild_bank_tab_info(tab)
+    return nil
+end
+
+---@param tab integer 1 based tab index.
+---@param slot integer 1 to 98.
+---@return string|nil item_link
+function core.inventory.get_guild_bank_item_link(tab, slot)
+    return nil
+end
+
+---@class guild_bank_item_info
+---@field count integer
+---@field is_locked boolean
+---@field texture? integer|string
+
+---@param tab integer 1 based tab index.
+---@param slot integer 1 to 98.
+---@return guild_bank_item_info|nil info nil for an empty slot.
+function core.inventory.get_guild_bank_item_info(tab, slot)
+    return nil
+end
+
+---@return number copper Money in the guild bank, in copper.
+function core.inventory.get_guild_bank_money()
+    return 0
+end
+
+--- Deposits money into the guild bank, in copper. True means the call was reached.
+---@param copper number
+---@return boolean accepted
+function core.inventory.deposit_guild_bank_money(copper)
+    return false
+end
+
+--- Withdraws money from the guild bank, in copper. True means the call was reached: the rank's daily
+--- limit is enforced by the server, so a refused withdrawal still answers true.
+---@param copper number
+---@return boolean accepted
+function core.inventory.withdraw_guild_bank_money(copper)
+    return false
+end
+
+--- Moves one guild bank slot into the player's bags, as right-clicking it does. Counts against the
+--- rank's daily item withdrawals.
+---@param tab integer 1 based tab index.
+---@param slot integer 1 to 98.
+---@return boolean accepted
+function core.inventory.withdraw_guild_bank_item(tab, slot)
+    return false
+end
+
 --- The inventory_slot that holds an equipped BAG, asked of the game client. This is the portable
 --- way to name a bag slot for core.input.equip_container_item and get_inventory_item_stats.
 ---
@@ -1305,6 +1403,34 @@ function core.game_ui.get_loot_item_name(index)
     return ""
 end
 
+--- Returns the full item link of the item a group loot roll is for. roll_id is args[1] of the
+--- START_LOOT_ROLL event, which carries only the id and the timer. nil when the roll is gone.
+--- Added 2026-10-04.
+---@param roll_id integer The roll id from START_LOOT_ROLL.
+---@return string|nil item_link
+function core.game_ui.get_loot_roll_item_link(roll_id)
+    return nil
+end
+
+---@class loot_roll_item_info
+---@field name string Item name.
+---@field count integer Stack size.
+---@field quality integer Item quality, 0 poor to 5 legendary.
+---@field bind_on_pickup boolean True when the item binds on pickup.
+---@field can_need boolean False means a need roll (roll_on_loot type 1) will be refused.
+---@field can_greed boolean
+---@field can_disenchant boolean
+---@field texture integer|string Icon, a file id on modern clients.
+
+--- Returns what a group loot roll offers and which roll types this character may use. Read
+--- can_need before calling core.input.roll_on_loot(roll_id, 1). nil when the roll is gone.
+--- Added 2026-10-04.
+---@param roll_id integer The roll id from START_LOOT_ROLL.
+---@return loot_roll_item_info|nil info
+function core.game_ui.get_loot_roll_item_info(roll_id)
+    return nil
+end
+
 --- @return string|nil
 --- @param index number
 --- confirm, queued, none, error, active
@@ -1322,12 +1448,89 @@ function core.game_ui.get_battlefield_state()
     return 0
 end
 
---- @return vec2
---- @param map_id number
---- @param map_pos vec2
---- Returns vec2 x / y in 3dworld format, just missing z height
+--- Returns the world x / y of a point on a UiMap, and the continent that map belongs to.
+---
+--- The second return, added 2026-10-04, is the continent (instance map id) from
+--- C_Map.GetWorldPosFromMapPos, which this binding used to throw away. It is what tells you a
+--- waypoint is on another continent before you try to walk to it. 0 when unknown. Callers that read
+--- only the first value are unaffected.
+--- @param map_id number UiMap id.
+--- @param map_pos vec2 Normalised position on that map, 0 to 1.
+--- @return vec2 world_xy World x / y, missing only z.
+--- @return integer continent_id Instance map id of the continent, 0 when unknown.
 function core.game_ui.get_world_pos_from_map_pos(map_id, map_pos)
     return {}
+end
+
+---@class map_at_position
+---@field ui_map_id integer The most specific UiMap at that point.
+---@field name string Its name, for example "Razor Hill".
+---@field map_type integer The client's Enum.UIMapType value.
+
+--- Returns which zone a WORLD position belongs to: the most specific UiMap at that point, its name
+--- and its type. Lets a plugin name the zone of any waypoint without an offline zone table.
+---
+--- Only positions on the player's CURRENT continent: a point on another continent answers nil
+--- rather than a wrong zone. Added 2026-10-04.
+---@param x number World x.
+---@param y number World y.
+---@return map_at_position|nil info
+function core.game_ui.get_map_at_position(x, y)
+    return nil
+end
+
+---@class tooltip_line
+---@field left_text string
+---@field left_r number
+---@field left_g number
+---@field left_b number
+---@field right_text string
+---@field right_r number
+---@field right_g number
+---@field right_b number
+
+--- Returns the tooltip lines the client would show for any hyperlink (item, spell, quest), with
+--- their colours, without showing a tooltip. This is how red "cannot equip" lines, unique limits,
+--- class restrictions and Use / Equip effects are read; none of those are in get_item_stats.
+---
+--- Read in memory through C_TooltipInfo. ANSWERS AN EMPTY TABLE on a client without C_TooltipInfo:
+--- the alternative, a hidden named GameTooltip, would put a global into the game's _G and is not
+--- used. core.auction_house.get_item_tooltip reads by item id and is compiled out on classic builds;
+--- this takes a full link, so random suffixes are kept, and checks for the API at runtime.
+---
+--- The link reaches the client as data, so any text in it is safe. Added 2026-10-04.
+---@param hyperlink string Any WoW hyperlink, typically an item link.
+---@return tooltip_line[] lines Top to bottom; empty when unavailable.
+function core.game_ui.get_hyperlink_tooltip(hyperlink)
+    return {}
+end
+
+---@class cursor_info
+---@field type string The client's own type: "item", "spell", "money", "macro", "mount", ...
+---@field data1? number|string|boolean First value after the type: the item id for "item".
+---@field data2? number|string|boolean Second value: the item link for "item".
+---@field data3? number|string|boolean Third value: the spell id for "spell" on modern clients.
+
+--- Returns what is on the cursor, from GetCursorInfo, with its values passed through as the client
+--- gives them. nil when the cursor is empty. has_cursor_item only answered yes or no. Added
+--- 2026-10-04.
+---@return cursor_info|nil info
+function core.game_ui.get_cursor_info()
+    return nil
+end
+
+---@class action_info
+---@field type string "spell", "item", "macro", "companion", ...
+---@field id? integer The spell, item or macro id.
+---@field sub_type? string The client's sub type, often "".
+
+--- Returns what sits in one action bar slot, 1 to 120. nil when the slot is empty, which doubles as
+--- HasAction. Pair with core.input.pickup_spell and core.input.place_action to set up bars. Added
+--- 2026-10-04.
+---@param slot integer Action slot, 1 to 120.
+---@return action_info|nil info
+function core.game_ui.get_action_info(slot)
+    return nil
 end
 
 --- Get the current WoW cursor position.
@@ -1761,9 +1964,15 @@ function core.game_ui.learn_talent(arg1, arg2)
 end
 
 --- Returns the number of talent points the player has not spent yet.
---- Tree clients answer UnitCharacterPoints("player"), MoP answers GetNumUnspentTalents.
---- VERSIONS: GetNumUnspentTalents exists on the current Era and TBC clients too and is asked first
---- there. Retail and Forever answer from the trait currency (see below).
+--- Every source the client has is asked in turn and the first POSITIVE answer wins: the trait
+--- currency (retail, Forever), GetNumUnspentTalents (MoP), GetUnspentTalentPoints, then
+--- UnitCharacterPoints("player"). On the tree expansions (vanilla, Era, TBC, Wrath) the last
+--- fallback is computed from the game's own rule, (level - 9) minus points spent across the tabs,
+--- because on some clients every API answers 0 even with points to spend.
+---
+--- FIXED 2026-10-04: on core 2.087 this still answered 0 on TBC. A C_ClassTalents stub on the
+--- modern-engine classic client made the trait branch return 0 before any tree source was asked,
+--- even when UnitCharacterPoints had the right answer. 0 now means the character genuinely has none.
 ---
 --- On Midnight 12.1 this is the FIRST tree currency, which is the class pool. The trait trees
 --- carry several non-fungible currencies at once (class, spec, and the hero pool from 11.0) and
@@ -2373,6 +2582,14 @@ end
 ---@return stable_pet_info|nil info The pet, or nil for an empty slot.
 function core.pet_stable.get_pet_info(slot)
     return nil
+end
+
+--- Returns what the active hunter pet eats ("Meat", "Fish", "Bread", ...), as the client names them.
+--- Works anywhere, unlike the rest of core.pet_stable, because it reads the active pet. Empty with no
+--- pet out. Added 2026-10-04.
+---@return string[] food_types
+function core.pet_stable.get_pet_food_types()
+    return {}
 end
 
 --- Returns the slot the stable frame has selected.
@@ -3072,6 +3289,49 @@ end
 --- core.input.logout unless leaving immediately is the point.
 ---@return boolean accepted True when the client had ForceQuit or Quit and it was called.
 function core.input.quit_game()
+    return false
+end
+
+--- Leaves the current shapeshift form: druid forms, Ghost Wolf, Shadowform and the other forms the
+--- client models as shapeshifts. The client's own call for exactly this, so it does not depend on
+--- finding the right aura for cancel_buff first. True when the call was reached, also in caster form
+--- where it does nothing. Added 2026-10-04.
+---@return boolean accepted
+function core.input.cancel_shapeshift_form()
+    return false
+end
+
+--- Returns the local player's current pitch in radians: the read side of set_pitch and look_at_3d.
+--- nil on a client without GetUnitPitch, so "level" (0) and "unknown" stay distinct. Matters while
+--- swimming or flying, where movement follows it. Added 2026-10-04.
+---@return number|nil pitch Radians.
+function core.input.get_pitch()
+    return nil
+end
+
+--- Puts a spell on the cursor, as dragging it out of the spellbook does. Pair with place_action to
+--- set up action bars, and with core.input.clear_cursor to back out. Added 2026-10-04.
+---@param spell_id integer
+---@return boolean accepted
+function core.input.pickup_spell(spell_id)
+    return false
+end
+
+--- Drops the cursor's content into action bar slot 1 to 120, or picks the slot up when the cursor
+--- is empty, which is the client's own PlaceAction behaviour. Refused in combat. Read the result
+--- back with core.game_ui.get_action_info(slot). Added 2026-10-04.
+---@param slot integer Action slot, 1 to 120.
+---@return boolean accepted
+function core.input.place_action(slot)
+    return false
+end
+
+--- Self-resurrects from the death prompt when a soulstone or Reincarnation is offered. Only
+--- meaningful while dead with that option on screen; otherwise the client ignores it. Not the same
+--- as release_spirit / resurrect_corpse (your corpse run) or answer_resurrect (another player's
+--- spell). Added 2026-10-04.
+---@return boolean accepted
+function core.input.use_soulstone()
     return false
 end
 
@@ -4020,6 +4280,37 @@ function core.spell_book.get_shapeshift_form(show_all_forms)
     return 0
 end
 
+--- Returns how many forms or stances are on the bar. Added 2026-10-04.
+---@return integer count
+function core.spell_book.get_num_shapeshift_forms()
+    return 0
+end
+
+---@class shapeshift_form_info
+---@field icon integer|string
+---@field name? string Present on the classic clients only.
+---@field is_active boolean
+---@field is_castable boolean
+---@field spell_id? integer Present on the modern clients only.
+
+--- Returns one entry of the form / stance bar, 1 to get_num_shapeshift_forms(). get_shapeshift_form
+--- only gave the ACTIVE index; this lets a rotation find which index is Cat Form. The client changed
+--- this function's shape between versions: classic answers a name, modern a spell id, so read the
+--- one you need as optional. Added 2026-10-04.
+---@param index integer
+---@return shapeshift_form_info|nil info
+function core.spell_book.get_shapeshift_form_info(index)
+    return nil
+end
+
+--- Returns a spell's icon: a texture file id on modern clients, a path on older ones, as the client
+--- answers. For items use core.auction_house.get_item_icon_name. Added 2026-10-04.
+---@param spell_id integer
+---@return integer|string|nil icon
+function core.spell_book.get_spell_icon(spell_id)
+    return nil
+end
+
 --- Casts the shapeshift form at the given 1-based shapeshift/stance bar index.
 --- The actual form change is observed asynchronously via UPDATE_SHAPESHIFT_FORM.
 ---@param index integer The 1-based shapeshift/stance bar index to cast.
@@ -4208,7 +4499,9 @@ end
 ---@return boolean
 ---@param pos1 vec3
 ---@param pos2 vec3
----@param flags number
+---@param flags number Collision mask. On classic builds any bit above 0x1FFFFF (EntityRender
+--- 0x200000 and up) raises a Lua error instead of being passed on, because those bits crashed the
+--- 2.5.6 client outright. Every named flag in enums.collision_flags except EntityRender is fine.
 function core.graphics.trace_line(pos1, pos2, flags)
     return false
 end
@@ -4480,7 +4773,11 @@ end
 ---@param end_pos vec3 The end position of the ray.
 ---@param start_pos vec3 The start position of the ray.
 ---@param distance number|nil The max distance (default 1.0).
----@param hit_mask integer The collision hit mask flags.
+---@param hit_mask integer The collision hit mask flags. On classic builds any bit above 0x1FFFFF
+--- (EntityRender 0x200000 and up) raises a Lua error instead of being passed on, because those
+--- bits crashed the 2.5.6 client outright; changed 2026-10-04. KNOWN GAP, not fixed: game objects
+--- (stoves, chairs, benches) and some static models (a rope bridge, a troll hut wall) are not hit
+--- with any mask, although the client collides with them for movement. That is native work.
 ---@return boolean hit Whether an intersection occurred.
 ---@return vec3 hit_pos The intersection position.
 ---@return number hit_distance The intersection distance.
@@ -4793,8 +5090,8 @@ function core.menu.register_on_render_menu_callback(callback) return true end
 --- - Each pair is sent as: "Key: Value"
 ---
 --- Callback parameters:
---- - `http_code` integer, HTTP status code (200, 404, etc). Transport failure may be 0 (native-defined).
---- - `content_type` string, server content type (native-defined on failure).
+--- - `http_code` integer, HTTP status code (200, 404, etc). On a network failure, the curl error code.
+--- - `content_type` string, server content type, or "error" on a network failure.
 --- - `response_data` string, raw response body, binary safe.
 --- - `response_headers` string, response headers dump, format is native-defined.
 ---
@@ -4820,8 +5117,8 @@ end
 --- - `body` is a raw string (can contain binary data).
 ---
 --- Callback parameters:
---- - `http_code` integer, HTTP status code (200, 404, etc). Transport failure may be 0 (native-defined).
---- - `content_type` string, server content type (native-defined on failure).
+--- - `http_code` integer, HTTP status code (200, 404, etc). On a network failure, the curl error code.
+--- - `content_type` string, server content type, or "error" on a network failure.
 --- - `response_data` string, raw response body, binary safe.
 --- - `response_headers` string, response headers dump, format is native-defined.
 ---
@@ -4831,6 +5128,30 @@ end
 ---@param callback_opt fun(http_code: integer, content_type: string, response_data: string, response_headers: string)|nil
 ---@return nil
 function core.http_post(url, headers_or_body, body_or_callback, callback_opt)
+    return nil
+end
+
+--- Returns a JWT signed by the PS server that proves which PS user runs this session.
+---
+--- - Issued once when the session starts; the same for the whole session, plugin reloads included.
+--- - nil when the session has no token: treat the user as unverified.
+--- - ES256, kid "1", about 210 ASCII characters. Claims: uid (PS user id), sid (session id),
+---   product (0 WoW, 1 Overwatch, 2 League), iat (session start, unix seconds). No exp.
+--- - Verify on YOUR server with the PS public key (docs: Guides > Verifying PS users).
+---   Pin alg ES256, reject unknown kid, check product, apply your own age limit to iat.
+--- - Bearer proof: never log it or show it anywhere public.
+---
+--- Example:
+--- ```lua
+--- local token = core.get_session_jwt_token()
+--- if token then
+---     core.http_post("https://your-server.example/api/ps-verify",
+---         { ["Authorization"] = "Bearer " .. token }, "",
+---         function(http_code) if http_code == 200 then --[[ accepted ]] end end)
+--- end
+--- ```
+---@return string|nil token
+function core.get_session_jwt_token()
     return nil
 end
 
@@ -5496,6 +5817,17 @@ function core.quests.confirm_accept_quest() end
 --- set_abandon_quest and abandon_quest). Works on Retail, Era, TBC and MoP.
 ---@return integer count The number of quest log entries.
 function core.quests.get_num_quest_log_entries() return 0 end
+
+---@class open_quest_info
+---@field title string Quest title.
+---@field quest_id integer Quest id, 0 on the rare panel the client cannot attach one to.
+
+--- Returns which quest the open quest panel (detail, progress or reward) is showing. The
+--- QUEST_DETAIL / _PROGRESS / _COMPLETE events say a panel opened; this says which quest, so the
+--- right one is accepted or handed in and the state survives a reload. nil when no quest panel is
+--- open. Added 2026-10-04.
+---@return open_quest_info|nil info
+function core.quests.get_open_quest_info() return nil end
 
 --- Returns information about a quest in the quest log.
 --- VERSIONS: an empty entry on Forever (see get_num_quest_log_entries).
@@ -6211,13 +6543,31 @@ function core.mail.auto_loot_mail_item(index)
     return nil
 end
 
---- Sends a mail to a recipient.
+--- Sends a mail to a recipient. Classic builds only; a no-op on retail.
+---
+--- Any text is safe in all three strings, newlines and quotes included: they reach the client as
+--- data. Before 2026-10-04 a body containing a newline silently failed to send and anything past
+--- about 2 KB was cut off. Attach items first with core.mail.attach_container_item.
 ---@param recipient string The recipient character name.
 ---@param subject string|nil The mail subject (default "").
 ---@param body string|nil The mail body (default "").
 ---@return nil
 function core.mail.send_mail(recipient, subject, body)
     return nil
+end
+
+--- Attaches one bag item to the mail being written, as dragging it onto the first free attachment
+--- slot does. The mailbox's send tab has to be open. Added 2026-10-04.
+---
+--- (container_id, slot_id) is the bag slot convention every container action uses: WoW's bag (0 is
+--- the backpack) and WoW's slot + 1. Returns the attachment slot it landed in, 1 to 12, or 0 when
+--- nothing was attached (no free slot, mailbox not open, soulbound item); the cursor is cleared on a
+--- failed drop so the item is not left floating.
+---@param container_id integer WoW bag id, 0 is the backpack.
+---@param slot_id integer WoW slot + 1, the same bag_slot every container action takes.
+---@return integer attachment_slot 1 to 12, or 0 when nothing was attached.
+function core.mail.attach_container_item(container_id, slot_id)
+    return 0
 end
 
 --- Sets the money amount to attach to the outgoing mail.
@@ -6955,11 +7305,27 @@ end
 ---@field text string The goal text.
 ---@field is_complete boolean Whether RestedXP marks the goal as complete or skipped.
 ---@field text_only boolean Whether the goal is informational and does not gate step completion.
----@field ids integer[] Quest IDs associated with a multi-quest goal.
+---@field ids integer[] Quest IDs associated with a multi-quest goal; item ids for .itemcount.
+---@field objective integer .complete: the quest objective index the guide means. 0 otherwise.
+---@field objective_max integer .complete: the target count, 0 when unset.
+---@field reward integer .turnin: the reward choice the guide picks. 0 = none or does not care.
+---@field money number .money: the threshold in COPPER. 0 otherwise.
+---@field money_greater_than boolean .money: true = done once money >= threshold, false = once below.
+---@field item_total integer .itemcount: the count compared against.
+---@field item_operator integer .itemcount: -1 less than, 0 equal, 1 more than.
+---@field item_eq boolean .itemcount: true for <= or >=.
+---@field units string[] .target / .mob / .unitscan: the unit names (or npc ids) the step means.
 
 ---@class rested_xp_step_info
 ---@field num integer The current or sticky RestedXP step index.
 ---@field is_complete boolean Whether RestedXP marks the step as complete or skipped.
+---@field active boolean Whether RestedXP has ACTIVATED the step. An inactive step's turn-ins do not
+--- count and it has no waypoint of its own; requires and level say why it is inactive.
+---@field requires string The step's #requires label, "" when none.
+---@field requires_step integer The step index that label points at, 0 when none. The step stays
+--- inactive until that one is done.
+---@field level integer Minimum character level for the step.
+---@field label string This step's own #label, "" when none.
 ---@field goals rested_xp_goal_info[] The goals in this step.
 
 ---@class rested_xp_objective_info
@@ -7027,6 +7393,15 @@ end
 ---@return rested_xp_waypoint_info[] waypoints An array of active waypoint tables.
 function core.addons.rested_xp.get_step_waypoints()
     return {}
+end
+
+--- Moves RestedXP past its current step, like clicking the next step in its window. For optional
+--- steps a bot cannot or should not finish. It makes the same call RestedXP makes itself when a step
+--- completes, so stickies and the next step update normally. False when RestedXP is not loaded or
+--- has no current step. Added 2026-10-04.
+---@return boolean skipped
+function core.addons.rested_xp.skip_current_step()
+    return false
 end
 
 ---@class tsm_item_prices
