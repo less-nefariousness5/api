@@ -49,10 +49,11 @@
 
 ---@class unit_helper
 --- Determine the role ID of the unit (Tank, Dps, Healer).  
---- VERSIONS (get_role_id, is_tank, is_healer, is_damage_dealer): the assigned group role is read
---- only on Retail, MoP Classic and Titan (China) (see game_object:get_group_role). Elsewhere the
---- role is guessed from class + spec; on the private-server clients (Vanilla 1.14 / TBC 2.5.3)
---- other units have no spec, so every unit but you is NONE.
+--- VERSIONS (get_role_id, is_tank, is_healer, is_damage_dealer): the game's assigned group role is
+--- used when there is one (see game_object:get_group_role; every client since the 2026-10-06 core,
+--- before it only Retail, MoP Classic and Titan). Without an assigned role the role is guessed from
+--- class + spec; on the private-server clients (Vanilla 1.14 / TBC 2.5.3) other units have no spec,
+--- so every unit but you is NONE.
 ---@field get_role_id fun(self: unit_helper, unit: game_object): number
 
 ---@class unit_helper

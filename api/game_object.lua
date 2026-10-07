@@ -1,11 +1,14 @@
 
---- VERSIONS: is_tanking is unreliable on Era, MoP, Titan and both private servers. The core
---- compares against a hardcoded offset that is not the mob's target field on those clients (TBC
---- and Forever were moved to the verified field; retail asks UnitDetailedThreatSituation). There,
---- compare mob:get_target() with yourself instead. status and threat_percent do not use that read.
+--- Threat of a unit on a mob, the game's UnitDetailedThreatSituation.
+--- status: 0 not tanking and lower threat than the tank, 1 not tanking but higher threat (about to
+--- pull aggro), 2 tanking but someone has more threat, 3 securely tanking. is_tanking is status >= 2.
+--- All three are 0 / false when the unit has no threat on that mob at all.
+--- VERSIONS: fixed on every classic build in the 2026-10-06 core (branch lua_requests_06_10).
+--- Before it, status was always 0 and is_tanking was unreliable on the classic builds (Era, TBC,
+--- MoP, Titan, Forever, both private servers); only threat_percent was right. Retail was correct.
 ---@class threat_table
----@field is_tanking boolean
----@field status integer -- 0, 1, 2, 3
+---@field is_tanking boolean True when status is 2 or 3: the mob is attacking this unit.
+---@field status integer 0, 1, 2 or 3, see above.
 ---@field threat_percent number -- 0 to 100
 
 --- A single aura on a unit, as game_object:get_buffs() and get_debuffs() report it.
@@ -184,9 +187,12 @@
 --- "TANK" = 0  
 --- "HEALER" = 1  
 --- "DAMAGER" = 2  
---- VERSIONS: real on retail, MoP and Titan CN. Hard -1 on Era, TBC, Forever and both private
---- servers (the core returns "NONE" there by #if, even though Era/TBC/Forever ship
---- UnitGroupRolesAssigned).
+--- This is the role the GAME assigned in the group (role check, group finder), nothing else.
+--- -1 is the correct answer whenever the game has no role for the unit: when you are solo, or in a
+--- group where nobody picked roles. The game simply does not know a role then, and the core does not
+--- guess one; if you want a guess from class and spec, use izi is_tank / is_healer / is_dps.
+--- VERSIONS: works on every client since the 2026-10-06 core (branch lua_requests_06_10). Before it,
+--- Era, TBC, Forever and both private servers always answered -1.
 ---@field get_group_role fun(self: game_object): number
 ---Returns the bounding radius of the game object.
 ---@field get_bounding_radius fun(self: game_object): number
@@ -270,10 +276,14 @@
 ---Returns the maximum power of the game object for the specified power type.  
 --- Note: https://wowpedia.fandom.com/wiki/Enum.PowerType
 ---@field get_max_power fun(self: game_object, power_type: number): number
----Returns the experience points (XP) of the game object.
----@field get_xp fun(self: game_object): number
----Returns the maximum experience points (XP) of the game object.
----@field get_max_xp fun(self: game_object): number
+---Returns the experience points (XP) of the local player: the game's UnitXP("player"), the same
+--- number core.character.get_xp() returns. 0 for every other object (the game never tells you
+--- another unit's XP) and at the level cap. Since the 2026-10-06 core it is asked from the game on
+--- every client instead of read from memory.
+---@field get_xp fun(self: game_object): integer
+---Returns the XP the local player's current level needs: UnitXPMax("player"), the same number
+--- core.character.get_xp_max() returns. 0 for every other object.
+---@field get_max_xp fun(self: game_object): integer
 ---Returns the total absorb shield of the game object.
 --- VERSIONS: RETAIL ONLY. Always 0 on every classic build (the classic body is a stub, although
 --- the Era/TBC, MoP and Forever clients do have UnitGetTotalAbsorbs).

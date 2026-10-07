@@ -337,6 +337,20 @@ function core.game_time()
     return 0
 end
 
+--- Returns the realm's clock as unix seconds (UTC), from the game's GetServerTime().
+---
+--- The one clock that agrees across sessions, reloads and machines, so use it for anything you
+--- store and compare later (cooldown timestamps, "last done at", data shared between two PCs).
+--- core.time and core.game_time count from the session start and core.get_local_time follows the
+--- PC's own clock, which differs per machine and can simply be wrong.
+---
+--- Whole seconds. 0 only when the client cannot answer (a real reading is never 0).
+--- Works on every client. Added 2026-10-06 (core branch lua_requests_06_10).
+---@return integer seconds Unix time in seconds, from the realm.
+function core.get_server_time()
+    return 0
+end
+
 --- Get the time in seconds since the last frame.
 ---@return number The time in seconds since the last frame.
 function core.delta_time()
@@ -355,6 +369,9 @@ function core.get_map_id()
     return 0
 end
 
+--- Returns the instance MAP id of where you are (the 8th value of the game's GetInstanceInfo()),
+--- also in the open world, where it is the continent. This is the id
+--- core.world.get_encounters_for_instance takes. Not a UI map id.
 ---@return number
 function core.get_instance_id()
     return 0
@@ -436,9 +453,39 @@ function core.get_subzone_name()
     return ""
 end
 
----@return number
----@param pos vec3
-function core.get_height_for_position(pos)
+---@class height_for_position_options
+---@field water? boolean Stop on a water surface instead of the sea or lake bed (default false).
+---@field probe_up? number Yards above pos.z where the downward ray starts, 0 to 1000 (default 2).
+
+--- Returns the height (z) of the first surface below a point: a vertical ray from a little above
+--- `pos` straight down, answering where it hits terrain, buildings, docks or doodads.
+---
+--- Called with `pos` only, it behaves exactly as it always has:
+--- - The ray starts 2 yards above `pos.z`. It cannot hit a surface it starts BELOW, so if the z you
+---   pass is lower than the dock, bridge or shore slope at that x,y, the answer drops through to
+---   whatever is underneath, often the sea bed. Pass a z that is above the surface, or raise
+---   `probe_up`.
+--- - Water is ignored: over a lake or the sea you get the BED, not the surface.
+--- - A miss answers 0, which you cannot tell from a real height of 0.
+---
+--- Options (added 2026-10-06, core branch lua_requests_06_10):
+--- - `water = true` stops on the water surface instead of the bed. Not yet measured in game;
+---   check it once with core.graphics.native_intersect(top, bottom, 1, 0x20111) over water.
+--- - `probe_up` starts the ray higher. Useful when sampling ground along a path. Do not raise it
+---   inside buildings or caves: it then hits the floor or ceiling above you.
+--- A non-table second argument, or a probe_up that is not a number from 0 to 1000, raises a Lua error.
+---
+--- Example:
+--- ```lua
+--- local p = vec3.new(x, y, z)
+--- local bed     = core.get_height_for_position(p)
+--- local surface = core.get_height_for_position(p, { water = true })
+--- local ground  = core.get_height_for_position(p, { probe_up = 10 })
+--- ```
+---@param pos vec3 The point to measure under.
+---@param options? height_for_position_options
+---@return number z The height of the first surface hit, 0 on a miss.
+function core.get_height_for_position(pos, options)
     return 0
 end
 
@@ -600,7 +647,10 @@ end
 --- - Do not prefix with `scripts_data/` yourself.
 ---
 --- Notes:
---- - Parent folders should exist. Use core.create_data_folder for subfolders if needed.
+--- - Creates the file, or EMPTIES it if it already exists. This is also how you replace a file's
+---   contents: create_data_file, then write_data_file (see write_data_file).
+--- - Creates `scripts_data/` itself when missing, but not subfolders. Use core.create_data_folder
+---   for those first.
 ---
 --- Example:
 --- ```lua
@@ -608,10 +658,11 @@ end
 --- core.write_data_file("settings.json", "{}")
 --- ```
 ---
+--- Return value corrected 2026-10-06: the stub said nil, the core has always returned a boolean.
 ---@param filename string Path inside `scripts_data/` (UTF-8), relative to the loader data directory.
----@return nil
+---@return boolean created True when the file was created or emptied.
 function core.create_data_file(filename)
-    return nil
+    return false
 end
 
 --- Creates a folder inside the loader's `scripts_data/` directory.
@@ -646,13 +697,22 @@ end
 --- - `filename` is relative to `scripts_data/`.
 --- - Do not prefix with `scripts_data/` yourself.
 ---
---- Notes:
---- - The write behavior (overwrite vs append) depends on native implementation.
----   In most systems this overwrites the file.
+--- Behavior (confirmed in the core 2026-10-06; the old note here guessed "overwrites", which was wrong):
+--- - APPENDS `data` to the end of the file. It never replaces the contents.
+--- - The file must already EXIST. On a missing file nothing is written and nothing is reported:
+---   no error, no return value. Call core.create_data_file first.
+--- - To REPLACE a file: core.create_data_file(name) (creates it or empties it), then
+---   core.write_data_file(name, data).
+--- - Same on every game version, and intended: it is what makes log-style files work.
 ---
 --- Example:
 --- ```lua
+--- -- replace the whole file
+--- core.create_data_file("cache/state.txt")
 --- core.write_data_file("cache/state.txt", "last_login=123")
+---
+--- -- append a line to an existing log
+--- core.write_data_file("cache/history.txt", "login at 123\n")
 --- ```
 ---
 ---@param filename string Path inside `scripts_data/` (UTF-8), relative to the loader data directory.
@@ -862,8 +922,10 @@ end
 --- - Use forward slashes or backslashes as path separators.
 ---
 --- Returns:
---- - On success: a table (array) of file names in the directory.
---- - On failure: nil (path outside sandbox, doesn't exist, or not a directory).
+--- - A table (array) of file names in the directory.
+--- - An EMPTY table when the folder does not exist, and also when the path is a file
+---   (confirmed in the core 2026-10-07). Check `#files > 0`, not `files ~= nil`.
+--- - nil only when the path is outside the sandbox.
 ---
 --- Notes:
 --- - Only returns file/folder names, not full paths.
@@ -873,19 +935,36 @@ end
 --- Example:
 --- ```lua
 --- local files = core.read_dir("profiles")
---- if files then
+--- if files and #files > 0 then
 ---   for i, name in ipairs(files) do
 ---     print("Found: " .. name)
 ---   end
 --- else
----   print("Directory not found or outside sandbox")
+---   print("Directory missing, empty, a file, or outside sandbox")
 --- end
 --- ```
 ---
 ---@param directory string Directory path inside `scripts_data/` (UTF-8), relative to the loader data directory.
----@return string[]|nil files Array of file/folder names, or nil on failure.
+---@return string[]|nil files Array of file/folder names, empty when missing, nil outside the sandbox.
 function core.read_dir(directory)
     return nil
+end
+
+--- Returns true when the plugin that owns the calling code was loaded from an
+--- encrypted (published) package, false for a plugin running from its source folder.
+---
+--- Shared `common/` code is skipped, so a library such as assets_helper sees the
+--- plugin that called it. Always false on debug cores.
+---
+--- Example:
+--- ```lua
+--- if not core.is_current_plugin_encrypted() then
+---     core.log("running from source")
+--- end
+--- ```
+---@return boolean encrypted
+function core.is_current_plugin_encrypted()
+    return false
 end
 
 --- Deletes a file inside the World of Warcraft installation folder.
@@ -1472,6 +1551,10 @@ end
 ---
 --- Only positions on the player's CURRENT continent: a point on another continent answers nil
 --- rather than a wrong zone. Added 2026-10-04.
+---
+--- Also nil inside a dungeon that has no UI map of its own, which is common on the classic-family
+--- clients (Era, TBC, Forever). That is the game's own answer, not a fault: such an instance has no
+--- map to name. For its bosses use core.world.get_encounters_for_instance().
 ---@param x number World x.
 ---@param y number World y.
 ---@return map_at_position|nil info
@@ -1687,8 +1770,10 @@ function core.game_ui.is_map_open()
 end
 
 --- Returns the top-left corner of the world map frame in UI coordinates.
---- VERSIONS: on Retail the value is also multiplied by UIParent's effective scale; on every
---- classic build it is not, so the units differ. Same for get_map_bottom_right.
+--- VERSIONS: on Retail and Forever the value is also multiplied by UIParent's effective scale (their
+--- world map inherits the UI scale); on every other classic build it is not, because the classic map
+--- ignores the UI scale. Same for get_map_bottom_right. Forever joined the Retail side in the
+--- 2026-10-06 core; before that its corners were wrong at any UI scale other than 1.
 ---@return vec2 The top-left position of the map in UI coordinates.
 function core.game_ui.get_map_top_left()
     return {}
@@ -1742,9 +1827,9 @@ end
 
 --- Returns information about a specific vendor item.
 --- Note: vendor_item_id is 1-indexed (internally adjusted to 0-indexed).
---- VERSIONS: BROKEN on Retail and Forever. Their clients have no GetMerchantItemInfo (replaced by
---- C_MerchantFrame.GetItemInfo), so every call returns cost 0, item_id 0, item_name "" and
---- vendor_item_index 0. Works on Classic Era, TBC, MoP and Titan.
+--- VERSIONS: works on every client since the 2026-10-06 core (branch lua_requests_06_10). Retail and
+--- Forever have no GetMerchantItemInfo; the core now reads C_MerchantFrame.GetItemInfo there. Before
+--- that core every call on those two returned cost 0, item_id 0, item_name "" and index 0.
 ---@param vendor_item_id integer The 1-based index of the vendor item.
 ---@return vendor_item_info A table containing the vendor item information.
 function core.game_ui.get_vendor_item_info(vendor_item_id)
@@ -1758,9 +1843,13 @@ function core.game_ui.get_vendor_item_count()
 end
 
 --- Returns a table containing all completed quest IDs for the local player.
---- VERSIONS: always {} on Retail and Forever, whose clients have no GetQuestsCompleted (replaced by
---- C_QuestLog.GetAllCompletedQuestIDs). Works on Classic Era, TBC and MoP; Titan unverified.
---- core.quests.is_quest_flagged_completed answers a single id on Retail, Forever and Classic.
+--- Order is not meaningful; treat it as a set. It can hold tens of thousands of ids on an old retail
+--- character, so build a lookup table once instead of calling this per check, or use
+--- core.quests.is_quest_flagged_completed for a single id.
+--- VERSIONS: works on every client since the 2026-10-06 core (branch lua_requests_06_10). Retail and
+--- Forever have no GetQuestsCompleted; the core now reads C_QuestLog.GetAllCompletedQuestIDs there
+--- (before: always {}). The same core also lifted a limit that returned {} once a character had more
+--- than about 8000 completed quests.
 ---@return integer[] An array of completed quest IDs.
 function core.game_ui.get_all_completed_quest_ids()
     return {}
@@ -2269,6 +2358,35 @@ function core.character.get_breath()
     return {}
 end
 
+--- Returns the local player's current experience points, from the game's UnitXP("player").
+---
+--- The same number as local_player:get_xp(); both run the same code, so they never disagree.
+--- This one needs no object in hand. Local player only: the game never tells you another unit's XP.
+--- 0 at the level cap, and 0 when the client cannot answer.
+--- Works on every client. Added 2026-10-06 (core branch lua_requests_06_10).
+---@return integer xp Experience points earned in the current level.
+function core.character.get_xp()
+    return 0
+end
+
+--- Returns the experience points the local player's current level needs, from UnitXPMax("player").
+--- Same number as local_player:get_max_xp(). Note the name: get_xp_MAX here, get_MAX_xp on the
+--- object; both exist. 0 when the client cannot answer.
+--- Works on every client. Added 2026-10-06.
+---@return integer xp_max Experience needed to finish the current level.
+function core.character.get_xp_max()
+    return 0
+end
+
+--- Returns the local player's rested XP bonus pool, from GetXPExhaustion().
+--- nil when the player has no rested bonus (the game's own "none" answer), never 0, so test it
+--- with `if rested then`. The pool is in experience points; it drains as you earn XP from kills.
+--- Works on every client. Added 2026-10-06.
+---@return integer|nil rested Rested bonus experience, or nil when not rested.
+function core.character.get_rested_xp()
+    return nil
+end
+
 ---@class world
 core.world = {}
 
@@ -2294,9 +2412,48 @@ end
 --- Returns a table of encounter data for the specified UI map ID.
 --- Each entry contains the encounter ID and its map position.
 --- VERSIONS: always {} on the private-server clients (Vanilla 1.14 / TBC 2.5.3), core stub.
+--- CLASSIC DUNGEONS WITHOUT A MAP: many classic-family dungeons (Era, TBC and Forever, for example
+--- Forever's Excavation Site: Wetlands) have no UI map of their own, so there is no ui_map_id to
+--- pass (core.game_ui.get_map_at_position answers nil inside them and the game itself shows the
+--- outdoor zone). Use core.world.get_encounters_for_instance there.
 ---@param ui_map_id integer The UI map ID to query encounters for.
 ---@return encounter_info[] An array of encounter info tables.
 function core.world.get_encounters_on_map(ui_map_id)
+    return {}
+end
+
+---@class instance_encounter
+---@field encounter_id integer Journal encounter id, the same id space get_encounters_on_map answers.
+---@field dungeon_encounter_id integer The id ENCOUNTER_START and ENCOUNTER_END carry for this boss.
+---@field name string Boss name, localized.
+
+---@class instance_encounters
+---@field journal_instance_id integer The Encounter Journal's id for the instance, 0 when it has none.
+---@field encounters instance_encounter[] The bosses in journal order, empty when unknown.
+
+--- Returns the bosses of an instance from the Encounter Journal, by the instance's MAP id rather
+--- than a UI map, so it works inside dungeons that have no map of their own (see
+--- get_encounters_on_map).
+---
+--- `instance_map_id` is what core.get_instance_id() returns. Omit it (or pass 0) for the instance
+--- you are in. Empty `encounters` and journal_instance_id 0 when you are not in an instance, or
+--- when the game has no journal entry for it; then nothing can list the bosses, and the boss1..5
+--- units and the ENCOUNTER_START event are what remain.
+---
+--- Added 2026-10-06 (core branch lua_requests_06_10). It is a separate function on purpose, so
+--- get_map_at_position and get_encounters_on_map answer exactly as before on the expansions where
+--- dungeons have maps. Not yet seen working in game: report what it returns in a classic dungeon.
+---
+--- Example:
+--- ```lua
+--- local info = core.world.get_encounters_for_instance()
+--- for _, boss in ipairs(info.encounters) do
+---     core.log(boss.name .. " " .. boss.dungeon_encounter_id)
+--- end
+--- ```
+---@param instance_map_id? integer Instance map id from core.get_instance_id(); 0 or nil for the current one.
+---@return instance_encounters info
+function core.world.get_encounters_for_instance(instance_map_id)
     return {}
 end
 
@@ -2549,7 +2706,7 @@ end
 ---@field level integer The pet's level.
 ---@field family string The localized pet family, such as "Wolf".
 ---@field loyalty? string The loyalty text Blizzard's stable frame shows, vanilla and TBC only.
----@field talent? string The pet talent tree, such as "Ferocity", on the Wrath client only.
+---@field talent? string The pet talent tree, such as "Ferocity", on the Wrath client only (never on Forever).
 
 --- core.pet_stable: the hunter stable. Added 2026-09-26.
 ---
@@ -2562,11 +2719,17 @@ end
 --- PET_STABLE_SHOW and PET_STABLE_CLOSED events. The actions only SEND a request; the result
 --- arrives as PET_STABLE_UPDATE, so re-read after that event rather than on the next line.
 ---
---- Classic stables only (vanilla, TBC, Wrath). MoP and retail have the five-slot stable, which this
---- namespace does not drive: there every call except close() answers 0 / nil / false and the core
---- log says why. VERSIONS: Forever behaves the same way (its client has only retail's stable API).
+--- Classic stables only (vanilla, TBC, Wrath, and Forever's one-pet stable). MoP and retail have the
+--- five-slot stable, which this namespace does not drive: there every call except close() answers
+--- 0 / nil / false and the core log says why.
+--- VERSIONS, Forever (2026-10-06 core, branch lua_requests_06_10): Forever's stable is the classic
+--- one-pet stable behind retail's newer API, and the core now drives it: get_num_slots,
+--- get_pet_info, move_pet, buy_slot, get_next_slot_cost and get_pet_food_types work there. Not on
+--- Forever, because the client has nothing that means the same: get_selected_slot and click_slot
+--- (its stable selection is UI-only), and stable_pet / unstable_pet (use move_pet). Before that core
+--- every call except close() answered 0 / nil / false on Forever.
 --- stable_pet and unstable_pet exist only on the clients that kept the old index (both
---- private-server clients among them); move_pet does the same job on all three.
+--- private-server clients among them); move_pet does the same job on all of them.
 ---@class pet_stable
 core.pet_stable = {}
 
@@ -2632,6 +2795,8 @@ end
 --- cursor already holds something, when the from slot is empty, or when the client refuses the
 --- drop (the pet is put back). true means the client took the drop; the stable changes on
 --- PET_STABLE_UPDATE. Raises a Lua error for a negative slot.
+--- On Forever (2026-10-06 core) the client does not report whether it took the drop, so true there
+--- means the swap was requested; PET_STABLE_UPDATE is the confirmation.
 ---@param from_slot integer 0 for the active pet, 1 and up for a stable slot.
 ---@param to_slot integer 0 for the active pet, 1 and up for a stable slot.
 ---@return boolean moved True when the client took the drop.
@@ -2851,8 +3016,9 @@ end
 
 --- Accept an innkeeper's "make this your home" prompt, the one raised by CONFIRM_BINDER.
 --- Fires after using a hearthstone bind gossip option; the event's arg1 is the innkeeper's name.
---- VERSIONS: always false on Retail and Forever, whose clients have no ConfirmBinder (it moved to
---- C_PlayerInteractionManager). Works on Classic Era, TBC and MoP.
+--- VERSIONS: works on every client since the 2026-10-06 core (branch lua_requests_06_10). Retail
+--- and Forever have no ConfirmBinder; the core now answers there the way their own popup does
+--- (C_PlayerInteractionManager), so it no longer always answers false on those two.
 ---@return boolean ran True when the client's confirm call was reached.
 function core.input.confirm_binder()
     return false
@@ -3097,8 +3263,9 @@ end
 ---
 --- true means the abandon request was sent; the pet is gone when the server confirms it, which
 --- shows up as the player no longer having a pet. The hunter stable itself is core.pet_stable.
---- VERSIONS: Vanilla to MoP only. Retail and Forever have no PetAbandon global (it moved to
---- C_PetInfo), so there this always answers false and the core log names the missing function.
+--- VERSIONS: works on every client since the 2026-10-06 core (branch lua_requests_06_10). Retail and
+--- Forever have no PetAbandon global; the core now calls C_PetInfo.PetAbandon there, the call their
+--- own Abandon Pet popup makes. Before that core it always answered false on those two.
 ---@return boolean sent True when the request was sent for a pet the client says can be abandoned.
 function core.input.abandon_pet()
     return false
@@ -3495,8 +3662,9 @@ function core.input.close_loot()
     return nil
 end
 
---- VERSIONS: silently does nothing on Forever: the core looks the buff up through UnitBuff, which
---- the Forever client does not have. Works on every other build.
+--- VERSIONS: works on every client since the 2026-10-06 core (branch lua_requests_06_10). It used
+--- to do nothing on Forever, and on Era / TBC / MoP whenever the game's deprecated-API fallback was
+--- switched off, because the core found the buff through UnitBuff only.
 ---@return nil
 ---@param buff_otr buff
 function core.input.cancel_buff(buff_otr)
@@ -3761,6 +3929,10 @@ end
 
 ---@class spell_book
 --- Indicates if the spell can be usable based on many requirements.
+--- It is the game's own IsSpellUsable answer (mana, reagents, stance, form and similar). It does NOT
+--- check that the player has learned the spell: the game can answer true for a spell you do not
+--- know. Check core.spell_book.is_spell_learned(spell_id) yourself when that matters; izi's
+--- is_castable functions and spell_helper already do. By design, not a bug (noted 2026-10-06).
 --- Declared as a field (not a function stub) because core_lua/go_override_fnc.lua
 --- monkey-patches it at load; a field declaration is not a "set", so the override
 --- is the sole definition and there is no duplicate-set-field.
@@ -4217,10 +4389,11 @@ end
 --- Added 2026-09-26.
 ---
 --- available is computed for you exactly the way Blizzard's own pet frames compute it. 0 / 0 is a
---- normal answer for a character without a hunter pet. nil on retail, which has no such function,
---- and on Forever, which has it only as C_PetInfo.GetPetTrainingPoints, a name the core does not call
---- yet (the core log names it). Pets after TBC have talents instead, and what the function answers on
---- those clients has not been measured, so do not build on it there.
+--- normal answer for a character without a hunter pet. nil on retail, which has no such function.
+--- Forever has it as C_PetInfo.GetPetTrainingPoints, which the core calls since the 2026-10-06 core
+--- (branch lua_requests_06_10); before that it answered nil there. Pets after TBC have talents
+--- instead, and what the function answers on those clients has not been measured, so do not build
+--- on it there.
 ---@return pet_training_points|nil points The training points, or nil when the client has no training points API.
 function core.spell_book.get_pet_training_points()
     return nil
@@ -5093,7 +5266,15 @@ function core.menu.register_on_render_menu_callback(callback) return true end
 --- - `http_code` integer, HTTP status code (200, 404, etc). On a network failure, the curl error code.
 --- - `content_type` string, server content type, or "error" on a network failure.
 --- - `response_data` string, raw response body, binary safe.
---- - `response_headers` string, response headers dump, format is native-defined.
+--- - `response_headers` string, the final response's raw header block: its status line, then one
+---   "Key: Value" line per header.
+---
+--- Redirects (added 2026-10-06, core branch lua_requests_06_10):
+--- - Followed automatically, up to 5 hops, http and https only. The callback gets the FINAL
+---   response's status, body and headers; you never see the 3xx. More than 5 hops fails with
+---   http_code 47 and content_type "error".
+--- - Code that follows `Location:` by hand keeps working: it simply never sees a 3xx any more.
+--- - An Authorization header is not sent on to a different host after a redirect.
 ---
 ---@param url string
 ---@param headers_or_callback table<string, string>|fun(http_code: integer, content_type: string, response_data: string, response_headers: string)
@@ -5120,7 +5301,17 @@ end
 --- - `http_code` integer, HTTP status code (200, 404, etc). On a network failure, the curl error code.
 --- - `content_type` string, server content type, or "error" on a network failure.
 --- - `response_data` string, raw response body, binary safe.
---- - `response_headers` string, response headers dump, format is native-defined.
+--- - `response_headers` string, the final response's raw header block: its status line, then one
+---   "Key: Value" line per header.
+---
+--- Redirects (added 2026-10-06, core branch lua_requests_06_10):
+--- - Followed automatically, up to 5 hops, http and https only. The callback gets the FINAL
+---   response's status, body and headers; you never see the 3xx. More than 5 hops fails with
+---   http_code 47 and content_type "error".
+--- - Code that follows `Location:` by hand keeps working: it simply never sees a 3xx any more.
+--- - An Authorization header is not sent on to a different host after a redirect.
+--- - POST: a 301, 302 or 303 is re-requested as a GET without the body (what browsers do);
+---   a 307 or 308 repeats the POST with the body.
 ---
 ---@param url string
 ---@param headers_or_body table<string, string>|string
@@ -5812,9 +6003,14 @@ function core.quests.get_quest_reward(choice) end
 function core.quests.confirm_accept_quest() end
 
 --- Returns the total number of entries in the quest log (including headers).
---- VERSIONS: always 0 on Forever, which lacks the classic quest log globals the classic builds call
---- (the same gap hits get_quest_log_title, select_quest_log_entry, add/remove_quest_watch,
---- set_abandon_quest and abandon_quest). Works on Retail, Era, TBC and MoP.
+--- This is the range get_quest_log_title(1 .. count) walks.
+---
+--- VERSIONS: works on every client. Forever answered 0 here (and get_quest_log_title,
+--- select_quest_log_entry, add/remove_quest_watch, set_abandon_quest and abandon_quest did nothing)
+--- until the 2026-10-06 core (branch lua_requests_06_10): the core now asks each client in the API it
+--- actually has. For questions about ONE quest prefer the quest-ID readers below
+--- (get_quest_log_quest_ids, get_quest_objectives, is_quest_complete, abandon_quest_by_id): a log
+--- index moves whenever a quest is added, finished or a header is collapsed.
 ---@return integer count The number of quest log entries.
 function core.quests.get_num_quest_log_entries() return 0 end
 
@@ -5830,10 +6026,14 @@ function core.quests.get_num_quest_log_entries() return 0 end
 function core.quests.get_open_quest_info() return nil end
 
 --- Returns information about a quest in the quest log.
---- VERSIONS: an empty entry on Forever (see get_num_quest_log_entries).
---- VERSIONS: on Retail is_complete is always nil (the game's retail quest info has no such field).
---- On the classic builds only title to quest_id are right: is_task, is_story, start_event,
---- is_on_map, has_local_poi and is_hidden are read from the wrong positions (core bug); do not use them.
+--- is_complete is 1 when the quest is ready to hand in, -1 when it failed, nil otherwise.
+---
+--- VERSIONS, fixed in the 2026-10-06 core (branch lua_requests_06_10), all three:
+--- - Forever answered an empty entry; it now answers like every other client.
+--- - Retail's is_complete was always nil; it is now 1 / -1 / nil like classic.
+--- - On the classic builds is_task, is_story, start_event, is_on_map, has_local_poi and is_hidden
+---   were read from the wrong positions; they are now right. title to quest_id were always right.
+--- On an older core keep the old rule: on classic trust only title to quest_id.
 ---@param index integer The quest log index.
 ---@return quest_log_entry entry A table containing the quest log entry information.
 function core.quests.get_quest_log_title(index) return {} end
@@ -5848,12 +6048,17 @@ function core.quests.is_quest_flagged_completed(quest_id) return false end
 ---@return boolean is_on_quest Whether the player is on the quest.
 function core.quests.is_on_quest(quest_id) return false end
 
---- Selects a quest log entry (sets it as the active quest).
---- VERSIONS: does nothing on Forever (see get_num_quest_log_entries).
---- VERSIONS: on Retail the game call takes a QUEST ID, not a log index: pass
---- get_quest_log_title(i).quest_id there, or the wrong quest (or none) is selected. Same for
---- add_quest_watch and remove_quest_watch.
----@param index integer The quest log index (the quest id on Retail).
+--- Selects a quest log entry (sets it as the active quest). set_abandon_quest and
+--- quest_log_push_quest act on this selection.
+---
+--- VERSIONS, 2026-10-06 core (branch lua_requests_06_10): takes the LOG INDEX on every client.
+--- - Forever: did nothing before, works now.
+--- - Retail: used to need the QUEST ID (the old note here said so). That still works: on Retail and
+---   Forever a number that is not a quest row of the log but is the ID of a quest in your log is
+---   taken as that quest ID, so code written for the old rule keeps working. When a number is valid
+---   both ways (only possible for very old, low quest IDs), the index wins.
+--- Same for add_quest_watch and remove_quest_watch. A header row selects nothing.
+---@param index integer The quest log index.
 function core.quests.select_quest_log_entry(index) end
 
 --- Expands a quest log header, revealing the quests grouped under it.
@@ -5887,27 +6092,87 @@ function core.quests.get_quest_log_leader_board(obj_index, quest_log_index) retu
 function core.quests.get_quest_log_item_link(type, index, quest_id) return "" end
 
 --- Adds a quest to the watch list (tracker).
---- VERSIONS: does nothing on Forever (see get_num_quest_log_entries); remove_quest_watch too.
---- On Retail pass the quest id, not the log index (see select_quest_log_entry); watch_time is ignored there.
----@param index integer The quest log index (the quest id on Retail).
----@param watch_time? number The watch time duration (default 0).
+--- VERSIONS: takes the log index on every client since the 2026-10-06 core, with the same quest ID
+--- compatibility as select_quest_log_entry. watch_time only exists on the classic clients; Retail
+--- and Forever have no duration and ignore it.
+---@param index integer The quest log index.
+---@param watch_time? number Seconds to keep it watched, classic clients only (default 0).
 function core.quests.add_quest_watch(index, watch_time) end
 
 --- Removes a quest from the watch list (tracker).
---- VERSIONS: does nothing on Forever (see get_num_quest_log_entries). On Retail pass the quest id.
----@param index integer The quest log index (the quest id on Retail).
+--- VERSIONS: takes the log index on every client since the 2026-10-06 core, with the same quest ID
+--- compatibility as select_quest_log_entry.
+---@param index integer The quest log index.
 function core.quests.remove_quest_watch(index) end
 
 --- Pushes the selected quest to the quest detail frame.
 function core.quests.quest_log_push_quest() end
 
---- Sets the selected quest for abandonment.
---- VERSIONS: does nothing on Forever (see get_num_quest_log_entries).
+--- Marks the selected quest (select_quest_log_entry) for abandonment; abandon_quest confirms it.
+--- For one call by quest ID use abandon_quest_by_id.
+--- VERSIONS: did nothing on Forever before the 2026-10-06 core; works on every client now.
 function core.quests.set_abandon_quest() end
 
---- Abandons the currently selected quest.
---- VERSIONS: does nothing on Forever (see get_num_quest_log_entries).
+--- Abandons the quest marked by set_abandon_quest. Irreversible: the quest and its progress are gone.
+--- VERSIONS: did nothing on Forever before the 2026-10-06 core; works on every client now.
 function core.quests.abandon_quest() end
+
+---@class quest_objective_info
+---@field text string The objective line as the tracker shows it, for example "Kobold Vermin slain: 4/8".
+---@field type string The objective kind as the game names it, for example "monster", "item" or "object".
+---@field finished boolean True when this objective is done.
+---@field fulfilled integer Current count, for example 4.
+---@field required integer Count needed, for example 8.
+
+--- Returns the objectives of a quest in your log, by QUEST ID.
+--- Empty table when the quest is not in your log (or has no objectives).
+--- Works on every client (the game's C_QuestLog.GetQuestObjectives). Added 2026-10-06 (core branch
+--- lua_requests_06_10); nil at runtime on an older core.
+---
+--- Example:
+--- ```lua
+--- for _, o in ipairs(core.quests.get_quest_objectives(quest_id)) do
+---     core.log(o.text .. (o.finished and " (done)" or ""))
+--- end
+--- ```
+---@param quest_id integer
+---@return quest_objective_info[] objectives
+function core.quests.get_quest_objectives(quest_id) return {} end
+
+--- Returns whether a quest in your log is ready to hand in, by QUEST ID.
+--- false for a failed quest, and for a quest that is not in your log, including one already turned
+--- in (use is_quest_flagged_completed for that). Works on every client. Added 2026-10-06.
+---
+--- This is the game's own answer and does not depend on Questie. core.addons.questie.is_quest_complete
+--- reads Questie's cache instead, which can be empty or stale (on Forever it answers 0 for quests
+--- that are ready to hand in).
+---@param quest_id integer
+---@return boolean ready True when the quest can be turned in.
+function core.quests.is_quest_complete(quest_id) return false end
+
+--- Returns the quest IDs of every quest in your log, in log order. Header rows are skipped, and so
+--- are hidden tracking entries the game never shows. Works on every client. Added 2026-10-06.
+---
+--- The game only lists rows its quest log currently SHOWS, so quests under a header you collapsed
+--- can be missing; call core.quests.expand_quest_header(0) first if you collapse headers.
+---@return integer[] quest_ids
+function core.quests.get_quest_log_quest_ids() return {} end
+
+--- Abandons a quest by QUEST ID in one call (selects it, marks it, abandons it, like the game's own
+--- quest map button). Irreversible: the quest and its progress are gone.
+--- Returns false when the quest is not in your log or the game says it cannot be abandoned. true
+--- means the abandon was sent; is_on_quest(quest_id) turning false after the next QUEST_LOG_UPDATE
+--- event confirms it.
+--- Works on every client. Added 2026-10-06.
+---@param quest_id integer
+---@return boolean sent True when the abandon was sent.
+function core.quests.abandon_quest_by_id(quest_id) return false end
+
+--- Returns how many rewards the open quest reward panel lets you CHOOSE from: the range of
+--- get_quest_reward(choice). 0 when it gives everything (or nothing), and 0 with no reward panel open.
+--- Works on every client (the game's GetNumQuestChoices). Added 2026-10-06.
+---@return integer choices
+function core.quests.get_num_quest_choices() return 0 end
 
 --- Returns the list of gossip options from an NPC.
 ---@return gossip_option[] options An array of gossip option tables.
@@ -5966,10 +6231,13 @@ function core.quests.buy_trainer_service(index) end
 ---@return boolean ran True when the client's close call was reached.
 function core.quests.close_trainer() return false end
 
---- Returns spell information for an item.
---- VERSIONS: always empty on Forever. Elsewhere it relies on Blizzard's deprecated-API fallbacks,
---- so it is also empty whenever the game's loadDeprecationFallbacks setting is off.
----@param item_id_or_link integer|string The item ID or item link.
+--- Returns spell information for an item: the spell it casts when used.
+--- Takes an item id, an item link or an item name. Empty for an item without a use spell, and on
+--- the first call for an item the game has not loaded yet (call again a moment later).
+--- VERSIONS: works on every client since the 2026-10-06 core (branch lua_requests_06_10). Before it,
+--- it was always empty on Forever, and on the other clients whenever the game's
+--- loadDeprecationFallbacks setting was off.
+---@param item_id_or_link integer|string The item ID, item link or item name.
 ---@return item_spell_info info A table containing the item spell information.
 function core.quests.get_item_spell(item_id_or_link) return {} end
 
@@ -6088,16 +6356,19 @@ function core.quests.get_quest_item_link(type, index) return "" end
 ---@field b number The blue color component (0-1).
 
 --- VERSIONS: two implementations.
---- Retail: Blizzard's C_AuctionHouse, as documented per function.
+--- Retail AND Forever: Blizzard's C_AuctionHouse, as documented per function. Wherever a note below
+--- says "retail" or "classic builds", Forever follows the retail side.
 --- Era / TBC / Titan (and the other classic builds): an emulation on the legacy auction API. There
 --- auction_id / owned_auction_id are 1-based ROW INDICES of the current search / owner list (valid
 --- until the list changes), and the retail-only parts answer fixed values (noted per function).
---- Forever: NOT WORKING. It builds as classic, but its client only has retail's C_AuctionHouse, so
---- the legacy calls are missing: readers answer 0 / {} / "", actions do nothing, apart from the
---- fixed answers noted per function.
+--- Forever: works since the 2026-10-06 core (branch lua_requests_06_10), on the retail
+--- implementation: real auction ids, 0-based replicate index, real answers from the retail-only
+--- functions. Post with post_commodity / post_item; the old sell-slot flow (click_auction_sell_button,
+--- do_post_auction, get_auction_sell_item_info) does nothing there. Before that core nothing worked
+--- on Forever. Its bag and slot arguments follow the same convention as core.input.
 --- MoP Classic: UNVERIFIED. Its client has both the legacy calls and C_AuctionHouse and picks one at
 --- runtime; this module always uses the legacy one, so on a realm running the modern auction house
---- it behaves like Forever.
+--- it does not work.
 ---@class auction_house
 core.auction_house = {}
 
@@ -6323,7 +6594,7 @@ end
 
 --- Returns whether the AH throttled message system is ready for another request.
 --- Use this to avoid sending requests too quickly and getting throttled.
---- VERSIONS: classic builds ask CanSendAuctionQuery and answer true when it is missing (Forever).
+--- VERSIONS: classic builds ask CanSendAuctionQuery. Forever asks C_AuctionHouse like retail (2026-10-06 core).
 ---@return boolean ready True if the system is ready for a new request.
 function core.auction_house.is_throttled_message_system_ready()
     return false
@@ -6334,8 +6605,9 @@ end
 function core.auction_house.close_auction_house() end
 
 --- Returns whether the auction house frame is currently shown.
---- VERSIONS: classic builds check the old auction frame, so this is always false on Forever (and on
---- MoP Classic whenever the game opened the modern auction house instead).
+--- VERSIONS: classic builds check the old auction frame, so this is false on MoP Classic whenever the
+--- game opened the modern auction house instead. Retail and Forever check the modern frame (Forever
+--- since the 2026-10-06 core; it was always false there before).
 ---@return boolean is_shown True if the auction house is open.
 function core.auction_house.is_auction_house_shown()
     return false
@@ -6361,8 +6633,8 @@ end
 
 --- Returns detailed item information for an item ID (similar to GetItemInfo).
 --- VERSIONS: on classic builds (this and get_item_icon_name) it goes through Blizzard's
---- deprecated-API fallbacks: always empty on Forever, and empty elsewhere when the game's
---- loadDeprecationFallbacks setting is off. Retail calls the game directly. core.quests.get_item_info
+--- deprecated-API fallbacks: empty when the game's loadDeprecationFallbacks setting is off. Retail
+--- and Forever call the game directly (Forever since the 2026-10-06 core; it was always empty there before). core.quests.get_item_info
 --- has no such dependency.
 ---@param item_id integer The item ID.
 ---@return ah_item_info info A table containing the item information.
@@ -6371,7 +6643,8 @@ function core.auction_house.get_item_info(item_id)
 end
 
 --- Returns the icon texture name/path for an item.
---- VERSIONS: same classic dependency as get_item_info (always "" on Forever).
+--- VERSIONS: same classic dependency as get_item_info. Retail and Forever call the game directly
+--- (Forever since the 2026-10-06 core; it was always "" there before).
 ---@param item_id integer The item ID.
 ---@return string icon_name The icon texture name.
 function core.auction_house.get_item_icon_name(item_id)
@@ -7293,6 +7566,12 @@ function core.addons.questie.is_quest_doable(quest_id)
 end
 
 --- Returns Questie's completion status for a quest.
+---
+--- This is QUESTIE'S cache, not the game: 0 means "incomplete" AND "not in Questie's cache", the two
+--- are indistinguishable. Questie fills that cache from the classic quest log API, which the Forever
+--- client does not have, so on Forever this answers 0 even for a quest ready to hand in. To ask the
+--- game itself use core.quests.is_quest_complete(quest_id) (2026-10-06 core), which works on every
+--- client and does not need Questie.
 ---@param quest_id integer The Questie quest ID.
 ---@return integer|nil status 1 for complete, 0 for incomplete, -1 for failed, or nil if Questie is not ready.
 function core.addons.questie.is_quest_complete(quest_id)
@@ -8136,13 +8415,16 @@ end
 ---@field max_rank integer Maximum skill rank.
 ---@field skill_line_modifier integer Bonus skill from gear/buffs.
 
---- Returns the current trade-skill line (GetTradeSkillLine).
+--- Returns the current trade-skill line (GetTradeSkillLine): the profession whose window is open.
+--- VERSIONS: since the 2026-10-06 core (branch lua_requests_06_10) also on Retail and Forever, from
+--- the open profession's info (nil there before). nil with no profession window open.
 ---@return trade_skill_line|nil line The skill-line info, or nil if unavailable.
 function core.trade_skill.get_trade_skill_line()
     return nil
 end
 
 --- Closes the trade-skill window (CloseTradeSkill).
+--- VERSIONS: also works on Retail and Forever since the 2026-10-06 core (it did nothing there before).
 function core.trade_skill.close() end
 
 --- Returns the min/max quantity a trade-skill produces (GetTradeSkillNumMade).
@@ -8181,8 +8463,11 @@ function core.trade_skill.get_first_trade_skill()
     return 0
 end
 
---- Returns the max number of primary professions, always 2 (GetNumPrimaryProfessions).
----@return integer count Maximum primary professions (0 if the API is unavailable).
+--- Returns how many primary professions the character has LEARNED: 0, 1 or 2 (GetNumPrimaryProfessions).
+--- Corrected 2026-10-06: this said "the max, always 2", which is not what the game answers; Blizzard's
+--- own trainer stops you learning another primary profession when this reaches 2.
+--- VERSIONS: also answers on Retail and Forever since the 2026-10-06 core (0 there before).
+---@return integer count Learned primary professions (0 if the API is unavailable).
 function core.trade_skill.get_num_primary_professions()
     return 0
 end
@@ -8422,7 +8707,8 @@ end
 --------------------------------------------------------------------------------
 
 --- VERSIONS: CLASSIC ONLY (Era, TBC and MoP). On Retail and Forever the Craft API does not exist and
---- every core.craft function answers 0 / nil / false or does nothing.
+--- every core.craft function answers 0 / nil / false or does nothing (the core log names the missing
+--- function once). There, profession crafting goes through the recipe-ID functions of core.trade_skill.
 ---@class craft
 core.craft = {}
 
@@ -8553,9 +8839,13 @@ end
 -- core.skill - classic Skill window API
 --------------------------------------------------------------------------------
 
---- VERSIONS: Classic Era, TBC and MoP Classic only. Every getter answers 0 / nil / false and every
---- setter does nothing on Retail (no Skill window functions) and on Forever (it has the Skill window
---- functions under a new name, C_SkillInfo, that the core does not call yet).
+--- VERSIONS: Classic Era, TBC, MoP Classic and (since the 2026-10-06 core, branch
+--- lua_requests_06_10) Forever, where the core uses the client's newer names for the same Skill
+--- window functions. On Forever get_skill_line_info also lists sub-skill rows Blizzard's own frame
+--- hides, and returns nil past the last row. Retail has no Skill window functions: every getter
+--- answers 0 / nil / false and every setter does nothing there.
+--- The three trainer functions (expand/collapse_trainer_skill_line, is_trainer_service_learn_spell)
+--- stay classic only: on Forever the trainer's categories are UI-only and nothing answers them.
 ---@class skill
 core.skill = {}
 

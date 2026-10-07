@@ -18,7 +18,7 @@
 ---@field get_current_map_id fun(self: coords_helper): number|nil Gets current minimap map ID
 ---@field get_cursor_normalized fun(self: coords_helper): vec2|nil Gets normalized cursor position
 ---@field is_cursor_on_minimap fun(self: coords_helper): boolean Checks if cursor is on minimap
----@field get_terrain_height fun(self: coords_helper, x: number, y: number): number Gets terrain height at position
+---@field get_terrain_height fun(self: coords_helper, x: number, y: number, extra_height?: number): number Gets terrain height at position, casting down from the player's z + extra_height (default 4); 0 with no local player
 ---@field to_3d fun(self: coords_helper, map_pos: vec2, extra_height?: number): vec3 Legacy: converts map pos to world pos
 
 --========================

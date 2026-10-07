@@ -50,8 +50,17 @@
 ---@field next_probe_time number
 ---@field next_download_time number
 
+---@class assets_helper_encrypted_pack
+---@field folder_name string
+---@field read fun(self: assets_helper_encrypted_pack, entry: string): string|nil, string|nil Decrypted bytes, or nil + "downloading"|"missing"|"bad_key"|"not_encrypted"
+---@field is_ready fun(self: assets_helper_encrypted_pack): boolean
+---@field draw_texture fun(self: assets_helper_encrypted_pack, entry: string, top_left: vec2|vec3, width: number, height: number, tint?: color, is_for_window?: boolean): boolean
+---@field load_font fun(self: assets_helper_encrypted_pack, entry: string, font_size: number): integer|nil, string|nil
+---@field get_version_problem fun(self: assets_helper_encrypted_pack): string|nil Set when the server copy has another version than the plugin expects
+
 ---@class assets_helper
 ---@field register_zip_pack fun(self: assets_helper, folder_name: string, zip_url: string, zip_file_name?: string): nil
+---@field register_encrypted_pack fun(self: assets_helper, folder_name: string, zip_url: string, key: string, version?: integer): assets_helper_encrypted_pack|nil, string|nil
 ---@field draw_local_texture fun(self: assets_helper, data_path: string, top_left: vec2|vec3, width: number, height: number, tint?: color, is_for_window?: boolean): boolean
 ---@field draw_http_texture fun(self: assets_helper, url: string, top_left: vec2|vec3, width: number, height: number, cache_path?: string, headers?: table<string, string>, tint?: color, is_for_window?: boolean): boolean
 ---@field load_local_data fun(self: assets_helper, data_path: string, default_value?: string): string
@@ -119,6 +128,38 @@
 --     )
 -- end
 -- core.register_on_render_callback(on_render)
+--
+--
+-- Example 2b, Encrypted ZIP pack (JSON, PNG, fonts, any file)
+--
+-- Build it (run again after every change, it bumps the version):
+--   python pack_encrypted_assets.py scripts_data\my_pack
+-- -> packed\my_pack.zip, a 64 hex char key and a version number.
+-- Upload the zip, put the key and version in the plugin.
+-- Every file inside is AES-256 encrypted. Only the pack object below holds the key.
+-- Decrypting costs about 0.2 s per MB: read once, cache the result.
+--
+-- Versioning:
+-- - Users with an older zip on disk download the new one automatically.
+-- - If the server still has another version, a loud error is logged.
+-- - Dev mode: with the plain folder scripts_data\my_pack\ present, files are read
+--   from it directly, and a red on-screen banner appears when the folder no longer
+--   matches the server pack (forgot to repack, upload or bump the version).
+--
+-- local assets_helper = require("common/utility/assets_helper")
+-- local pack = assets_helper:register_encrypted_pack("my_pack", "ps/<uploaded>.zip", "<64 hex key>", 3)
+--
+-- local config = nil
+-- local function on_update()
+--     if not config then
+--         local bytes, err = pack:read("config.json") -- nil + "downloading" until the zip arrives
+--         if bytes then config = bytes end
+--     end
+-- end
+--
+-- local function on_render()
+--     pack:draw_texture("icons\\logo.png", vec2.new(30, 200), 64, 64)
+-- end
 --
 --
 -- Example 3, World-space position (vec3) using w2s each frame

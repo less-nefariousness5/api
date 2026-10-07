@@ -117,10 +117,11 @@
 ---@field get_all_auras               fun(self: game_object): buff_manager_cache_data[]                            -- Aura cache snapshot
 
 ---@class game_object
---- VERSIONS (is_tank, is_dps, is_healer): the assigned group role is read only on Retail, MoP
---- Classic and Titan (China) (see game_object:get_group_role). Everywhere else the role is
---- guessed from class + spec, and on the private-server clients (Vanilla 1.14 / TBC 2.5.3)
---- other units have no spec, so all three are false for everyone but you.
+--- VERSIONS (is_tank, is_dps, is_healer): the game's assigned group role is used when there is one
+--- (see game_object:get_group_role; every client since the 2026-10-06 core, before it only Retail,
+--- MoP Classic and Titan). Without an assigned role (solo, or nobody picked roles) the role is
+--- guessed from class + spec, and on the private-server clients (Vanilla 1.14 / TBC 2.5.3) other
+--- units have no spec, so all three are false for everyone but you.
 ---@field is_tank                     fun(self: game_object): boolean                           -- Role heuristic
 ---@field is_dps                      fun(self: game_object): boolean                           -- Role heuristic
 ---@field is_healer                   fun(self: game_object): boolean                           -- Role heuristic
@@ -1270,11 +1271,15 @@
 
 ---@class izi_api
 --- Get terrain height at a given 2D position.
---- Uses core.get_height_for_position internally.
+--- Uses core.get_height_for_position internally, casting DOWN from extra_height (default 4) yards
+--- above the local player's z, the same convention as get_cursor_world_pos. Raise extra_height for
+--- ground far above you; keep it small inside buildings and caves. 0 with no local player.
+--- Fixed 2026-10-06: it used to cast from z = 0, below most ground, and answer the wrong height.
 --- param1 x number World X coordinate
 --- param2 y number World Y coordinate
+--- param3 extra_height number|nil Yards above the player's z where the ray starts (default 4)
 --- @return number height Terrain height at position
----@field get_terrain_height fun(x: number, y: number): number
+---@field get_terrain_height fun(x: number, y: number, extra_height?: number): number
 
 --------------------------------------------------------------------------------
 -- Coords Helper Usage Examples
