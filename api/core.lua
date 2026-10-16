@@ -1806,7 +1806,15 @@ function core.game_ui.get_resurrect_corpse_delay()
 end
 
 --- Returns the position of the player's corpse in the world.
----@return vec3 The corpse position.
+--- A zero vector (0, 0, 0) means no corpse was found; check x and y before using it.
+--- VERSIONS: Forever's native reader answers x = y = inf (reported on 1.60.1.70291 as a ghost, still
+--- on core 2.103). PENDING, not in a released core yet (wow_core branch corpse_position_fix_1): any
+--- non-finite answer will fall back to the game's own corpse map pin
+--- (C_DeathInfo.GetCorpseMapPosition, on every client), converted to world x / y; z is then the
+--- ground below that point, or the player's z when the terrain that far away is not loaded yet,
+--- so treat z as approximate on that path. Builds whose native reader answers normally are
+--- unchanged. Once that ships it never returns inf or nan; until then check math.huge yourself.
+---@return vec3 position The corpse position, or a zero vector when there is no corpse.
 function core.game_ui.get_corpse_position()
     return {}
 end
@@ -2049,6 +2057,59 @@ end
 ---@param arg2? integer Talent index (trees) or entry id (Midnight choice nodes). Omit otherwise.
 ---@return boolean accepted True when the client accepted the request.
 function core.game_ui.learn_talent(arg1, arg2)
+    return false
+end
+
+--- STAGED TALENT EDITING (retail and Forever trait trees). Added to the core 2026-10-11; older cores
+--- do not have these (nil). learn_talent buys one rank and applies it at once; these six work like
+--- the talent window instead: reset_talent_tree and stage_talent only change the PENDING build, and
+--- nothing is real until commit_talents (the Apply button) or thrown away with rollback_talents.
+--- Typical loadout import: can_change_talents() -> reset_talent_tree() -> stage_talent(...) for
+--- every node -> commit_talents(). All of them work on your active talent config and answer false
+--- on game versions without trait trees.
+
+--- Returns whether talents can be changed right now, and the game's reason when they cannot
+--- (in combat, while casting, ...). Check it before commit_talents.
+---@return boolean can_change
+---@return string|nil reason The game's message when can_change is false, else nil.
+function core.game_ui.can_change_talents()
+    return false, nil
+end
+
+--- Refunds every point in the active talent tree. STAGED: nothing changes until commit_talents.
+---@return boolean ok false when the game refused or the client has no trait trees.
+function core.game_ui.reset_talent_tree()
+    return false
+end
+
+--- Stages one talent without applying it: learn_talent's trait-tree form without the commit.
+--- node_id alone buys the node's next rank; node_id + entry_id picks that entry on a choice or
+--- hero node. Ids are the ones get_talent_tree_nodes / get_talent_node_info hand you.
+--- STAGED: nothing changes until commit_talents.
+---@param node_id integer The talent node id.
+---@param entry_id? integer The entry to pick on a choice / hero node; omit for a normal node.
+---@return boolean ok false when the game refused (no points left, prerequisite missing, ...).
+function core.game_ui.stage_talent(node_id, entry_id)
+    return false
+end
+
+--- Applies everything staged (the talent window's Apply button). true means the game accepted it
+--- and started applying, which takes a moment like the button does; false is a refusal, see
+--- can_change_talents for why.
+---@return boolean ok
+function core.game_ui.commit_talents()
+    return false
+end
+
+--- Throws away everything staged since the last commit.
+---@return boolean ok
+function core.game_ui.rollback_talents()
+    return false
+end
+
+--- Returns whether there are staged changes waiting for commit_talents.
+---@return boolean has_changes
+function core.game_ui.has_staged_talent_changes()
     return false
 end
 
@@ -5948,9 +6009,12 @@ end
 
 ---@class trainer_service_info
 ---@field spell_name string The spell name.
----@field rank string The spell rank.
----@field category string The spell category.
----@field expanded integer Whether the category is expanded.
+---@field rank string The spell rank text, e.g. "Rank 1"; "" when the service has none.
+---@field category string The service type: "available", "unavailable", "used" or "header".
+---@field expanded integer Whether a header row is expanded; always 0 on Forever (no expandable headers).
+--- VERSIONS: Forever's game answers these in a different order (name, type, icon, level, rank, ...),
+--- so on cores older than the fix rank read "available" / "unavailable" and category "" there.
+--- Fixed in the core after 2.103 (wow_core branch trainer_service_fix_1); same fields on every client.
 
 ---@class trainer_service_cost
 ---@field service_cost integer The service cost in copper.
@@ -6507,8 +6571,14 @@ function core.auction_house.get_owned_auction_info(index)
 end
 
 --- Posts a commodity item on the auction house.
---- VERSIONS: on classic builds quantity is ignored: the whole stack in that slot is posted as one
---- auction (bid = buyout = stack size * unit_price), and true only means the calls ran.
+--- RETURN (Retail and Forever): the game's own needsConfirmation flag from C_AuctionHouse.PostCommodity,
+--- NOT "posted". false is the normal answer: the post went through with no confirmation needed. true
+--- means the game wants a confirmation (it also fires AUCTION_HOUSE_POST_WARNING) and nothing is listed
+--- until you call confirm_post_commodity with the same arguments. Success shows up as the
+--- AUCTION_HOUSE_AUCTION_CREATED event, failure as AUCTION_HOUSE_POST_ERROR.
+--- VERSIONS: on the other classic builds (Era, TBC, Titan, MoP, both PS) quantity is ignored: the whole
+--- stack in that slot is posted as one auction (bid = buyout = stack size * unit_price), and true only
+--- means the calls ran.
 --- Same (bag, slot) pair as core.auction_house.pickup_container_item, including the classic and
 --- retail shift difference documented there.
 ---@param bag integer The bag id: 0 = backpack, 1 to 4 = the equipped bags.
@@ -6516,26 +6586,62 @@ end
 ---@param duration integer The auction duration (1 = 12h, 2 = 24h, 3 = 48h).
 ---@param quantity integer The quantity to post.
 ---@param unit_price number The price per unit in copper.
----@return boolean success Whether the post was successful.
+---@return boolean needs_confirmation Retail and Forever: true when confirm_post_commodity is required. Other classic builds: true when the calls ran.
 function core.auction_house.post_commodity(bag, slot, duration, quantity, unit_price)
     return false
 end
 
---- Posts a non-commodity item on the auction house.
---- VERSIONS: RETAIL ONLY. On every classic build it posts nothing and still returns true; use
---- pickup_container_item + click_auction_sell_button + do_post_auction there.
+--- Posts a non-commodity item (gear and anything else that is not a commodity) on the auction house.
+--- RETURN: the game's own needsConfirmation flag from C_AuctionHouse.PostItem, NOT "posted". false is
+--- the normal answer: the post went through with no confirmation needed. true means the game wants a
+--- confirmation (it also fires AUCTION_HOUSE_POST_WARNING) and nothing is listed until you call
+--- confirm_post_item with the same arguments. Success shows up as the AUCTION_HOUSE_AUCTION_CREATED
+--- event, a rejected post as AUCTION_HOUSE_POST_ERROR.
+--- PRICES: buyout must be HIGHER than bid. Blizzard's own sell frame refuses buyout <= bid, so posting
+--- bid == buyout lists nothing. For a buyout-only auction pass nil (or 0) as bid. Since 2026-10-10 a bid
+--- or buyout of 0 or less is sent to the game as "no price", the way Blizzard's frame does; older cores
+--- sent 0 and required the bid argument.
+--- Post gear with quantity 1.
+--- VERSIONS: Retail and Forever. On the other classic builds (Era, TBC, Titan, MoP, both PS) it posts
+--- nothing and still returns true; use pickup_container_item + click_auction_sell_button +
+--- do_post_auction there. That legacy flow does NOT work on Forever, whose client has no legacy sell slot.
 --- Same (bag, slot) pair as core.auction_house.pickup_container_item, including the classic and
 --- retail shift difference documented there.
 ---@param bag integer The bag id: 0 = backpack, 1 to 4 = the equipped bags.
 ---@param slot integer The slot within that bag, as inventory_helper reports it.
 ---@param duration integer The auction duration (1 = 12h, 2 = 24h, 3 = 48h).
----@param quantity integer The quantity to post.
----@param bid number The starting bid in copper.
+---@param quantity integer The quantity to post (1 for gear).
+---@param bid number|nil The starting bid in copper; nil or 0 for buyout only. Must be lower than buyout.
 ---@param buyout number The buyout price in copper.
----@return boolean success Whether the post was successful.
+---@return boolean needs_confirmation true when confirm_post_item is required; false is a normal post.
 function core.auction_house.post_item(bag, slot, duration, quantity, bid, buyout)
     return false
 end
+
+--- Confirms a commodity post that post_commodity answered true for (the AUCTION_HOUSE_POST_WARNING
+--- case). Pass the same arguments you passed to post_commodity. Calls C_AuctionHouse.ConfirmPostCommodity.
+--- VERSIONS: Retail and Forever. A no-op on the other classic builds, which have no confirmation step.
+--- Added to the core 2026-10-10; older cores do not have it (nil).
+---@param bag integer The bag id: 0 = backpack, 1 to 4 = the equipped bags.
+---@param slot integer The slot within that bag, as inventory_helper reports it.
+---@param duration integer The auction duration (1 = 12h, 2 = 24h, 3 = 48h).
+---@param quantity integer The quantity to post.
+---@param unit_price number The price per unit in copper.
+---@return nil
+function core.auction_house.confirm_post_commodity(bag, slot, duration, quantity, unit_price) end
+
+--- Confirms an item post that post_item answered true for (the AUCTION_HOUSE_POST_WARNING case).
+--- Pass the same arguments you passed to post_item. Calls C_AuctionHouse.ConfirmPostItem.
+--- VERSIONS: Retail and Forever. A no-op on the other classic builds, which have no confirmation step.
+--- Added to the core 2026-10-10; older cores do not have it (nil).
+---@param bag integer The bag id: 0 = backpack, 1 to 4 = the equipped bags.
+---@param slot integer The slot within that bag, as inventory_helper reports it.
+---@param duration integer The auction duration (1 = 12h, 2 = 24h, 3 = 48h).
+---@param quantity integer The quantity to post (1 for gear).
+---@param bid number|nil The starting bid in copper; nil or 0 for buyout only.
+---@param buyout number The buyout price in copper.
+---@return nil
+function core.auction_house.confirm_post_item(bag, slot, duration, quantity, bid, buyout) end
 
 --- Places a bid on an auction.
 ---@param auction_id integer The auction ID to bid on.
@@ -8910,3 +9016,225 @@ function core.skill.is_trainer_service_learn_spell(index)
     return false
 end
 
+
+--------------------------------------------------------------------------------
+-- core.login - login screen, realm list and character select automation
+--------------------------------------------------------------------------------
+
+--- Login, realm list and character select ("glue screen") automation. Added to the core 2026-10-10
+--- (wow_core 77279551); older cores do not have core.login at all (nil).
+--- WHERE IT WORKS: only while a glue screen is up (login, realm list, character select). In world
+--- every getter answers its empty value ("" / false / 0 / {} / nil) and every action answers
+--- false, "not on a glue screen", except logout and cancel_logout, which work ONLY in world.
+--- ACTIONS return two values: ok (boolean) and a message saying what was done, or why not.
+--- They press the same buttons Blizzard's login UI uses, so the screen stays in sync.
+--- VERSIONS: registered on every build. Written and tested on TBC Classic 2.5.6; every other
+--- client is UNVERIFIED (each call checks for the client function first and answers empty /
+--- false when it is missing).
+---@class login
+core.login = {}
+
+--- One realm row. Pass address back to connect_to_realm.
+---@class login_realm
+---@field address string The realm address as a string.
+---@field name string Realm name.
+---@field num_characters integer Your characters on that realm.
+---@field category string The realm list category id, as a string.
+
+--- One character row. Only index and id are guaranteed: when the client fails to read a row the
+--- other fields are nil.
+---@class login_character
+---@field index integer 1-based position in the character list; what select_character takes.
+---@field id integer The client's character id for that row.
+---@field name string|nil
+---@field race string|nil Localized race name.
+---@field race_file string|nil Race token, e.g. "NightElf".
+---@field class_name string|nil Localized class name.
+---@field class_file string|nil Class token, e.g. "ROGUE".
+---@field class_id integer|nil
+---@field level integer|nil
+---@field zone string|nil
+---@field is_ghost boolean|nil
+---@field guid string|nil
+---@field is_locked boolean|nil
+---@field faction string|nil
+
+--- The dialog shown on a glue screen.
+---@class login_dialog
+---@field frame string The dialog frame name ("GlueDialog" or "StaticPopup1" to "StaticPopup4").
+---@field which string The dialog type key, e.g. "OKAY".
+---@field text string The dialog text.
+---@field buttons string[] Visible button labels, in order.
+
+--- Returns whether a glue screen (login, realm list, character select) is up.
+---@return boolean is_glue
+function core.login.is_glue_screen()
+    return false
+end
+
+--- Returns the current glue screen name as the client reports it, e.g. "login" or "charselect".
+---@return string screen The screen name, "" in world.
+function core.login.get_screen()
+    return ""
+end
+
+--- Returns whether the login screen is ready to accept a login (C_Login.IsLoginReady).
+---@return boolean ready
+function core.login.is_login_ready()
+    return false
+end
+
+--- Returns whether the client is connected to the login server (IsConnectedToServer).
+---@return boolean connected
+function core.login.is_connected()
+    return false
+end
+
+--- Returns the server name the client reports (GetServerName).
+---@return string name The name, "" when unavailable.
+function core.login.get_server_name()
+    return ""
+end
+
+--- Returns whether a reconnect is possible (C_Login.IsReconnectLoginPossible), see reconnect.
+---@return boolean possible
+function core.login.is_reconnect_possible()
+    return false
+end
+
+--- Returns whether the realm list finished loading.
+---@return boolean complete
+function core.login.is_realm_list_complete()
+    return false
+end
+
+--- Returns the selected row in the character list (GetCharacterSelection).
+---@return integer index 1-based list position, 0 when nothing is selected.
+function core.login.get_selected_character()
+    return 0
+end
+
+--- Returns C_Login.GetLastError()'s raw values, in the client's order. Tables cannot cross over and
+--- arrive as nil. Observed while idle on TBC 2.5.6: no values at all.
+---@return any ...
+function core.login.get_last_error() end
+
+--- Returns C_Login.GetLogonQueueInfo()'s raw values, in the client's order. Observed while idle on
+--- TBC 2.5.6: false, 0, 0.
+---@return any ...
+function core.login.get_logon_queue_info() end
+
+--- Returns C_Login.GetWaitQueueInfo()'s raw values, in the client's order. Observed while idle on
+--- TBC 2.5.6: 0, 0, false.
+---@return any ...
+function core.login.get_wait_queue_info() end
+
+--- Returns every realm in the realm list, across all categories.
+---@return login_realm[] realms Empty when no realm list is loaded.
+function core.login.get_realms()
+    return {}
+end
+
+--- Returns the character list on character select.
+---@return login_character[] characters Empty when not on character select.
+function core.login.get_characters()
+    return {}
+end
+
+--- Returns the dialog currently shown on the glue screen (a GlueDialog or StaticPopup), if any.
+---@return login_dialog|nil dialog nil when no dialog is shown.
+function core.login.get_dialog()
+    return nil
+end
+
+--- Returns the WoW game account names on the Battle.net account. Filled after login when there is
+--- more than one; the client then waits for select_game_account.
+---@return string[] accounts
+function core.login.get_game_accounts()
+    return {}
+end
+
+--- Logs in with an account and password, through the login screen's own boxes and button (the
+--- password box is cleared again afterwards).
+---@param account string
+---@param password string
+---@return boolean ok
+---@return string message What was done, or why not.
+function core.login.login(account, password)
+    return false, ""
+end
+
+--- Picks a game account when the client asks for one (see get_game_accounts).
+---@param name? string The game account name; nil or "" picks the first.
+---@return boolean ok
+---@return string message
+function core.login.select_game_account(name)
+    return false, ""
+end
+
+--- Connects to a realm.
+---@param name_or_address? string|number A realm name or address from get_realms; nil or "" picks the first realm with characters, else the first realm.
+---@return boolean ok
+---@return string message
+function core.login.connect_to_realm(name_or_address)
+    return false, ""
+end
+
+--- Opens the realm list from character select (C_RealmList.RequestChangeRealmList).
+---@return boolean ok
+---@return string message
+function core.login.open_realm_list()
+    return false, ""
+end
+
+--- Selects a character on character select.
+---@param index_or_name? integer|string A 1-based list position, or a character name; nil or "" picks the first character.
+---@return boolean ok
+---@return string message
+function core.login.select_character(index_or_name)
+    return false, ""
+end
+
+--- Enters the world with the selected character.
+---@return boolean ok
+---@return string message
+function core.login.enter_world()
+    return false, ""
+end
+
+--- Clicks a button on the shown dialog (see get_dialog).
+---@param label? string Clicks the visible button whose label CONTAINS this text, case-insensitive; nil or "" clicks the first visible button.
+---@return boolean ok
+---@return string message
+function core.login.press_dialog_button(label)
+    return false, ""
+end
+
+--- Reconnects after a disconnect (C_Login.ReconnectLogin), see is_reconnect_possible.
+---@return boolean ok
+---@return string message
+function core.login.reconnect()
+    return false, ""
+end
+
+--- Disconnects from the server and goes back to the login screen (glue screens only).
+---@return boolean ok
+---@return string message
+function core.login.disconnect()
+    return false, ""
+end
+
+--- IN WORLD ONLY. Logs out to character select: instant in a rest area, otherwise the game's 20
+--- second countdown.
+---@return boolean ok
+---@return string message
+function core.login.logout()
+    return false, ""
+end
+
+--- IN WORLD ONLY. Cancels a logout countdown.
+---@return boolean ok
+---@return string message
+function core.login.cancel_logout()
+    return false, ""
+end

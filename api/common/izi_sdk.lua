@@ -127,7 +127,8 @@
 ---@field is_healer                   fun(self: game_object): boolean                           -- Role heuristic
 ---@field affecting_combat            fun(self: game_object): boolean                           -- In combat?
 ---@field time_to_die                 fun(self: game_object): number                            -- Forecasted TTD (seconds)
----@field get_time_to_death           fun(self: game_object, include_pvp?: boolean): number     -- Forecasted TTD (seconds), optionally include pvp
+---@field get_time_to_death           fun(self: game_object, include_pvp?: boolean): number     -- Forecasted TTD (seconds), optionally include pvp. 1.1 = no data yet, 61.22 = dummy / pvp
+---@field has_time_to_die_data       fun(self: game_object): boolean                           -- false when time_to_die answers the 1.1 "no data" value (unit not in combat yet)
 ---@field is_spell_in_range           fun(self: game_object, spell: integer|izi_spell|{id:fun(self):integer}): boolean -- Range vs local player
 ---@field is_in_range                 fun(self: game_object, meters: number): boolean           -- Distance <= meters
 ---@field is_in_melee_range           fun(self: game_object, meters: number): boolean           -- Distance <= (meters + target_radius)

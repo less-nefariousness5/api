@@ -75,6 +75,23 @@
 ---@field neg_buff integer
 ---@field percent number
 
+--- Melee damage, straight from WoW's UnitDamage(unit). Every field is 0 when the game has nothing.
+---@class unit_damage_data
+---@field min_damage number Main hand minimum damage.
+---@field max_damage number Main hand maximum damage.
+---@field offhand_min_damage number Off hand minimum damage (0 without an off-hand weapon).
+---@field offhand_max_damage number Off hand maximum damage.
+---@field pos_buff integer Positive damage modifiers.
+---@field neg_buff integer Negative damage modifiers.
+---@field percent number Damage percentage modifier (1 = 100%).
+
+--- Melee attack power, straight from WoW's UnitAttackPower(unit).
+---@class attack_power_data
+---@field base integer Base attack power.
+---@field pos_buff integer Positive modifiers.
+---@field neg_buff integer Negative modifiers (already negative).
+---@field effective integer base + pos_buff + neg_buff, floored at 0: the number the character sheet shows.
+
 --- The four armor values game_object:get_armor() returns, straight from WoW's UnitArmor(unit).
 ---
 --- Every field is an integer and every field is always present. The binding zero-initializes all
@@ -224,8 +241,11 @@
 --- VERSIONS: always false on Era, TBC, MoP and Titan, whose clients have no UnitIsBossMob (Ketho
 --- GlobalAPI dumps; Titan UI source). Works on retail and Forever. Private servers unchecked.
 ---@field is_boss fun(self: game_object): boolean
----Returns whether the game object is a quest unit.
---- VERSIONS: RETAIL ONLY. Always false on every classic build; the classic body is a stub.
+---Returns whether the game object is a quest unit (related to one of your active quests).
+--- VERSIONS: retail and, since the 2026-10-10 core, Forever, where it asks the game
+--- (C_QuestLog.UnitIsRelatedToActiveQuest, the call behind the quest icon on nameplates); older
+--- cores answered false on Forever even for a mob of an active 0/8 kill quest. Era, TBC, Titan and
+--- MoP have no such call in their client and always answer false.
 ---@field is_quest_unit fun(self: game_object): boolean
 ---Returns whether the game object is an item.
 ---@field is_item fun(self: game_object): boolean
@@ -490,6 +510,13 @@
 ---@field get_empower_current_stage fun(self: game_object): number
 ---Returns the unit's ranged damage information including speed, damage range, buffs, and percentage modifier.
 ---@field get_unit_ranged_damage fun(self: game_object): unit_ranged_damage_data
+---Returns this unit's melee damage (WoW's UnitDamage). Works on every game version; exact for
+---your own character, the game's estimate for other units. Added to the core 2026-10-11; older
+---cores do not have it (nil).
+---@field get_unit_damage fun(self: game_object): unit_damage_data
+---Returns this unit's melee attack power (WoW's UnitAttackPower). Works on every game version.
+---Added to the core 2026-10-11; older cores do not have it (nil).
+---@field get_attack_power fun(self: game_object): attack_power_data
 ---Returns the game object's armor as a TABLE of four integers, not a single value.
 ---This stub said `number` from the day the binding landed ("Added get_armor to lua", 085e19ed in
 ---wow_core, 2026-03-16) until 2026-08-11, so anything written against it was doing arithmetic on a
@@ -537,6 +564,14 @@
 ---(out of range, nameplates disabled, or the C_NamePlate API is unavailable on
 ---older clients).
 ---@field get_nameplate fun(self: game_object): nameplate_info|nil
+---Shows or hides Blizzard's own nameplate visual for this unit (the plate's UnitFrame; the plate
+---itself and its position are left alone, so get_nameplate keeps answering). The hide lasts until
+---the game recycles the plate, i.e. the unit leaves nameplate range and comes back, so re-apply it
+---on the NAME_PLATE_UNIT_ADDED event. Returns true when a plate was found and changed, false when
+---the unit has no nameplate (out of range, nameplates off, or a plate the game keeps forbidden,
+---such as friendly plates inside instances on retail). Every client built here has C_NamePlate.
+---Added to the core 2026-10-10; older cores do not have it (nil).
+---@field set_nameplate_visible fun(self: game_object, visible: boolean): boolean
 ---Returns the world position of the unit's name attachment point (the anchor above the model where the name/nameplate text sits, roughly the top of the head). Returns a zero vector when the model is not loaded.
 ---@field get_attachment_name_position fun(self: game_object): vec3
 ---Returns the world position of a specific model attachment point, identified by its numeric id (e.g. hands, chest, base, overhead). Returns a zero vector when the model is not loaded or does not have the requested attachment.
